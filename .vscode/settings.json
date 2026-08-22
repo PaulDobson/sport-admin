@@ -1,0 +1,13 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "openspec": true,
+        "/^python3 -c \"import subprocess; res = subprocess\\.run\\(\\['git', 'ls-remote', 'https://github\\.com/PaulDobson/sport-admin\\.git', 'HEAD'\\], capture_output=True, text=True\\); print\\('STDOUT:', repr\\(res\\.stdout\\)\\); print\\('STDERR:', repr\\(res\\.stderr\\)\\); print\\('CODE:', res\\.returncode\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python3 -c \"import subprocess; res = subprocess\\.run\\(\\['git', 'ls-remote', 'https://github\\.com/PaulDobson/sport-admin\\.git'\\], capture_output=True, text=True\\); print\\('STDOUT_LENGTH:', len\\(res\\.stdout\\)\\); print\\('STDERR:', repr\\(res\\.stderr\\)\\); print\\('CODE:', res\\.returncode\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
