@@ -8,6 +8,16 @@
         "/^python3 -c \"import subprocess; res = subprocess\\.run\\(\\['git', 'ls-remote', 'https://github\\.com/PaulDobson/sport-admin\\.git'\\], capture_output=True, text=True\\); print\\('STDOUT_LENGTH:', len\\(res\\.stdout\\)\\); print\\('STDERR:', repr\\(res\\.stderr\\)\\); print\\('CODE:', res\\.returncode\\)\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^node -e \"const fs = require\\('fs'\\); const file = fs\\.readFileSync\\('/Users/pauldobson/Library/Application Support/Code/User/workspaceStorage/789ddcd2e0c01ac2d93bbabb830b08be/GitHub\\.copilot-chat/chat-session-resources/e33fce41-d26a-4135-8264-00d4a82779c0/call_MHxyVlNKN1FPU3VFVlBXcWs2b2U__vscode-1787362370976/content\\.txt', 'utf8'\\); console\\.log\\(file\\);\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "supabase": true,
+        "pnpm": true,
+        "/^python3 -c '\nimport json, re\n\n# Read the file with strict=False or sanitize\nwith open\\(\"/Users/pauldobson/Library/Application Support/Code/User/workspaceStorage/789ddcd2e0c01ac2d93bbabb830b08be/GitHub\\.copilot-chat/chat-session-resources/59b29c02-620e-4248-bb61-85edd93ab39c/call_MHw5elVGdFhjY1FTd0pFOGNjd0c__vscode-1787362373252/content\\.txt\", \"r\", encoding=\"utf-8\"\\) as f:\n    text = f\\.read\\(\\)\n\n# Load allowing non-strict controls\ndata = json\\.loads\\(text, strict=False\\)\n\n# Extract tasks 7\\.1-7\\.8\ntasks = \\[\\]\nif \"tasks\" in data:\n    for t in data\\[\"tasks\"\\]:\n        id_ = t\\.get\\(\"id\", \"\"\\)\n        if id_\\.startswith\\(\"7\\.\"\\):\n            try:\n                sub = float\\(id_\\)\n                if 7\\.1 <= sub <= 7\\.8:\n                    tasks\\.append\\(t\\)\n            except ValueError:\n                pass\n\noutput = \\{\n    \"schemaName\": data\\.get\\(\"schemaName\"\\),\n    \"planningHome\": data\\.get\\(\"planningHome\"\\),\n    \"changeRoot\": data\\.get\\(\"changeRoot\"\\),\n    \"actionContext\": data\\.get\\(\"actionContext\"\\),\n    \"state\": data\\.get\\(\"state\"\\),\n    \"progress\": data\\.get\\(\"progress\"\\),\n    \"instruction\": data\\.get\\(\"instruction\"\\),\n    \"contextFiles\": data\\.get\\(\"contextFiles\"\\),\n    \"context\": data\\.get\\(\"context\"\\),\n    \"operationGuidance\": data\\.get\\(\"operationGuidance\"\\),\n    \"tasks_7\\.1_to_7\\.8\": tasks\n\\}\nprint\\(json\\.dumps\\(output, indent=2\\)\\)\n'$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

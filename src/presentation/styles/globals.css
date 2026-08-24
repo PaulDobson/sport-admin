@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 220 20% 8%;
+  --foreground: 220 10% 92%;
+  --card: 220 18% 12%;
+  --card-foreground: 220 10% 95%;
+  --popover: 220 18% 11%;
+  --popover-foreground: 220 10% 94%;
+  --primary: 155 84% 48%;
+  --primary-foreground: 150 15% 7%;
+  --secondary: 220 15% 16%;
+  --secondary-foreground: 220 10% 92%;
+  --muted: 220 15% 16%;
+  --muted-foreground: 220 10% 68%;
+  --accent: 264 78% 65%;
+  --accent-foreground: 260 20% 98%;
+  --destructive: 0 82% 60%;
+  --destructive-foreground: 0 12% 98%;
+  --success: 142 72% 48%;
+  --success-foreground: 142 18% 98%;
+  --warning: 38 92% 55%;
+  --warning-foreground: 38 20% 12%;
+  --info: 199 89% 58%;
+  --info-foreground: 198 20% 98%;
+  --border: 220 15% 18%;
+  --input: 220 15% 18%;
+  --ring: 155 84% 48%;
+  --radius: 1rem;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen bg-background text-foreground antialiased;
+  background-image:
+    radial-gradient(circle at top, rgba(23, 176, 122, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(154, 116, 255, 0.12), transparent 28%);
+}
+
+* {
+  @apply border-border;
+}
+
+@layer components {
+  .surface-panel {
+    @apply rounded-2xl border border-border bg-card text-card-foreground shadow-lg shadow-black/10;
+  }
+}
+
+@layer utilities {
+  .metric-number {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.06em;
+  }
+}
