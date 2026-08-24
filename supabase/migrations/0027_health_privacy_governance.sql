@@ -67,6 +67,8 @@ create unique index if not exists student_erasure_requests_open_idx
 create index if not exists health_consent_events_current_idx
   on public.health_consent_events (tenant_id, student_id, occurred_at desc, created_at desc);
 
+drop trigger if exists set_tenant_privacy_policies_updated_at
+  on public.tenant_privacy_policies;
 create trigger set_tenant_privacy_policies_updated_at
   before update on public.tenant_privacy_policies
   for each row execute function public.set_health_record_updated_at();
@@ -79,6 +81,8 @@ begin
 end;
 $$;
 
+drop trigger if exists prevent_health_consent_event_update
+  on public.health_consent_events;
 create trigger prevent_health_consent_event_update
   before update or delete on public.health_consent_events
   for each row execute function public.prevent_privacy_history_mutation();
@@ -408,20 +412,34 @@ alter table public.tenant_privacy_policies enable row level security;
 alter table public.health_consent_events enable row level security;
 alter table public.student_erasure_requests enable row level security;
 
+drop policy if exists tenant_privacy_policies_select
+  on public.tenant_privacy_policies;
 create policy tenant_privacy_policies_select on public.tenant_privacy_policies for select
   using (
     public.current_membership_role(tenant_id) in ('owner', 'admin', 'instructor')
   );
+drop policy if exists health_consent_events_select
+  on public.health_consent_events;
 create policy health_consent_events_select on public.health_consent_events for select
   using (
     public.current_membership_role(tenant_id) in ('owner', 'admin', 'instructor')
   );
+drop policy if exists student_erasure_requests_select
+  on public.student_erasure_requests;
 create policy student_erasure_requests_select on public.student_erasure_requests for select
   using (public.current_membership_role(tenant_id) in ('owner', 'admin'));
 
 grant select on public.tenant_privacy_policies to authenticated;
 grant select on public.health_consent_events to authenticated;
 grant select on public.student_erasure_requests to authenticated;
+
+revoke delete on public.metric_definitions from authenticated;
+revoke delete on public.metric_evaluations from authenticated;
+revoke delete on public.health_conditions from authenticated;
+revoke delete on public.injuries from authenticated;
+revoke delete on public.health_restrictions from authenticated;
+revoke delete on public.class_session_attendance from authenticated;
+revoke delete on public.student_alerts from authenticated;
 
 grant select, insert, update on public.metric_definitions to authenticated;
 grant select, insert on public.metric_evaluations to authenticated;

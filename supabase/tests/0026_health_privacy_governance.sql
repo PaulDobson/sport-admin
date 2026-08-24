@@ -78,13 +78,29 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', current_setting('test.owner_a'), true);
 
 do $$
+declare
+  governed_table text;
 begin
   if not has_table_privilege('authenticated', 'public.health_conditions', 'INSERT') then
     raise exception 'authenticated role lacks health condition insert privilege';
   end if;
-  if has_table_privilege('authenticated', 'public.health_conditions', 'DELETE') then
-    raise exception 'authenticated role received health condition delete privilege';
-  end if;
+  foreach governed_table in array array[
+    'metric_definitions',
+    'metric_evaluations',
+    'health_conditions',
+    'injuries',
+    'health_restrictions',
+    'class_session_attendance',
+    'student_alerts'
+  ] loop
+    if has_table_privilege(
+      'authenticated',
+      format('public.%I', governed_table),
+      'DELETE'
+    ) then
+      raise exception 'authenticated role received delete privilege on %', governed_table;
+    end if;
+  end loop;
   if public.can_access_student_health('28000000-0000-4000-8000-000000000001') then
     raise exception 'health access was enabled without legal approval';
   end if;
