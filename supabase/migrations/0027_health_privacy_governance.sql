@@ -19,6 +19,7 @@ create table if not exists public.tenant_privacy_policies (
 
 create table if not exists public.health_consent_events (
   id uuid primary key default gen_random_uuid(),
+  event_sequence bigint generated always as identity,
   tenant_id uuid not null references public.tenants(id) on delete cascade,
   student_id uuid not null,
   declared_by_membership_id uuid not null,
@@ -34,6 +35,9 @@ create table if not exists public.health_consent_events (
   foreign key (tenant_id, declared_by_membership_id)
     references public.tenant_memberships(tenant_id, id) on delete restrict
 );
+
+alter table public.health_consent_events
+  add column if not exists event_sequence bigint generated always as identity;
 
 create table if not exists public.student_erasure_requests (
   id uuid primary key default gen_random_uuid(),
@@ -64,8 +68,9 @@ create table if not exists public.student_erasure_requests (
 create unique index if not exists student_erasure_requests_open_idx
   on public.student_erasure_requests (tenant_id, student_id)
   where status in ('pending', 'approved', 'blocked');
-create index if not exists health_consent_events_current_idx
-  on public.health_consent_events (tenant_id, student_id, occurred_at desc, created_at desc);
+drop index if exists public.health_consent_events_current_idx;
+create index health_consent_events_current_idx
+  on public.health_consent_events (tenant_id, student_id, event_sequence desc);
 
 drop trigger if exists set_tenant_privacy_policies_updated_at
   on public.tenant_privacy_policies;
@@ -125,7 +130,7 @@ as $$
       from public.health_consent_events event
       where event.tenant_id = target_tenant
         and event.student_id = target_student
-      order by event.occurred_at desc, event.created_at desc, event.id desc
+      order by event.event_sequence desc
       limit 1
     ) consent on true
     where policy.tenant_id = target_tenant
