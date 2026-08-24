@@ -3,6 +3,7 @@ import { SupabaseAbandonmentRepository } from "@/infrastructure/evolution-health
 import { SupabaseAttendanceRepository } from "@/infrastructure/evolution-health-attendance/supabase-attendance-repository";
 import { SupabaseHealthRepository } from "@/infrastructure/evolution-health-attendance/supabase-health-repository";
 import { SupabaseMetricRepository } from "@/infrastructure/evolution-health-attendance/supabase-metric-repository";
+import { SupabasePrivacyRepository } from "@/infrastructure/evolution-health-attendance/supabase-privacy-repository";
 
 export async function createEvolutionHealthAttendanceDeps() {
   const client = await createSupabaseServerClient();
@@ -11,5 +12,6 @@ export async function createEvolutionHealthAttendanceDeps() {
     attendance: new SupabaseAttendanceRepository(client),
     health: new SupabaseHealthRepository(client),
     metrics: new SupabaseMetricRepository(client),
+    privacy: new SupabasePrivacyRepository(client),
   };
 }

@@ -80,4 +80,30 @@ describe("processNextNotificationDelivery", () => {
       expect.objectContaining({ errorCode: "timeout", retryable: true }),
     );
   });
+
+  it("fails only the external delivery when its provider is unavailable", async () => {
+    const deliveries = createRepository("failed");
+    deliveries.claimNext.mockResolvedValue({ ...delivery, channel: "push" });
+
+    const result = await processNextNotificationDelivery(
+      { now: new Date("2026-08-23T12:00:00Z") },
+      {
+        deliveries,
+        providers: [
+          {
+            channel: "internal",
+            send: vi.fn().mockResolvedValue({ providerReference: "internal" }),
+          },
+        ],
+      },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(deliveries.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCode: "provider_not_configured",
+        retryable: false,
+      }),
+    );
+  });
 });

@@ -43,6 +43,7 @@ vi.mock("@/infrastructure/composition/synchronization-composition", () => ({
 
 describe("SessionRealtimeRefresh", () => {
   it("subscribes to one session and refreshes on a minimal event", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const { unmount } = render(
       <SessionRealtimeRefresh
         tenantId="c84d5db9-bc46-4f45-aa31-d16e77327c01"
@@ -65,6 +66,12 @@ describe("SessionRealtimeRefresh", () => {
     refresh.mockClear();
     realtimeCallback?.();
     await waitFor(() => expect(refresh).toHaveBeenCalledOnce());
+    expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
+      area: "realtime_resync",
+      operation: "recover_events_client",
+      outcome: "success",
+      itemCount: 1,
+    });
 
     unmount();
     await waitFor(() => expect(removeChannel).toHaveBeenCalledWith(channel));

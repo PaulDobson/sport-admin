@@ -36,3 +36,17 @@ Three environments share the same schema of variables, defined in [.env.example]
 Sign `${timestamp}.${rawBody}` with HMAC-SHA256 using `SAAS_WEBHOOK_SECRET`. Send the Unix timestamp in `x-saas-timestamp` and the lowercase hex digest as `x-saas-signature: sha256=<digest>`. Timestamps have a five-minute tolerance and payloads are limited to 64 KiB.
 
 Successful processing and replay of an existing provider event both return HTTP 200 with the same internal event ID. Invalid signatures return 401, invalid payloads return 400, and transient processing failures return 500 so the sender can retry safely.
+
+## Operations
+
+The structured log schema, sensitive-data restrictions, initial alert thresholds, and staging checks are documented in [docs/observability.md](docs/observability.md).
+
+Health processing remains disabled until legal approval. The implemented controls and required production evidence are documented in [docs/privacy-governance.md](docs/privacy-governance.md).
+
+Operational response is documented in [docs/support-runbook.md](docs/support-runbook.md). SaaS subscription reconciliation and webhook recovery are documented in [docs/billing-runbook.md](docs/billing-runbook.md).
+
+## Continuous integration
+
+The `CI` GitHub Actions workflow runs lint, type checking, unit and integration tests, a production build, the privileged-secret bundle scan, mobile Chromium PWA tests, and the current Supabase RLS matrices. Database checks use a disposable local Supabase stack with deterministic identities from `supabase/seed.sql`; they never connect to staging or production.
+
+Run the browser checks locally with `pnpm exec playwright install chromium` followed by `pnpm test:e2e`.

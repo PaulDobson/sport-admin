@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { activateMembership } from "@/application/instructor-finance/use-cases/manage-membership";
 import { createHealthRestriction } from "@/application/evolution-health-attendance/use-cases/manage-student-health";
+import {
+  correctStudentPersonalData,
+  registerStudentHealthConsent,
+  requestStudentErasure,
+} from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
@@ -70,6 +75,82 @@ export async function createRestrictionAction(
         source: "instructor_report",
         startsOn: String(formData.get("startsOn") ?? ""),
         endsOn: String(formData.get("endsOn") ?? "") || undefined,
+      },
+      await createEvolutionHealthAttendanceDeps(),
+    );
+  } catch (error) {
+    return { error: formatActionError(error), saved: false };
+  }
+  revalidatePath(`/dashboard/students/${studentId}`);
+  return { error: null, saved: true };
+}
+
+export async function registerConsentAction(
+  _previousState: StudentDetailFormState,
+  formData: FormData,
+): Promise<StudentDetailFormState> {
+  const actor = await getRequestMembership();
+  const studentId = String(formData.get("studentId") ?? "");
+  try {
+    await registerStudentHealthConsent(
+      {
+        tenantId: actor.tenantId,
+        studentId,
+        policyVersion: String(formData.get("policyVersion") ?? ""),
+        decision: String(formData.get("decision") ?? "") as
+          | "granted"
+          | "revoked",
+        operationId: randomUUID(),
+        representedConsentConfirmed:
+          formData.get("representedConsentConfirmed") === "confirmed",
+      },
+      await createEvolutionHealthAttendanceDeps(),
+    );
+  } catch (error) {
+    return { error: formatActionError(error), saved: false };
+  }
+  revalidatePath(`/dashboard/students/${studentId}`);
+  return { error: null, saved: true };
+}
+
+export async function correctPersonalDataAction(
+  _previousState: StudentDetailFormState,
+  formData: FormData,
+): Promise<StudentDetailFormState> {
+  const actor = await getRequestMembership();
+  const studentId = String(formData.get("studentId") ?? "");
+  try {
+    await correctStudentPersonalData(
+      {
+        tenantId: actor.tenantId,
+        studentId,
+        fullName: String(formData.get("fullName") ?? "") || undefined,
+        birthDate: String(formData.get("birthDate") ?? "") || undefined,
+      },
+      await createEvolutionHealthAttendanceDeps(),
+    );
+  } catch (error) {
+    return { error: formatActionError(error), saved: false };
+  }
+  revalidatePath(`/dashboard/students/${studentId}`);
+  return { error: null, saved: true };
+}
+
+export async function requestErasureAction(
+  _previousState: StudentDetailFormState,
+  formData: FormData,
+): Promise<StudentDetailFormState> {
+  const actor = await getRequestMembership();
+  const studentId = String(formData.get("studentId") ?? "");
+  try {
+    await requestStudentErasure(
+      {
+        tenantId: actor.tenantId,
+        studentId,
+        reason: String(formData.get("reason") ?? "") as
+          | "subject_request"
+          | "consent_withdrawn"
+          | "tenant_request",
       },
       await createEvolutionHealthAttendanceDeps(),
     );

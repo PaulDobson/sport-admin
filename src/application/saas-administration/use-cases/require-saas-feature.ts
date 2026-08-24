@@ -5,7 +5,7 @@ import type { SaasEntitlementsPort } from "../ports/saas-entitlements-port";
 
 const inputSchema = z.object({
   tenantId: z.string().uuid(),
-  feature: z.enum(["reports", "offline", "realtime"]),
+  feature: z.enum(["reports", "offline", "realtime", "push"]),
 });
 
 export async function requireSaasFeature(

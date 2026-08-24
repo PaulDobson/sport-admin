@@ -15,6 +15,18 @@ describe("requireSaasFeature", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("supports push as a phase-three plan feature", async () => {
+    await expect(
+      requireSaasFeature(
+        {
+          tenantId: "a1000000-0000-4000-8000-000000000001",
+          feature: "push",
+        },
+        { canUseFeature: async (_tenantId, feature) => feature === "push" },
+      ),
+    ).resolves.toBeUndefined();
+  });
+
   it("returns an actionable plan error for an unavailable feature", async () => {
     await expect(
       requireSaasFeature(

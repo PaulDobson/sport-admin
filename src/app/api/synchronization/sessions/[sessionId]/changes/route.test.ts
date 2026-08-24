@@ -38,6 +38,7 @@ describe("GET session changes", () => {
   });
 
   it("queries authorized durable events after the supplied cursor", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const response = await GET(
       new Request(
         "http://localhost/api/synchronization/sessions/session-1/changes?after=11",
@@ -51,5 +52,13 @@ describe("GET session changes", () => {
     expect(await response.json()).toMatchObject({
       events: [{ id: 12, eventType: "attendance" }],
     });
+    const event = JSON.parse(String(info.mock.calls[0][0]));
+    expect(event).toMatchObject({
+      area: "realtime_resync",
+      operation: "recover_events",
+      outcome: "success",
+      itemCount: 1,
+    });
+    expect(event.durationMs).toEqual(expect.any(Number));
   });
 });

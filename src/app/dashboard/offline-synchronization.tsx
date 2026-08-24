@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { synchronizeOfflineCommands } from "@/application/synchronization/use-cases/synchronize-offline-commands";
 import type { OfflineCommand } from "@/domain/synchronization/offline-command";
+import { createObservability } from "@/infrastructure/composition/observability-composition";
 import { createOfflineSynchronizationDeps } from "@/infrastructure/composition/synchronization-composition";
 
 export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
@@ -12,9 +13,19 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
     const synchronize = async () => {
       if (!navigator.onLine || running) return;
       running = true;
+      const startedAt = performance.now();
       const deps = createOfflineSynchronizationDeps();
+      const observability = createObservability();
       try {
-        await synchronizeOfflineCommands(tenantId, deps);
+        const result = await synchronizeOfflineCommands(tenantId, deps);
+        observability.record({
+          area: "offline_sync",
+          operation: "flush_queue",
+          outcome: result.failed === 0 ? "success" : "failure",
+          durationMs: performance.now() - startedAt,
+          itemCount: result.confirmed + result.failed,
+          errorCode: result.failed === 0 ? undefined : "COMMANDS_REJECTED",
+        });
         const queue = await deps.offlineStore.list<OfflineCommand>(
           "queue",
           tenantId,
@@ -24,6 +35,14 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
             .map((record) => record.payload)
             .filter((command) => command.status === "conflict"),
         );
+      } catch {
+        observability.record({
+          area: "offline_sync",
+          operation: "flush_queue",
+          outcome: "failure",
+          durationMs: performance.now() - startedAt,
+          errorCode: "NETWORK_FAILURE",
+        });
       } finally {
         await deps.offlineStore.close();
         running = false;

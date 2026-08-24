@@ -1,0 +1,241 @@
+{
+  "total_count": 3,
+  "jobs": [
+    {
+      "id": 97495910223,
+      "run_id": 32747340417,
+      "workflow_name": "CI",
+      "head_branch": "feature/inicio",
+      "run_url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/runs/32747340417",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOUARZbs8AAAAWszWHTw",
+      "head_sha": "659d390c38b375460812fb20882fe395faf473e3",
+      "url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/jobs/97495910223",
+      "html_url": "https://github.com/PaulDobson/sport-admin/actions/runs/32747340417/job/97495910223",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-08-24T15:50:52Z",
+      "started_at": "2026-08-24T15:50:55Z",
+      "completed_at": null,
+      "name": "database",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-08-24T15:50:56Z",
+          "completed_at": "2026-08-24T15:50:57Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "in_progress",
+          "conclusion": null,
+          "number": 2,
+          "started_at": "2026-08-24T15:50:57Z",
+          "completed_at": null
+        },
+        {
+          "name": "Run supabase/setup-cli@v1",
+          "status": "pending",
+          "conclusion": null,
+          "number": 3,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run supabase start",
+          "status": "pending",
+          "conclusion": null,
+          "number": 4,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run supabase db reset",
+          "status": "pending",
+          "conclusion": null,
+          "number": 5,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run current RLS matrices",
+          "status": "pending",
+          "conclusion": null,
+          "number": 6,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run supabase stop --no-backup",
+          "status": "pending",
+          "conclusion": null,
+          "number": 7,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "pending",
+          "conclusion": null,
+          "number": 14,
+          "started_at": null,
+          "completed_at": null
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/PaulDobson/sport-admin/check-runs/97495910223",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000001,
+      "runner_name": "GitHub Actions 1000000001",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 97495910421,
+      "run_id": 32747340417,
+      "workflow_name": "CI",
+      "head_branch": "feature/inicio",
+      "run_url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/runs/32747340417",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOUARZbs8AAAAWszWIFQ",
+      "head_sha": "659d390c38b375460812fb20882fe395faf473e3",
+      "url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/jobs/97495910421",
+      "html_url": "https://github.com/PaulDobson/sport-admin/actions/runs/32747340417/job/97495910421",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-08-24T15:50:52Z",
+      "started_at": "2026-08-24T15:50:55Z",
+      "completed_at": null,
+      "name": "mobile-e2e",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-08-24T15:50:56Z",
+          "completed_at": "2026-08-24T15:50:57Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-08-24T15:50:57Z",
+          "completed_at": "2026-08-24T15:50:57Z"
+        },
+        {
+          "name": "Run pnpm/action-setup@v4",
+          "status": "in_progress",
+          "conclusion": null,
+          "number": 3,
+          "started_at": "2026-08-24T15:50:57Z",
+          "completed_at": null
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "status": "pending",
+          "conclusion": null,
+          "number": 4,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run pnpm install --frozen-lockfile",
+          "status": "pending",
+          "conclusion": null,
+          "number": 5,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run pnpm exec playwright install --with-deps chromium",
+          "status": "pending",
+          "conclusion": null,
+          "number": 6,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Run pnpm test:e2e",
+          "status": "pending",
+          "conclusion": null,
+          "number": 7,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Upload Playwright traces",
+          "status": "pending",
+          "conclusion": null,
+          "number": 8,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Post Run pnpm/action-setup@v4",
+          "status": "pending",
+          "conclusion": null,
+          "number": 15,
+          "started_at": null,
+          "completed_at": null
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "pending",
+          "conclusion": null,
+          "number": 16,
+          "started_at": null,
+          "completed_at": null
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/PaulDobson/sport-admin/check-runs/97495910421",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000003,
+      "runner_name": "GitHub Actions 1000000003",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 97495910548,
+      "run_id": 32747340417,
+      "workflow_name": "CI",
+      "head_branch": "feature/inicio",
+      "run_url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/runs/32747340417",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOUARZbs8AAAAWszWIlA",
+      "head_sha": "659d390c38b375460812fb20882fe395faf473e3",
+      "url": "https://api.github.com/repos/PaulDobson/sport-admin/actions/jobs/97495910548",
+      "html_url": "https://github.com/PaulDobson/sport-admin/actions/runs/32747340417/job/97495910548",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-08-24T15:50:52Z",
+      "started_at": "2026-08-24T15:50:55Z",
+      "completed_at": null,
+      "name": "application",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "in_progress",
+          "conclusion": null,
+          "number": 1,
+          "started_at": "2026-08-24T15:50:56Z",
+          "completed_at": null
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/PaulDobson/sport-admin/check-runs/97495910548",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000002,
+      "runner_name": "GitHub Actions 1000000002",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

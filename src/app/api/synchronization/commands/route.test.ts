@@ -57,12 +57,24 @@ describe("POST /api/synchronization/commands", () => {
   });
 
   it("rejects commands for a tenant outside the authenticated membership", async () => {
+    const warning = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
     const response = await POST(request(otherTenantId));
     expect(response.status).toBe(403);
     expect(saveAttendanceBatch).not.toHaveBeenCalled();
+    const event = String(warning.mock.calls[0][0]);
+    expect(JSON.parse(event)).toMatchObject({
+      area: "rls",
+      operation: "process_commands",
+      outcome: "rejected",
+      errorCode: "FORBIDDEN_TENANT",
+    });
+    expect(event).not.toContain(otherTenantId);
   });
 
   it("uses the server membership and confirms a successful command", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const response = await POST(request(tenantId));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ confirmed: true });
@@ -73,5 +85,11 @@ describe("POST /api/synchronization/commands", () => {
       }),
       expect.anything(),
     );
+    expect(JSON.parse(String(info.mock.calls[0][0]))).toMatchObject({
+      area: "offline_sync",
+      operation: "process_commands",
+      outcome: "success",
+      itemCount: 1,
+    });
   });
 });

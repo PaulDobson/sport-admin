@@ -9,10 +9,12 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "verify:bundle-secrets": "node ./scripts/verify-no-privileged-keys-in-bundle.mjs",
     "build:design-system": "tailwindcss -i ./src/presentation/styles/globals.css -o ./src/presentation/styles/output.css --content './src/presentation/**/*.{html,js,ts,tsx}'"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
