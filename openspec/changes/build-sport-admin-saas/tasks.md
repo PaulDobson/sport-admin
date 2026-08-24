@@ -69,25 +69,25 @@
 - [x] 8.2 Implementar eventos de vencimiento, mora, ausencia, abandono, salud autorizada y billing SaaS; verificar destinatario, rol, tenant y canal correcto.
 - [x] 8.3 Implementar proveedor abstracto para email, push y notificacion interna; verificar reintentos sin duplicados y redaccion de datos medicos innecesarios.
 - [x] 8.4 Implementar reportes operativos y financieros con filtros y exportacion; verificar alcance RLS, periodo, moneda y separacion de libros.
-- [ ] 8.5 Implementar push como capacidad de Fase 3 con feature flag; verificar fallback al centro interno cuando el permiso o canal no exista.
+- [x] 8.5 Implementar push como capacidad de Fase 3 con feature flag; verificar fallback al centro interno cuando el permiso o canal no exista.
 
 ## 9. Calidad, seguridad y despliegue
 
-- [ ] 9.1 Crear fixtures y pruebas de aislamiento para una matriz de tenants y roles; verificar que todas las tablas expuestas rechacen acceso cruzado.
-- [ ] 9.2 Crear pruebas de flujo movil de sesion, asistencia en lote, salud y finanzas; verificar completitud en tres acciones principales con cinco alumnos.
-- [ ] 9.3 Crear pruebas de offline, reconexion, Realtime, idempotencia y conflictos; verificar perdida de red durante captura y cambios concurrentes.
+- [x] 9.1 Crear fixtures y pruebas de aislamiento para una matriz de tenants y roles; verificar que todas las tablas expuestas rechacen acceso cruzado.
+- [x] 9.2 Crear pruebas de flujo movil de sesion, asistencia en lote, salud y finanzas; verificar completitud en tres acciones principales con cinco alumnos.
+- [x] 9.3 Crear pruebas de offline, reconexion, Realtime, idempotencia y conflictos; verificar perdida de red durante captura y cambios concurrentes.
 - [ ] 9.4 Ejecutar pruebas de migracion, rollback o feature flag y compatibilidad entre versiones de cliente; verificar staging antes de produccion.
-- [ ] 9.5 Configurar observabilidad sin datos medicos: errores, latencia, sincronizacion, RLS y webhooks; verificar redaccion de identificadores sensibles.
-- [ ] 9.6 Ejecutar auditoria de privacidad, consentimiento, retencion, exportacion, correccion y eliminacion por jurisdiccion objetivo; verificar aprobacion antes de activar salud en produccion.
+- [x] 9.5 Configurar observabilidad sin datos medicos: errores, latencia, sincronizacion, RLS y webhooks; verificar redaccion de identificadores sensibles.
+- [ ] 9.6 Implementar bloqueo de salud hasta aprobacion legal, consentimiento explicito versionado declarado por instructor, exportacion y correccion auditadas, y solicitudes de eliminacion con espera de 30 dias; verificar aislamiento, retenciones y aprobacion jurisdiccional antes de activar salud en produccion.
 - [ ] 9.7 Verificar las puertas de salida por fase: foundation desplegable, RLS probado, flujo operativo completo, finanzas reconciliables, sincronizacion tolerante a fallos y privacidad aprobada; documentar el resultado de cada gate.
 
 ## 10. Plan de archivos
 
-- [ ] 10.1 Crear configuracion base en `package.json`, `next.config.*`, `tsconfig.json`, `public/manifest.*`, service worker y archivos de entorno de ejemplo; verificar build y PWA.
+- [x] 10.1 Crear configuracion base en `package.json`, `next.config.*`, `tsconfig.json`, `public/manifest.*`, service worker y archivos de entorno de ejemplo; verificar build y PWA.
 - [ ] 10.2 Crear migraciones Supabase en `supabase/migrations/` para identidad, tenancy, operacion, evolucion, salud, asistencia, finanzas, billing, notificaciones, indices, RLS, funciones y auditoria; verificar aplicacion limpia.
-- [ ] 10.3 Crear modulos de dominio en `src/` para auth, tenants, alumnos, agenda, membresias, evolucion, salud, asistencia, finanzas, administracion, notificaciones y sincronizacion; verificar tests por modulo.
-- [ ] 10.4 Crear rutas App Router, layouts protegidos, Server Actions o handlers y clientes Supabase SSR/browser; verificar autorizacion server-side y errores accionables.
-- [ ] 10.5 Crear componentes mobile-first para onboarding, dashboard, sesiones, alumnos, evolucion, salud, finanzas, backoffice y reportes; verificar estados de carga, error, offline y conflicto.
-- [ ] 10.6 Crear adaptadores de IndexedDB, cola, Realtime y proveedores de notificacion/pagos; verificar contratos, idempotencia y reconexion.
+- [x] 10.3 Crear modulos de dominio en `src/` para auth, tenants, alumnos, agenda, membresias, evolucion, salud, asistencia, finanzas, administracion, notificaciones y sincronizacion; verificar tests por modulo.
+- [x] 10.4 Crear rutas App Router, layouts protegidos, Server Actions o handlers y clientes Supabase SSR/browser; verificar autorizacion server-side y errores accionables.
+- [x] 10.5 Crear componentes mobile-first para onboarding, dashboard, sesiones, alumnos, evolucion, salud, finanzas, backoffice y reportes; verificar estados de carga, error, offline y conflicto.
+- [x] 10.6 Crear adaptadores de IndexedDB, cola, Realtime y proveedores de notificacion/pagos; verificar contratos, idempotencia y reconexion.
 - [ ] 10.7 Crear pruebas en `tests/` o estructura equivalente para RLS, dominio, integracion, PWA y E2E movil; verificar ejecucion en CI.
-- [ ] 10.8 Crear documentacion de arquitectura, variables, migraciones, privacidad, soporte y runbooks de billing; verificar que no contenga secretos ni datos medicos reales.
+- [x] 10.8 Crear documentacion de arquitectura, variables, migraciones, privacidad, soporte y runbooks de billing; verificar que no contenga secretos ni datos medicos reales.

@@ -63,6 +63,14 @@ Alternativa descartada: solo cache HTTP o `localStorage`, porque no resuelven es
 
 Realtime se usara para asistencia y alertas de la sesion abierta, con canales limitados por tenant y alcance autorizado. Notificaciones push, email u otros canales se procesaran asincronamente con preferencias, reintentos e idempotencia. Los payloads medicos se minimizaran.
 
+### Gobernanza provisional de datos de salud
+
+La capacidad de salud permanecera bloqueada en produccion hasta que una revision legal apruebe una jurisdiccion y una version de politica. Un instructor autorizado podra registrar, en representacion del alumno o tutor, una declaracion de consentimiento explicito y versionada; el registro conservara actor y fecha sin almacenar documentos medicos en logs.
+
+Los derechos de acceso, exportacion y correccion se resolveran dentro del tenant y quedaran auditados. La eliminacion se iniciara mediante una solicitud auditable con una espera de 30 dias; la purga no se ejecutara si existe una retencion legal o si la politica aplicable aun no fue aprobada. Los registros financieros y de auditoria sujetos a conservacion no se borraran silenciosamente: se separaran o anonimizaran segun la politica finalmente aprobada.
+
+Alternativa descartada: habilitar salud con una jurisdiccion o plazo de retencion supuesto. La configuracion provisional debe fallar de forma cerrada y no equivale a una declaracion de cumplimiento legal.
+
 ### Fases de entrega
 
 - Fase 1, MVP: estructura del proyecto, Auth, onboarding, tenants, roles, RLS, alumnos, locaciones, agenda, sesiones manuales, membresias basicas, asistencia, alertas de salud basicas con auditoria, proyeccion financiera basica, PWA instalable y cache de sesion.
@@ -100,6 +108,7 @@ Cada migracion se aplicara en staging antes de produccion. Los cambios destructi
 
 ## Resolved Planning Decisions
 
-- El primer despliegue sera agnostico de jurisdiccion, pero no pasara a produccion con salud sin consentimiento, retencion, exportacion, correccion y eliminacion definidos.
+- El primer despliegue sera agnostico de jurisdiccion y mantendra salud bloqueada hasta aprobacion legal; el consentimiento sera explicito, versionado y declarado por un instructor en representacion del alumno o tutor.
+- Las solicitudes de eliminacion tendran una espera provisional de 30 dias y no ejecutaran purga mientras falte aprobacion legal o exista una retencion aplicable.
 - El riesgo de abandono sera configurable por instructor con valores iniciales sugeridos de tres ausencias consecutivas o menos de 50 por ciento en treinta dias.
 - Cada sesion tendra un instructor responsable unico; asistentes tendran solo los permisos otorgados.

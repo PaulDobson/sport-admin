@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { resynchronizeSession } from "@/application/synchronization/use-cases/resynchronize-session";
+import { createObservability } from "@/infrastructure/composition/observability-composition";
 import { createSessionResynchronizationDeps } from "@/infrastructure/composition/synchronization-composition";
 import { createSupabaseBrowserClient } from "@/infrastructure/supabase/browser-client";
 
@@ -21,13 +22,30 @@ export function SessionRealtimeRefresh({
     const resynchronize = async () => {
       if (!navigator.onLine || running) return;
       running = true;
+      const startedAt = performance.now();
       const deps = createSessionResynchronizationDeps();
+      const observability = createObservability();
       try {
         const result = await resynchronizeSession(
           { tenantId, sessionId },
           deps,
         );
+        observability.record({
+          area: "realtime_resync",
+          operation: "recover_events_client",
+          outcome: "success",
+          durationMs: performance.now() - startedAt,
+          itemCount: result.recovered,
+        });
         if (result.changed) router.refresh();
+      } catch {
+        observability.record({
+          area: "realtime_resync",
+          operation: "recover_events_client",
+          outcome: "failure",
+          durationMs: performance.now() - startedAt,
+          errorCode: "NETWORK_FAILURE",
+        });
       } finally {
         await deps.offlineStore.close();
         running = false;

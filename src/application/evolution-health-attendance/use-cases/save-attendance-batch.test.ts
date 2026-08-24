@@ -44,4 +44,26 @@ describe("bulk attendance", () => {
       expect.objectContaining({ note: "Traffic delay" }),
     ]);
   });
+
+  it("keeps one attendance record when the same offline operation is replayed", async () => {
+    const attendance = new FakeAttendanceRepository();
+    const input = {
+      tenantId,
+      sessionId,
+      recordedByMembershipId,
+      items: [
+        {
+          studentId: "60000000-0000-4000-8000-000000000011",
+          status: "present" as const,
+          operationId: "61000000-0000-4000-8000-000000000001",
+        },
+      ],
+    };
+
+    const first = await saveAttendanceBatch(input, { attendance });
+    const replay = await saveAttendanceBatch(input, { attendance });
+
+    expect(first[0].id).toBe(replay[0].id);
+    expect(attendance.records).toHaveLength(1);
+  });
 });

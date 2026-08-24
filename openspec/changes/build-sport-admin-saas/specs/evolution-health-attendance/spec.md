@@ -32,6 +32,30 @@ El sistema SHALL conservar condiciones, lesiones, dolor, restricciones, vigencia
 - **WHEN** un usuario autorizado resuelve una lesion
 - **THEN** deja de generar una alerta vigente y conserva el historial y auditoria
 
+### Requirement: Gobernanza y derechos sobre datos de salud
+
+El sistema SHALL mantener la capacidad de salud deshabilitada en produccion hasta registrar la aprobacion legal de una politica jurisdiccional, SHALL conservar consentimiento explicito y versionado declarado por un instructor autorizado en representacion del alumno o tutor, y SHALL soportar acceso, exportacion, correccion y solicitudes de eliminacion auditables.
+
+#### Scenario: Salud sin aprobacion legal
+
+- **WHEN** un tenant intenta crear o modificar datos de salud sin una politica jurisdiccional aprobada
+- **THEN** el sistema rechaza la operacion sin exponer datos existentes
+
+#### Scenario: Consentimiento representado
+
+- **WHEN** un instructor autorizado declara consentimiento para un alumno bajo una version de politica aprobada
+- **THEN** el sistema conserva tenant, alumno, actor, version, fecha y estado del consentimiento en historial inmutable
+
+#### Scenario: Derechos del titular
+
+- **WHEN** un usuario autorizado solicita exportar o corregir los datos de un alumno
+- **THEN** el sistema limita el alcance al tenant, entrega datos estructurados o aplica la correccion y audita la operacion
+
+#### Scenario: Solicitud de eliminacion
+
+- **WHEN** se acepta una solicitud de eliminacion de un alumno
+- **THEN** el sistema registra una espera de 30 dias y bloquea la purga mientras exista retencion legal o falte aprobacion de la politica aplicable
+
 ### Requirement: Asistencia y abandono
 
 El sistema SHALL permitir asistencia y novedades por lote en hasta tres acciones principales y SHALL generar alertas de abandono con criterios configurables por instructor.

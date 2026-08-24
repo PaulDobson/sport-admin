@@ -53,5 +53,10 @@ Run these files from the Supabase Dashboard SQL Editor:
 49. Open `tests/0022_notification_event_routing.sql`, set its owner and instructor auth user UUIDs, and execute it as one script. It verifies tenant and role routing, notification preferences, event deduplication, and medical payload redaction.
 50. Execute `migrations/0025_notification_delivery_processing.sql` to add atomic delivery claims, retry scheduling, idempotent completion, and immutable attempt history.
 51. Open `tests/0023_notification_delivery_processing.sql`, set its auth user UUID, and execute it as one script. It verifies exclusive claims, retry backoff, duplicate completion protection, successful retry, and final non-retryable failure.
+52. Execute `migrations/0026_push_feature_flag.sql` to add push as a phase-three plan entitlement and suppress external push delivery when the tenant lacks the feature.
+53. Open `tests/0024_push_feature_flag.sql`, set its auth user UUID, and execute it as one script. It verifies enabled and disabled plans and preserves the internal activity fallback.
+54. Open `tests/0025_quality_rls_matrix.sql`, set its owner and assistant auth user UUIDs, and execute it as one script. It verifies RLS on every exposed table plus tenant and recipient isolation across notification preferences, events, activity-center rows, deliveries, and immutable attempts.
+55. Execute `migrations/0027_health_privacy_governance.sql` to keep health disabled until legal approval and add versioned consent, audited export/correction, and 30-day erasure requests with a default retention hold.
+56. Open `tests/0026_health_privacy_governance.sql`, set its two auth user UUIDs, and execute it as one script. It verifies fail-closed health access, consent replay and revocation, immutable history, tenant isolation, audited data rights, and blocked erasure during retention.
 
 The verification scripts run inside a transaction and roll back their fixture tenants, memberships, and other rows. They do not require Docker, the Supabase CLI, or a local database.

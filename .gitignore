@@ -17,6 +17,9 @@ build/
 coverage/
 .next/
 .turbo/
+test-results/
+playwright-report/
+blob-report/
 
 # Logs
 *.log

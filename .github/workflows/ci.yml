@@ -1,0 +1,87 @@
+name: CI
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [main, master]
+    pull_request:
+        branches: [main, master]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+    NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+    SAAS_WEBHOOK_SECRET: ci-webhook-secret
+    NOTIFICATION_WORKER_SECRET: ci-notification-worker-secret
+
+jobs:
+    application:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 10.14.0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - run: pnpm typecheck
+            - run: pnpm test
+            - run: pnpm build
+            - run: pnpm verify:bundle-secrets
+
+    mobile-e2e:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 10.14.0
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm exec playwright install --with-deps chromium
+            - run: pnpm test:e2e
+            - name: Upload Playwright traces
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: playwright-traces
+                  path: test-results/
+                  retention-days: 7
+
+    database:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v4
+            - uses: supabase/setup-cli@v1
+              with:
+                  version: 2.115.0
+            - run: supabase start
+            - run: supabase db reset
+            - name: Run current RLS matrices
+              run: |
+                  psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+                    --set ON_ERROR_STOP=1 \
+                    --file supabase/tests/0025_quality_rls_matrix.sql
+                  psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+                    --set ON_ERROR_STOP=1 \
+                    --file supabase/tests/0026_health_privacy_governance.sql
+            - if: always()
+              run: supabase stop --no-backup
