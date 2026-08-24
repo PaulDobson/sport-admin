@@ -1,0 +1,109 @@
+{
+  "changeName": "build-sport-admin-saas",
+  "schemaName": "spec-driven",
+  "planningHome": {
+    "kind": "repo",
+    "root": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin",
+    "changesDir": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes",
+    "defaultSchema": "spec-driven"
+  },
+  "changeRoot": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas",
+  "artifactPaths": {
+    "proposal": {
+      "outputPath": "proposal.md",
+      "resolvedOutputPath": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/proposal.md",
+      "existingOutputPaths": [
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/proposal.md"
+      ]
+    },
+    "specs": {
+      "outputPath": "specs/**/*.md",
+      "resolvedOutputPath": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/**/*.md",
+      "existingOutputPaths": [
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/evolution-health-attendance/spec.md",
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/instructor-finance/spec.md",
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/instructor-operations/spec.md",
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/notifications-reporting/spec.md",
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/platform-foundation/spec.md",
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/specs/saas-administration-billing/spec.md"
+      ]
+    },
+    "design": {
+      "outputPath": "design.md",
+      "resolvedOutputPath": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/design.md",
+      "existingOutputPaths": [
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/design.md"
+      ]
+    },
+    "tasks": {
+      "outputPath": "tasks.md",
+      "resolvedOutputPath": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/tasks.md",
+      "existingOutputPaths": [
+        "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin/openspec/changes/build-sport-admin-saas/tasks.md"
+      ]
+    }
+  },
+  "isPlanningComplete": true,
+  "isComplete": true,
+  "applyRequires": [
+    "tasks"
+  ],
+  "nextSteps": [
+    "All planning artifacts are complete. Run openspec instructions apply --change \"build-sport-admin-saas\" --json to inspect implementation progress."
+  ],
+  "actionContext": {
+    "mode": "repo-local",
+    "sourceOfTruth": "repo",
+    "planningArtifacts": [
+      "proposal",
+      "specs",
+      "design",
+      "tasks"
+    ],
+    "linkedContext": [],
+    "allowedEditRoots": [
+      "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin"
+    ],
+    "requiresAffectedAreaSelection": false,
+    "constraints": [
+      "Repo-local change artifacts and implementation edits are scoped to this project."
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "proposal",
+      "outputPath": "proposal.md",
+      "status": "done",
+      "requires": []
+    },
+    {
+      "id": "specs",
+      "outputPath": "specs/**/*.md",
+      "status": "done",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "design",
+      "outputPath": "design.md",
+      "status": "done",
+      "requires": [
+        "proposal"
+      ]
+    },
+    {
+      "id": "tasks",
+      "outputPath": "tasks.md",
+      "status": "done",
+      "requires": [
+        "specs",
+        "design"
+      ]
+    }
+  ],
+  "root": {
+    "path": "/Users/pauldobson/Documents/Proyectos/desarrollos/sport-admin",
+    "source": "nearest"
+  }
+}

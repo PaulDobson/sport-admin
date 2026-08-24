@@ -54,7 +54,7 @@ Quedan fuera del primer corte la cola offline completa, Realtime, billing SaaS a
 
 ### Modified Capabilities
 
-<!-- No existing main capabilities are defined. El cambio activo evolution-health-attendance se mantiene separado y no se modifica. -->
+<!-- No existing main capabilities are defined. El cambio evolution-health-attendance propuesto por separado fue descartado sin implementar; su alcance queda absorbido por esta propuesta. -->
 
 ## Impact
 

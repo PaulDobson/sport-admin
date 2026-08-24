@@ -1,6 +1,6 @@
 ## Context
 
-La plataforma parte desde cero y debe atender a instructores independientes que trabajan en multiples locaciones. El stack acordado es Next.js App Router con PWA y despliegue en Vercel, Supabase Auth, PostgreSQL y Realtime. El cambio operativo `evolution-health-attendance` permanece activo como referencia historica; esta propuesta define la plataforma completa y sus fronteras.
+La plataforma parte desde cero y debe atender a instructores independientes que trabajan en multiples locaciones. El stack acordado es Next.js App Router con PWA y despliegue en Vercel, Supabase Auth, PostgreSQL y Realtime. El cambio `evolution-health-attendance` propuesto por separado fue descartado sin implementar; esta propuesta absorbe ese alcance como capability propia y define la plataforma completa y sus fronteras.
 
 ## Goals / Non-Goals
 
@@ -28,6 +28,14 @@ La plataforma parte desde cero y debe atender a instructores independientes que 
 Se usara un solo proyecto Next.js con modulos de dominio y Supabase como backend gestionado. Las rutas protegidas y Server Actions o handlers validaran identidad y casos de uso, mientras PostgreSQL sera la autoridad final de integridad y RLS. Esta forma reduce complejidad operacional en Vercel y deja fronteras claras para extraer procesos asincronos mas adelante.
 
 Alternativa descartada: microservicios iniciales, porque multiplican despliegues, observabilidad y contratos antes de validar el producto.
+
+### Excepcion acotada para el cliente Supabase SSR en presentation
+
+`presentation` (`src/app`) no accede a `infrastructure` en general, pero puede importar exclusivamente `src/infrastructure/supabase/*` (los factories de cliente SSR/browser) porque `createServerClient` depende de `cookies()` de `next/headers`, disponible solo en el contexto de request de Server Components, Route Handlers y Middleware. El resto de infraestructura (repositorios, adaptadores externos) sigue vedado a presentation y se alcanza via casos de uso de `application`. ESLint (`boundaries` + `no-restricted-imports`) refleja esta excepcion explicitamente.
+
+Alternativa descartada: prohibir a presentation todo acceso a infrastructure y crear una capa de composicion aparte; se descarta por ahora para no introducir una capa adicional antes de que exista mas de un adaptador que la necesite.
+
+Actualizacion (stage 2, identidad): la excepcion se extendio a `src/infrastructure/composition/*`. Los Server Actions de `src/app` necesitan invocar casos de uso de `application` con dependencias concretas (adaptadores Supabase de auth, tenants, membresias, auditoria), y `application` no puede construir esos adaptadores (no importa `infrastructure`). `src/infrastructure/composition/*` expone factories (`createAuthDeps()`, etc.) que instancian los adaptadores y los inyectan en los casos de uso; presentation solo importa esas factories, nunca las clases de adaptador concretas directamente.
 
 ### Modelo multi-tenant explicito
 
@@ -80,7 +88,7 @@ Una feature flag permitira activar offline avanzado, Realtime y pagos por tenant
 
 ## Migration Plan
 
-1. Inicializar Next.js, configuracion de entornos, Supabase y convenciones de modulos.
+1. Completar `define-technical-foundation` (arquitectura por capas, migracion base y RLS probado) antes de iniciar las capacidades de negocio de Fase 1; despues inicializar Next.js, configuracion de entornos, Supabase y convenciones de modulos.
 2. Crear migraciones base de identidad, tenants, roles, alumnos, agenda, membresias, pagos, salud, asistencia y auditoria.
 3. Activar RLS y ejecutar pruebas de aislamiento antes de exponer pantallas.
 4. Entregar el vertical de Fase 1 con despliegues de staging y migraciones reversibles o protegidas por flags.
