@@ -75,13 +75,7 @@ jobs:
                   version: 2.115.0
             - run: supabase start
             - run: supabase db reset
-            - name: Run current RLS matrices
-              run: |
-                  psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
-                    --set ON_ERROR_STOP=1 \
-                    --file supabase/tests/0025_quality_rls_matrix.sql
-                  psql postgresql://postgres:postgres@127.0.0.1:54322/postgres \
-                    --set ON_ERROR_STOP=1 \
-                    --file supabase/tests/0026_health_privacy_governance.sql
+            - run: bash scripts/run-sql-test.sh supabase/tests/0025_quality_rls_matrix.sql "Quality RLS matrix"
+            - run: bash scripts/run-sql-test.sh supabase/tests/0026_health_privacy_governance.sql "Health privacy matrix"
             - if: always()
               run: supabase stop --no-backup
