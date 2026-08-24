@@ -79,6 +79,12 @@ select set_config('request.jwt.claim.sub', current_setting('test.owner_a'), true
 
 do $$
 begin
+  if not has_table_privilege('authenticated', 'public.health_conditions', 'INSERT') then
+    raise exception 'authenticated role lacks health condition insert privilege';
+  end if;
+  if has_table_privilege('authenticated', 'public.health_conditions', 'DELETE') then
+    raise exception 'authenticated role received health condition delete privilege';
+  end if;
   if public.can_access_student_health('28000000-0000-4000-8000-000000000001') then
     raise exception 'health access was enabled without legal approval';
   end if;

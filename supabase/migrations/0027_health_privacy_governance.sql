@@ -423,6 +423,14 @@ grant select on public.tenant_privacy_policies to authenticated;
 grant select on public.health_consent_events to authenticated;
 grant select on public.student_erasure_requests to authenticated;
 
+grant select, insert, update on public.metric_definitions to authenticated;
+grant select, insert on public.metric_evaluations to authenticated;
+grant select, insert, update on public.health_conditions to authenticated;
+grant select, insert, update on public.injuries to authenticated;
+grant select, insert, update on public.health_restrictions to authenticated;
+grant select, insert, update on public.class_session_attendance to authenticated;
+grant select, insert, update on public.student_alerts to authenticated;
+
 drop policy if exists metric_evaluations_insert on public.metric_evaluations;
 create policy metric_evaluations_insert on public.metric_evaluations for insert
   with check (
