@@ -194,6 +194,8 @@ select public.request_student_erasure(
   'subject_request'
 );
 
+reset role;
+
 do $$
 begin
   if not exists (
@@ -235,6 +237,9 @@ begin
   end if;
 end;
 $$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', current_setting('test.owner_a'), true);
 
 select public.register_health_consent(
   '28000000-0000-4000-8000-000000000001',
