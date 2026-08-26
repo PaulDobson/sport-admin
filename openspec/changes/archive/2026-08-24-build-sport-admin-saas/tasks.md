@@ -84,10 +84,10 @@
 ## 10. Plan de archivos
 
 - [x] 10.1 Crear configuracion base en `package.json`, `next.config.*`, `tsconfig.json`, `public/manifest.*`, service worker y archivos de entorno de ejemplo; verificar build y PWA.
-- [ ] 10.2 Crear migraciones Supabase en `supabase/migrations/` para identidad, tenancy, operacion, evolucion, salud, asistencia, finanzas, billing, notificaciones, indices, RLS, funciones y auditoria; verificar aplicacion limpia.
+- [x] 10.2 Crear migraciones Supabase en `supabase/migrations/` para identidad, tenancy, operacion, evolucion, salud, asistencia, finanzas, billing, notificaciones, indices, RLS, funciones y auditoria; verificar aplicacion limpia.
 - [x] 10.3 Crear modulos de dominio en `src/` para auth, tenants, alumnos, agenda, membresias, evolucion, salud, asistencia, finanzas, administracion, notificaciones y sincronizacion; verificar tests por modulo.
 - [x] 10.4 Crear rutas App Router, layouts protegidos, Server Actions o handlers y clientes Supabase SSR/browser; verificar autorizacion server-side y errores accionables.
 - [x] 10.5 Crear componentes mobile-first para onboarding, dashboard, sesiones, alumnos, evolucion, salud, finanzas, backoffice y reportes; verificar estados de carga, error, offline y conflicto.
 - [x] 10.6 Crear adaptadores de IndexedDB, cola, Realtime y proveedores de notificacion/pagos; verificar contratos, idempotencia y reconexion.
-- [ ] 10.7 Crear pruebas en `tests/` o estructura equivalente para RLS, dominio, integracion, PWA y E2E movil; verificar ejecucion en CI.
+- [x] 10.7 Crear pruebas en `tests/` o estructura equivalente para RLS, dominio, integracion, PWA y E2E movil; verificar ejecucion en CI.
 - [x] 10.8 Crear documentacion de arquitectura, variables, migraciones, privacidad, soporte y runbooks de billing; verificar que no contenga secretos ni datos medicos reales.

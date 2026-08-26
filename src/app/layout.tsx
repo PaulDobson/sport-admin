@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/manrope";
 import "@/presentation/styles/globals.css";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 

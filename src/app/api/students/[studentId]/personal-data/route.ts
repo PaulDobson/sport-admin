@@ -2,6 +2,7 @@ import { exportStudentPersonalData } from "@/application/evolution-health-attend
 import { DomainError } from "@/domain/shared/errors";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
+import { resolveOperationalContextForUser } from "@/app/_lib/operational-context";
 
 export async function GET(
   _request: Request,
@@ -10,14 +11,22 @@ export async function GET(
   const auth = await createAuthDeps();
   const userId = await auth.auth.getCurrentUserId();
   if (!userId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0)
+  const context = await resolveOperationalContextForUser(
+    userId,
+    auth.memberships,
+  );
+  if (context.status === "selection-required")
+    return Response.json(
+      { error: "Tenant selection required" },
+      { status: 409 },
+    );
+  if (context.status !== "ready")
     return Response.json({ error: "Forbidden" }, { status: 403 });
 
   const { studentId } = await params;
   try {
     const data = await exportStudentPersonalData(
-      { tenantId: memberships[0].tenantId, studentId },
+      { tenantId: context.membership.tenantId, studentId },
       await createEvolutionHealthAttendanceDeps(),
     );
     return new Response(JSON.stringify(data, null, 2), {

@@ -10,10 +10,10 @@ import {
   registerStudentHealthConsent,
   requestStudentErasure,
 } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { formatActionError } from "@/app/_lib/format-error";
+import { requireOperationalMembership } from "@/app/_lib/operational-context";
 
 export interface StudentDetailFormState {
   error: string | null;
@@ -21,12 +21,7 @@ export interface StudentDetailFormState {
 }
 
 async function getRequestMembership() {
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) redirect("/onboarding");
-  return memberships[0];
+  return requireOperationalMembership();
 }
 
 export async function activateMembershipAction(

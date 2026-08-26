@@ -4,6 +4,7 @@ import { GET } from "./route";
 const getOperationalReport = vi.fn();
 const getMonthlyFinancialProjection = vi.fn();
 const getSaasFinancialDashboard = vi.fn();
+const findActiveByUser = vi.fn();
 const findOperationalByUser = vi.fn();
 
 vi.mock("@/application/reporting/use-cases/get-operational-report", () => ({
@@ -26,8 +27,11 @@ vi.mock(
 vi.mock("@/infrastructure/composition/auth-composition", () => ({
   createAuthDeps: async () => ({
     auth: { getCurrentUserId: async () => "user-1" },
-    memberships: { findOperationalByUser },
+    memberships: { findActiveByUser, findOperationalByUser },
   }),
+}));
+vi.mock("@/infrastructure/tenants/active-tenant-cookie", () => ({
+  readActiveTenantCookie: async () => null,
 }));
 vi.mock("@/infrastructure/composition/reporting-composition", () => ({
   createReportingDeps: async () => ({ operationalReports: {} }),
@@ -45,6 +49,7 @@ const otherTenantId = "25000000-0000-4000-8000-000000000002";
 describe("GET /api/reports/export", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    findActiveByUser.mockResolvedValue([{ tenantId }]);
     findOperationalByUser.mockResolvedValue([{ tenantId }]);
   });
 

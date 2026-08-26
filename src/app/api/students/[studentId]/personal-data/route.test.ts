@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 
 const exportStudentPersonalData = vi.fn();
+const findActiveByUser = vi.fn();
 const findOperationalByUser = vi.fn();
 const getCurrentUserId = vi.fn();
 
@@ -15,8 +16,11 @@ vi.mock(
 vi.mock("@/infrastructure/composition/auth-composition", () => ({
   createAuthDeps: async () => ({
     auth: { getCurrentUserId },
-    memberships: { findOperationalByUser },
+    memberships: { findActiveByUser, findOperationalByUser },
   }),
+}));
+vi.mock("@/infrastructure/tenants/active-tenant-cookie", () => ({
+  readActiveTenantCookie: async () => null,
 }));
 vi.mock(
   "@/infrastructure/composition/evolution-health-attendance-composition",
@@ -33,6 +37,7 @@ describe("GET /api/students/[studentId]/personal-data", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUserId.mockResolvedValue("user-1");
+    findActiveByUser.mockResolvedValue([{ tenantId }]);
     findOperationalByUser.mockResolvedValue([{ tenantId }]);
     exportStudentPersonalData.mockResolvedValue({ student: { id: studentId } });
   });

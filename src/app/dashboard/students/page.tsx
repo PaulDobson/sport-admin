@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
+import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { StudentForm } from "./student-form";
 
 export default async function StudentsPage() {
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) redirect("/onboarding");
+  const membership = await requireOperationalMembership();
 
   const operations = await createInstructorOperationsDeps();
   const students = await operations.students.findActiveByTenant(
-    memberships[0].tenantId,
+    membership.tenantId,
   );
 
   return (

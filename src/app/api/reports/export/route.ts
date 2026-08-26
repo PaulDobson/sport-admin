@@ -7,6 +7,7 @@ import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createReportingDeps } from "@/infrastructure/composition/reporting-composition";
 import { createSaasAdministrationDeps } from "@/infrastructure/composition/saas-administration-composition";
+import { resolveOperationalContextForUser } from "@/app/_lib/operational-context";
 
 function csvResponse(filename: string, rows: readonly (readonly unknown[])[]) {
   return new Response(`\uFEFF${serializeCsv(rows)}`, {
@@ -67,10 +68,18 @@ export async function GET(request: Request) {
       ]);
     }
 
-    const memberships = await auth.memberships.findOperationalByUser(userId);
-    if (memberships.length === 0)
+    const context = await resolveOperationalContextForUser(
+      userId,
+      auth.memberships,
+    );
+    if (context.status === "selection-required")
+      return Response.json(
+        { error: "Tenant selection required" },
+        { status: 409 },
+      );
+    if (context.status !== "ready")
       return Response.json({ error: "Forbidden" }, { status: 403 });
-    const tenantId = memberships[0].tenantId;
+    const tenantId = context.membership.tenantId;
     if (report === "instructor-finance") {
       const finance = await createInstructorFinanceDeps();
       const projections = await getMonthlyFinancialProjection(

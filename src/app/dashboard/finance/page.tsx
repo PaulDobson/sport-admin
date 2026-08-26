@@ -4,8 +4,8 @@ import { getMonthlyFinancialProjection } from "@/application/instructor-finance/
 import { getMembershipFollowUps } from "@/application/instructor-finance/use-cases/get-membership-follow-ups";
 import type { StudentMembershipStatus } from "@/domain/instructor-finance/membership";
 import type { MembershipFollowUpKind } from "@/domain/instructor-finance/membership-follow-up";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
+import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { PlanForm } from "./plan-form";
 
 interface FinancePageProps {
@@ -44,11 +44,7 @@ function formatMoney(amount: number, currency: string) {
 }
 
 export default async function FinancePage({ searchParams }: FinancePageProps) {
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) redirect("/dashboard");
+  const membership = await requireOperationalMembership();
 
   const today = new Date();
   const defaultTo = new Date(today);
@@ -60,7 +56,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   const allowedStatuses = ["active", "past_due", "expired"] as const;
   const status = allowedStatuses.find((value) => value === params.status);
   const finance = await createInstructorFinanceDeps();
-  const tenantId = memberships[0].tenantId;
+  const tenantId = membership.tenantId;
   const [projections, followUps] = await Promise.all([
     getMonthlyFinancialProjection(
       { tenantId, period },
@@ -141,7 +137,7 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
         </button>
       </form>
 
-      {memberships[0].role !== "assistant" ? (
+      {membership.role !== "assistant" ? (
         <section className="mb-8" aria-labelledby="new-plan-heading">
           <h2 id="new-plan-heading" className="mb-3 text-xl font-semibold">
             Nuevo plan
