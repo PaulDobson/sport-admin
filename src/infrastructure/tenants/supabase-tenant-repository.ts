@@ -42,4 +42,15 @@ export class SupabaseTenantRepository implements TenantRepositoryPort {
     if (error) throw error;
     return data ? toDomain(data as TenantRow) : null;
   }
+
+  async findOperationalByUser(userId: string): Promise<Tenant[]> {
+    const { data, error } = await this.client
+      .from("tenants")
+      .select("*, tenant_memberships!inner(user_id,status)")
+      .eq("tenant_memberships.user_id", userId)
+      .eq("tenant_memberships.status", "active")
+      .in("status", ["trial", "active"]);
+    if (error) throw error;
+    return (data as TenantRow[]).map(toDomain);
+  }
 }

@@ -3,9 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAttendanceRoster } from "@/application/evolution-health-attendance/use-cases/get-attendance-roster";
 import { getSessionReadiness } from "@/application/evolution-health-attendance/use-cases/get-session-readiness";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
 import { OfflineSynchronization } from "@/app/dashboard/offline-synchronization";
+import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { AttendanceForm } from "./attendance-form";
 import { AlertFreshness } from "./alert-freshness";
 import { SessionRealtimeRefresh } from "./session-realtime-refresh";
@@ -15,14 +15,10 @@ export default async function AttendancePage({
 }: {
   params: Promise<{ sessionId: string }>;
 }) {
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) redirect("/onboarding");
+  const membership = await requireOperationalMembership();
   const { sessionId } = await params;
   const deps = await createEvolutionHealthAttendanceDeps();
-  const tenantId = memberships[0].tenantId;
+  const tenantId = membership.tenantId;
   const checkedAt = new Date();
   const [participants, readiness] = await Promise.all([
     getAttendanceRoster({ tenantId, sessionId }, deps),
@@ -97,7 +93,7 @@ export default async function AttendancePage({
         <AttendanceForm
           sessionId={sessionId}
           tenantId={tenantId}
-          recordedByMembershipId={memberships[0].id}
+          recordedByMembershipId={membership.id}
           batchOperationId={randomUUID()}
           participants={participants}
           operationIds={participants.map(() => randomUUID())}

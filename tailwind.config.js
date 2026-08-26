@@ -28,7 +28,11 @@ export default {
         'info-foreground': 'hsl(var(--info-foreground))',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))'
+        ring: 'hsl(var(--ring))',
+        'surface-raised': 'hsl(var(--surface-raised))',
+        'surface-overlay': 'hsl(var(--surface-overlay))',
+        navigation: 'hsl(var(--navigation))',
+        'navigation-active': 'hsl(var(--navigation-active))'
       },
       borderRadius: {
         lg: 'var(--radius)',

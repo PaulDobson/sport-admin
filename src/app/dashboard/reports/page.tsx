@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getOperationalReport } from "@/application/reporting/use-cases/get-operational-report";
 import { getMonthlyFinancialProjection } from "@/application/instructor-finance/use-cases/get-monthly-financial-projection";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createReportingDeps } from "@/infrastructure/composition/reporting-composition";
+import { requireOperationalMembership } from "@/app/_lib/operational-context";
 
 interface ReportsPageProps {
   searchParams: Promise<{
@@ -28,11 +28,7 @@ function queryString(values: Record<string, string | undefined>) {
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-  const memberships = await auth.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) redirect("/dashboard");
+  const membership = await requireOperationalMembership();
 
   const params = await searchParams;
   const today = new Date();
@@ -47,7 +43,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     params.period && periodPattern.test(params.period)
       ? params.period
       : today.toISOString().slice(0, 7);
-  const tenantId = memberships[0].tenantId;
+  const tenantId = membership.tenantId;
   const [reporting, finance] = await Promise.all([
     createReportingDeps(),
     createInstructorFinanceDeps(),

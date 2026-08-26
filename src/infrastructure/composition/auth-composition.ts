@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/infrastructure/supabase/server-client";
 import { getSiteUrl } from "@/infrastructure/supabase/env";
 import { SupabaseAuthAdapter } from "@/infrastructure/auth/supabase-auth-adapter";
+import { SupabaseProfileRepository } from "@/infrastructure/auth/supabase-profile-repository";
 import { SupabaseTenantRepository } from "@/infrastructure/tenants/supabase-tenant-repository";
 import { SupabaseTenantMembershipRepository } from "@/infrastructure/tenants/supabase-tenant-membership-repository";
 import { SupabaseAuditLog } from "@/infrastructure/audit/supabase-audit-log";
@@ -16,6 +17,7 @@ export async function createAuthDeps() {
 
   return {
     auth: new SupabaseAuthAdapter(client, siteUrl),
+    profiles: new SupabaseProfileRepository(client),
     tenants: new SupabaseTenantRepository(client),
     memberships: new SupabaseTenantMembershipRepository(client),
     audit: new SupabaseAuditLog(client),

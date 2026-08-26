@@ -32,6 +32,12 @@ export class FakeTenantRepository implements TenantRepositoryPort {
   async findById(id: string): Promise<Tenant | null> {
     return this.tenants.get(id) ?? null;
   }
+
+  async findOperationalByUser(): Promise<Tenant[]> {
+    return [...this.tenants.values()].filter(
+      (tenant) => tenant.status === "trial" || tenant.status === "active",
+    );
+  }
 }
 
 export class FakeTenantMembershipRepository implements TenantMembershipRepositoryPort {

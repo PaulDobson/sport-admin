@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import { getInstructorDay } from "@/application/instructor-operations/use-cases/get-instructor-day";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
+import { loadOperationalContext } from "@/app/_lib/operational-context";
 import { CurrentSessionPrecache } from "./current-session-precache";
 import { OfflineSynchronization } from "./offline-synchronization";
 
@@ -50,15 +50,11 @@ function SessionRow({ session }: { session: DaySession }) {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  const deps = await createAuthDeps();
-  const userId = await deps.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
-
-  const activeMemberships = await deps.memberships.findActiveByUser(userId);
-  if (activeMemberships.length === 0) redirect("/onboarding");
-
-  const memberships = await deps.memberships.findOperationalByUser(userId);
-  if (memberships.length === 0) {
+  const context = await loadOperationalContext();
+  if (context.status === "unauthenticated") redirect("/log-in");
+  if (context.status === "no-membership") redirect("/onboarding");
+  if (context.status === "selection-required") redirect("/select-tenant");
+  if (context.status === "no-operational-tenant") {
     return (
       <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-10">
         <h1 className="text-2xl font-semibold">Cuenta no habilitada</h1>
@@ -69,12 +65,13 @@ export default async function DashboardPage({
       </main>
     );
   }
+  const membership = context.membership;
 
   const { location } = await searchParams;
   const operations = await createInstructorOperationsDeps();
   const day = await getInstructorDay(
     {
-      tenantId: memberships[0].tenantId,
+      tenantId: membership.tenantId,
       locationId: location,
       now: new Date(),
     },
@@ -83,7 +80,7 @@ export default async function DashboardPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      <OfflineSynchronization tenantId={memberships[0].tenantId} />
+      <OfflineSynchronization tenantId={membership.tenantId} />
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="mb-1 text-sm font-medium text-primary">Jornada</p>
