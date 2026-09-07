@@ -8,6 +8,7 @@ import type { LocationRepositoryPort } from "../ports/location-repository-port";
 import type {
   CreateStudentInput,
   StudentRepositoryPort,
+  UpdateStudentInput,
 } from "../ports/student-repository-port";
 
 export class FakeStudentRepository implements StudentRepositoryPort {
@@ -50,6 +51,50 @@ export class FakeStudentRepository implements StudentRepositoryPort {
     return student;
   }
 
+  async update(input: UpdateStudentInput) {
+    const student = this.students.find(
+      (candidate) =>
+        candidate.id === input.studentId &&
+        candidate.tenantId === input.tenantId,
+    );
+    if (!student) throw new NotFoundError("Student", input.studentId);
+    student.fullName = input.fullName;
+    student.birthDate = input.birthDate;
+
+    this.contacts.forEach((contact) => {
+      if (
+        contact.tenantId === input.tenantId &&
+        contact.studentId === input.studentId &&
+        contact.isPrimary
+      ) {
+        contact.status = "archived";
+        contact.isPrimary = false;
+      }
+    });
+
+    if (input.primaryContact) {
+      this.contacts.push({
+        id: `contact-${this.contacts.length + 1}`,
+        tenantId: input.tenantId,
+        studentId: input.studentId,
+        status: "active",
+        createdAt: new Date(),
+        isPrimary: true,
+        ...input.primaryContact,
+      });
+    }
+
+    return {
+      student,
+      contacts: this.contacts.filter(
+        (contact) =>
+          contact.tenantId === input.tenantId &&
+          contact.studentId === input.studentId &&
+          contact.status === "active",
+      ),
+    };
+  }
+
   async findActiveByTenant(tenantId: string): Promise<Student[]> {
     return this.students.filter(
       (student) => student.tenantId === tenantId && student.status === "active",
@@ -62,6 +107,75 @@ export class FakeStudentRepository implements StudentRepositoryPort {
         (student) => student.tenantId === tenantId && student.id === studentId,
       ) ?? null
     );
+  }
+
+  async findAdministrationRowById(tenantId: string, studentId: string) {
+    const result = await this.listForAdministration({
+      tenantId,
+      page: 1,
+      pageSize: Math.max(1, this.students.length),
+      search: null,
+      status: "all",
+    });
+    return result.rows.find((student) => student.id === studentId) ?? null;
+  }
+
+  async listForAdministration(
+    query: Parameters<StudentRepositoryPort["listForAdministration"]>[0],
+  ) {
+    const search = query.search?.toLocaleLowerCase("es") ?? null;
+    const filtered = this.students
+      .filter((student) => student.tenantId === query.tenantId)
+      .filter((student) =>
+        query.status === "all" ? true : student.status === query.status,
+      )
+      .filter((student) => {
+        if (!search) return true;
+        const primaryContact = this.contacts.find(
+          (contact) =>
+            contact.tenantId === query.tenantId &&
+            contact.studentId === student.id &&
+            contact.status === "active" &&
+            contact.isPrimary,
+        );
+        return [student.fullName, primaryContact?.value ?? ""]
+          .join(" ")
+          .toLocaleLowerCase("es")
+          .includes(search);
+      })
+      .sort((left, right) => left.fullName.localeCompare(right.fullName, "es"));
+    const offset = (query.page - 1) * query.pageSize;
+    return {
+      total: filtered.length,
+      page: query.page,
+      pageSize: query.pageSize,
+      rows: filtered.slice(offset, offset + query.pageSize).map((student) => {
+        const primaryContact = this.contacts.find(
+          (contact) =>
+            contact.tenantId === query.tenantId &&
+            contact.studentId === student.id &&
+            contact.status === "active" &&
+            contact.isPrimary,
+        );
+        return {
+          id: student.id,
+          tenantId: student.tenantId,
+          fullName: student.fullName,
+          birthDate: student.birthDate,
+          status: student.status,
+          createdAt: student.createdAt,
+          archivedAt: student.archivedAt,
+          primaryContact: primaryContact
+            ? {
+                type: primaryContact.type,
+                label: primaryContact.label,
+                value: primaryContact.value,
+                isPrimary: primaryContact.isPrimary,
+              }
+            : null,
+        };
+      }),
+    };
   }
 }
 

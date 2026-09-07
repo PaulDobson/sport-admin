@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   OperationalReportFilters,
   OperationalReportRepositoryPort,
@@ -7,7 +7,7 @@ import type {
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
 export class SupabaseOperationalReportRepository implements OperationalReportRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async load(tenantId: string, filters: OperationalReportFilters) {
     const from = `${filters.from}T00:00:00.000Z`;

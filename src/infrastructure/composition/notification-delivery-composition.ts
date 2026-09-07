@@ -2,6 +2,7 @@ import type { NotificationProviderPort } from "@/application/notifications/ports
 import { InternalNotificationProvider } from "@/infrastructure/notifications/internal-notification-provider";
 import { HttpNotificationProvider } from "@/infrastructure/notifications/http-notification-provider";
 import { SupabaseNotificationDeliveryRepository } from "@/infrastructure/notifications/supabase-notification-delivery-repository";
+import { SupabaseCollectionNoticeEvaluator } from "@/infrastructure/notifications/supabase-collection-notice-evaluator";
 import { createSupabaseServiceRoleClient } from "@/infrastructure/supabase/service-role-client";
 import { getNotificationProviderConfig } from "@/infrastructure/supabase/env";
 
@@ -18,10 +19,10 @@ export function createNotificationDeliveryDeps() {
     }
   }
 
+  const client = createSupabaseServiceRoleClient();
   return {
-    deliveries: new SupabaseNotificationDeliveryRepository(
-      createSupabaseServiceRoleClient(),
-    ),
+    deliveries: new SupabaseNotificationDeliveryRepository(client),
+    collectionNotices: new SupabaseCollectionNoticeEvaluator(client),
     providers,
   };
 }

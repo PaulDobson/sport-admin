@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/presentation/components/primitives";
 import type { TenantTransitionStatus } from "@/domain/saas-administration/tenant-backoffice";
 import {
   transitionTenantStatusAction,
@@ -62,13 +63,14 @@ export function TenantStatusForm({
           className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="h-10 self-end rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-50"
+        variant="primary"
+        isLoading={pending}
+        className="h-10 self-end rounded-md"
       >
         {pending ? "Guardando..." : "Aplicar"}
-      </button>
+      </Button>
       {state.error ? (
         <p
           className="text-sm font-medium text-destructive sm:col-span-3"

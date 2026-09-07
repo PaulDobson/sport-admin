@@ -8,154 +8,144 @@
     <link rel="stylesheet" href="./styles/output.css" />
 </head>
 
-<body class="p-4 md:p-6">
+<body class="bg-background p-4 text-foreground md:p-6">
     <main class="mx-auto max-w-5xl space-y-6">
         <header class="border-b border-border pb-6">
-            <p class="text-xs font-semibold uppercase text-primary">Design system</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Design system</p>
             <h1 class="mt-2 text-3xl font-bold text-foreground">Consola operativa</h1>
-            <p class="mt-2 max-w-2xl text-sm text-muted-foreground">Superficies grafito, jerarquía compacta y estados
-                semánticos para trabajo repetido.</p>
+            <p class="mt-2 max-w-2xl text-sm text-muted-foreground">Tokens de superficie grafito y tarjetas elevadas
+                para altas, cobros y configuración.</p>
         </header>
 
-        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-primary"></div>
+        <section class="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-primary"></div>
                 <p class="text-sm font-medium text-foreground">Primary</p>
-                <p class="text-xs text-muted-foreground">brand / CTA</p>
+                <p class="text-xs text-muted-foreground">--primary</p>
             </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-accent"></div>
-                <p class="text-sm font-medium text-foreground">Accent</p>
-                <p class="text-xs text-muted-foreground">data / analytics</p>
-            </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-success"></div>
-                <p class="text-sm font-medium text-foreground">Success</p>
-                <p class="text-xs text-muted-foreground">estado positivo</p>
-            </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-warning"></div>
-                <p class="text-sm font-medium text-foreground">Warning</p>
-                <p class="text-xs text-muted-foreground">alerta / vencimiento</p>
-            </div>
-        </section>
-
-        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-destructive"></div>
-                <p class="text-sm font-medium text-foreground">Destructive</p>
-                <p class="text-xs text-muted-foreground">crítico</p>
-            </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-info"></div>
-                <p class="text-sm font-medium text-foreground">Info</p>
-                <p class="text-xs text-muted-foreground">información</p>
-            </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-card"></div>
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-card"></div>
                 <p class="text-sm font-medium text-foreground">Card</p>
-                <p class="text-xs text-muted-foreground">superficie</p>
+                <p class="text-xs text-muted-foreground">--card</p>
             </div>
-            <div class="surface-panel p-4">
-                <div class="mb-3 h-16 rounded-md bg-muted"></div>
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-muted"></div>
                 <p class="text-sm font-medium text-foreground">Muted</p>
-                <p class="text-xs text-muted-foreground">secundario</p>
+                <p class="text-xs text-muted-foreground">--muted</p>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-background"></div>
+                <p class="text-sm font-medium text-foreground">Background</p>
+                <p class="text-xs text-muted-foreground">--background</p>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-chart-muted"></div>
+                <p class="text-sm font-medium text-foreground">Chart muted</p>
+                <p class="text-xs text-muted-foreground">--chart-muted</p>
+            </div>
+            <div class="rounded-xl border border-border bg-card p-4">
+                <div class="mb-3 h-16 rounded-lg bg-map"></div>
+                <p class="text-sm font-medium text-foreground">Map</p>
+                <p class="text-xs text-muted-foreground">--map</p>
             </div>
         </section>
 
-        <section class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <article class="surface-panel p-4">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/20 text-sm font-bold text-primary">
-                        MT</div>
-                    <div>
-                        <p class="text-lg font-semibold text-foreground">Maya Torres</p>
-                        <p class="text-sm text-muted-foreground">Functional Training</p>
-                    </div>
+        <section class="rounded-xl border border-border bg-card p-4">
+            <p class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Navegación</p>
+            <nav class="flex flex-wrap items-center justify-between gap-4 rounded-full border border-border bg-card px-5 py-3"
+                aria-label="Primary navigation preview">
+                <div class="flex items-center gap-3 text-lg font-semibold text-primary">
+                    <span class="grid size-8 place-items-center rounded-full bg-primary/20 text-sm">◎</span>
+                    <span>PawTrack</span>
                 </div>
+                <div class="flex items-center gap-1">
+                    <button class="rounded-full bg-muted px-5 py-2 text-xs text-foreground"
+                        type="button">Overview</button>
+                    <button class="rounded-full px-5 py-2 text-xs text-muted-foreground" type="button">My pets</button>
+                    <button class="rounded-full px-5 py-2 text-xs text-muted-foreground" type="button">Devices</button>
+                </div>
+                <button class="flex items-center gap-2 text-xs text-muted-foreground" type="button">
+                    <span class="grid size-7 place-items-center rounded-full bg-primary/20 text-primary">JW</span>
+                    <span>Jenny Wilson</span>
+                </button>
+            </nav>
 
-                <div class="mt-4 flex flex-wrap gap-2">
-                    <span
-                        class="inline-flex items-center gap-2 rounded-full bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive">
-                        <span class="h-2 w-2 rounded-full bg-destructive"></span>
-                        Vencido
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-2 rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
-                        <span class="h-2 w-2 rounded-full bg-success"></span>
-                        Sin riesgo
-                    </span>
-                </div>
-
-                <div class="mt-4 h-px bg-border"></div>
-
-                <div class="mt-4 flex items-center justify-between text-sm">
-                    <div>
-                        <p class="text-muted-foreground">Próximo turno</p>
-                        <p class="mt-1 font-medium text-foreground">16:30 • Box 2</p>
-                    </div>
-                    <button class="rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">Ver
-                        ficha</button>
-                </div>
-            </article>
-
-            <aside class="surface-panel p-4">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm text-muted-foreground">Ingresos</p>
-                    <span class="rounded-full bg-accent/15 px-2 py-1 text-xs font-medium text-accent">+12.4%</span>
-                </div>
-                <p class="metric-number mt-3 text-4xl font-bold text-foreground">$24.800</p>
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex justify-between text-muted-foreground"><span>Cobrado</span><span
-                            class="font-medium text-foreground">$18.600</span></div>
-                    <div class="flex justify-between text-muted-foreground"><span>Pendiente</span><span
-                            class="font-medium text-foreground">$4.300</span></div>
-                    <div class="flex justify-between text-muted-foreground"><span>Vencido</span><span
-                            class="font-medium text-foreground">$1.900</span></div>
-                </div>
-                <div class="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-                    <div class="h-full w-[68%] rounded-full bg-primary"></div>
-                </div>
-                <p class="mt-2 text-xs text-muted-foreground">68% del proyecto mensual</p>
-            </aside>
-        </section>
-
-        <section class="surface-panel p-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase text-muted-foreground">Secciones</p>
-                    <h2 class="mt-1 text-lg font-semibold text-foreground">Navegación móvil</h2>
-                </div>
-                <span class="rounded-full bg-success/15 px-2 py-1 text-xs font-medium text-success">Pulgar</span>
-            </div>
-
-            <nav class="mt-5 grid grid-cols-5 items-center gap-2 rounded-lg border border-border bg-navigation p-2">
+            <nav class="mt-4 grid grid-cols-5 items-center gap-2 rounded-lg border border-border bg-background p-2">
                 <button
-                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-card">
+                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-muted"
+                    type="button">
                     <span class="text-lg">⌂</span>
                     <span class="text-[10px]">Inicio</span>
                 </button>
                 <button
-                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-card">
+                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-muted"
+                    type="button">
                     <span class="text-lg">◫</span>
                     <span class="text-[10px]">Agenda</span>
                 </button>
                 <button
-                    class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground shadow-lg shadow-primary/30 -translate-y-2">
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-2xl text-primary-foreground shadow-lg shadow-black/30 -translate-y-2"
+                    type="button">
                     +
                 </button>
                 <button
-                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-card">
+                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-muted"
+                    type="button">
                     <span class="text-lg">◎</span>
                     <span class="text-[10px]">Alumnos</span>
                 </button>
                 <button
-                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-card">
+                    class="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-muted-foreground hover:bg-muted"
+                    type="button">
                     <span class="text-lg">◌</span>
                     <span class="text-[10px]">Finanzas</span>
                 </button>
             </nav>
+        </section>
+
+        <section>
+            <p class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Tarjeta operativa</p>
+            <form class="rounded-[1.5rem] border border-border bg-card p-5 shadow-2xl shadow-black/10 sm:p-6">
+                <div class="flex items-start gap-3 border-b border-border/70 pb-5">
+                    <div
+                        class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                        <span aria-hidden="true">◎</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Registro de alumno
+                        </p>
+                        <h2 class="mt-1 text-xl font-medium tracking-tight text-foreground">Nuevo integrante</h2>
+                        <p class="mt-1 text-sm leading-6 text-muted-foreground">Añade un deportista al plantel y asigna
+                            su categoría.</p>
+                    </div>
+                </div>
+                <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span
+                            class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Nombre</span>
+                        <input
+                            class="mt-2 h-11 w-full rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            placeholder="Lucía" />
+                    </label>
+                    <label class="block">
+                        <span
+                            class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Categoría</span>
+                        <select
+                            class="mt-2 h-11 w-full rounded-xl border border-border bg-background/50 px-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20">
+                            <option>Sub-16</option>
+                            <option>Sub-18</option>
+                            <option>Senior</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="mt-5 flex items-center justify-between gap-3">
+                    <span class="text-xs text-muted-foreground">Los campos marcados son obligatorios</span>
+                    <button type="button"
+                        class="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                        Registrar alumno
+                    </button>
+                </div>
+            </form>
         </section>
     </main>
 </body>

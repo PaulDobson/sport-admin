@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import type { InstructorDayRepositoryPort } from "@/application/instructor-operations/ports/instructor-day-repository-port";
 
@@ -14,7 +14,7 @@ interface SessionRow {
 }
 
 export class SupabaseInstructorDayRepository implements InstructorDayRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async countActiveStudents(tenantId: string): Promise<number> {
     const { count, error } = await this.client

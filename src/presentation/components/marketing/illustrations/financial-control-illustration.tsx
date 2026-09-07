@@ -1,0 +1,69 @@
+export function FinancialControlIllustration() {
+  return (
+    <svg
+      viewBox="0 0 200 160"
+      role="img"
+      aria-label="Barras de ingresos y estado de pagos"
+      className="h-full w-full"
+    >
+      <rect
+        x="0"
+        y="0"
+        width="200"
+        height="160"
+        rx="18"
+        fill="var(--color-card)"
+      />
+      <rect
+        x="28"
+        y="90"
+        width="24"
+        height="46"
+        rx="6"
+        fill="var(--color-primary)"
+      />
+      <rect
+        x="64"
+        y="64"
+        width="24"
+        height="72"
+        rx="6"
+        fill="var(--color-primary)"
+        opacity="0.7"
+      />
+      <rect
+        x="100"
+        y="40"
+        width="24"
+        height="96"
+        rx="6"
+        fill="var(--color-primary)"
+        opacity="0.45"
+      />
+      <rect
+        x="136"
+        y="76"
+        width="24"
+        height="60"
+        rx="6"
+        fill="var(--color-success)"
+        opacity="0.8"
+      />
+      <circle
+        cx="148"
+        cy="34"
+        r="16"
+        fill="var(--color-success)"
+        opacity="0.9"
+      />
+      <path
+        d="M141 34l5 5 9-10"
+        fill="none"
+        stroke="var(--color-card)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

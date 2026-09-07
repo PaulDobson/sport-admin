@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/presentation/components/primitives";
 import { signUpAction, type SignUpFormState } from "./actions";
 
 const initialState: SignUpFormState = { error: null, success: false };
@@ -56,13 +57,14 @@ export function SignUpForm() {
           {state.error}
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="py-2"
       >
         {pending ? "Creando cuenta…" : "Crear cuenta"}
-      </button>
+      </Button>
     </form>
   );
 }

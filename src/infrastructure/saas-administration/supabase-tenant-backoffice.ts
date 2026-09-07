@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { TenantStatus } from "@/domain/tenants/tenant";
 import type {
   TenantBackofficeSummary,
@@ -46,7 +46,7 @@ interface TenantEntitlementRow {
 }
 
 export class SupabaseTenantBackoffice implements TenantBackofficePort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async isPlatformAdmin(): Promise<boolean> {
     const { data, error } = await this.client.rpc("is_platform_admin");

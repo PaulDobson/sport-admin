@@ -1,6 +1,7 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "./database.types";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 
 /**
@@ -8,5 +9,5 @@ import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
  * Uses only the public URL and anon key; never bundle the service role key here.
  */
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(getSupabaseUrl(), getSupabaseAnonKey());
+  return createBrowserClient<Database>(getSupabaseUrl(), getSupabaseAnonKey());
 }

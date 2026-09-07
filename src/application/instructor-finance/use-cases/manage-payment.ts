@@ -13,6 +13,7 @@ const paymentSchema = z.object({
   membershipId: z.string().uuid(),
   amount: z.number().positive(),
   currency: z.string().regex(/^[A-Z]{3}$/),
+  method: z.enum(["cash", "transfer", "card", "other"]),
   paidAt: z.date(),
   reference: z.string().trim().min(1).optional(),
   actorMembershipId: z.string().uuid(),

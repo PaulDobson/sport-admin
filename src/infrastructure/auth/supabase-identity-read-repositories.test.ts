@@ -60,4 +60,30 @@ describe("Supabase identity read repositories", () => {
     );
     expect(inFilter).toHaveBeenCalledWith("status", ["trial", "active"]);
   });
+
+  it("scopes profile updates to the requested user", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: { id: "user-1", full_name: "Maya Updated", avatar_url: null },
+      error: null,
+    });
+    const select = vi.fn(() => ({ maybeSingle }));
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ update }));
+    const repository = new SupabaseProfileRepository({
+      from,
+    } as unknown as SupabaseClient);
+
+    await expect(
+      repository.updateByUserId("user-1", {
+        fullName: "Maya Updated",
+        avatarUrl: null,
+      }),
+    ).resolves.toMatchObject({ fullName: "Maya Updated" });
+    expect(update).toHaveBeenCalledWith({
+      full_name: "Maya Updated",
+      avatar_url: null,
+    });
+    expect(eq).toHaveBeenCalledWith("id", "user-1");
+  });
 });

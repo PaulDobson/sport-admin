@@ -2,6 +2,7 @@ import type {
   FinancialAdjustment,
   MembershipBalance,
   MembershipPayment,
+  PaymentMethod,
 } from "@/domain/instructor-finance/payment";
 
 export interface RecordPaymentInput {
@@ -9,6 +10,7 @@ export interface RecordPaymentInput {
   membershipId: string;
   amount: number;
   currency: string;
+  method: PaymentMethod;
   paidAt: Date;
   reference?: string;
   actorMembershipId: string;
@@ -33,4 +35,9 @@ export interface PaymentRepositoryPort {
     payments: MembershipPayment[];
     adjustments: FinancialAdjustment[];
   }>;
+  listPaymentsByPeriod(
+    tenantId: string,
+    period: string,
+    method?: PaymentMethod,
+  ): Promise<MembershipPayment[]>;
 }

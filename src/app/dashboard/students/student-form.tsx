@@ -14,14 +14,14 @@ export function StudentForm() {
   return (
     <form
       action={formAction}
-      className="surface-panel grid gap-4 p-4 sm:grid-cols-2"
+      className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-lg shadow-black/10 sm:grid-cols-2"
     >
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Nombre completo
         <input
           name="fullName"
           required
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
@@ -29,14 +29,14 @@ export function StudentForm() {
         <input
           name="birthDate"
           type="date"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Tipo de contacto
         <select
           name="contactType"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
         >
           <option value="phone">Teléfono</option>
           <option value="email">Email</option>
@@ -47,7 +47,7 @@ export function StudentForm() {
         <input
           name="contactValue"
           placeholder="Opcional"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
         />
       </label>
       {state.error ? (
@@ -63,7 +63,7 @@ export function StudentForm() {
       <button
         type="submit"
         disabled={pending}
-        className="h-10 rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60 sm:col-start-2"
+        className="h-10 rounded-lg bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 sm:col-start-2"
       >
         {pending ? "Guardando..." : "Agregar alumno"}
       </button>

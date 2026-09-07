@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   BillingCycle,
   StudentMembershipStatus,
@@ -6,6 +6,7 @@ import type {
 import type {
   FinancialAdjustmentKind,
   MembershipPaymentStatus,
+  PaymentMethod,
 } from "@/domain/instructor-finance/payment";
 import type { FinancialProjectionRepositoryPort } from "@/application/instructor-finance/ports/financial-projection-repository-port";
 
@@ -27,6 +28,7 @@ interface PaymentRow {
   amount: number | string;
   currency: string;
   status: MembershipPaymentStatus;
+  method: PaymentMethod;
   paid_at: string | null;
   reference: string | null;
   operation_id: string;
@@ -55,7 +57,7 @@ function monthBounds(period: string) {
 }
 
 export class SupabaseFinancialProjectionRepository implements FinancialProjectionRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async loadMonth(tenantId: string, period: string) {
     const { start, end } = monthBounds(period);
@@ -111,6 +113,7 @@ export class SupabaseFinancialProjectionRepository implements FinancialProjectio
         amount: Number(row.amount),
         currency: row.currency,
         status: row.status,
+        method: row.method ?? "other",
         paidAt: row.paid_at ? new Date(row.paid_at) : undefined,
         reference: row.reference ?? undefined,
         operationId: row.operation_id,

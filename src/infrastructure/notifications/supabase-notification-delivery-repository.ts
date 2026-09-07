@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import { z } from "zod";
 import type { NotificationDeliveryRepositoryPort } from "@/application/notifications/ports/notification-delivery-repository-port";
 
@@ -16,7 +16,7 @@ const claimedDeliverySchema = z.object({
 });
 
 export class SupabaseNotificationDeliveryRepository implements NotificationDeliveryRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async claimNext(now: Date) {
     const { data, error } = await this.client.rpc(
@@ -37,8 +37,8 @@ export class SupabaseNotificationDeliveryRepository implements NotificationDeliv
         target_delivery: input.deliveryId,
         target_attempt_number: input.attemptNumber,
         target_outcome: input.outcome,
-        target_provider_reference: input.providerReference,
-        target_error_code: input.errorCode,
+        target_provider_reference: input.providerReference ?? "",
+        target_error_code: input.errorCode ?? "",
         target_retryable: input.retryable,
         target_completed_at: input.completedAt.toISOString(),
       },

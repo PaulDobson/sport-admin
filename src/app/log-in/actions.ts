@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { signIn } from "@/application/auth/use-cases/sign-in";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
+import { createSaasAdministrationDeps } from "@/infrastructure/composition/saas-administration-composition";
 import { formatActionError } from "@/app/_lib/format-error";
 
 export interface LogInFormState {
@@ -31,5 +32,10 @@ export async function logInAction(
   const memberships = userId
     ? await deps.memberships.findActiveByUser(userId)
     : [];
-  redirect(memberships.length > 0 ? "/dashboard" : "/onboarding");
+  if (memberships.length > 0) redirect("/dashboard");
+
+  const { tenantBackoffice } = await createSaasAdministrationDeps();
+  if (await tenantBackoffice.isPlatformAdmin()) redirect("/backoffice/tenants");
+
+  redirect("/onboarding");
 }

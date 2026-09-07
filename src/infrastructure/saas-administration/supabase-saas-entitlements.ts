@@ -1,9 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { SaasFeature } from "@/domain/saas-administration/plan-entitlement";
 import type { SaasEntitlementsPort } from "@/application/saas-administration/ports/saas-entitlements-port";
 
 export class SupabaseSaasEntitlements implements SaasEntitlementsPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async canUseFeature(
     tenantId: string,

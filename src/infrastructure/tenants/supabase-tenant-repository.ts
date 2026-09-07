@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { Tenant, TenantStatus } from "@/domain/tenants/tenant";
 import type { TenantRepositoryPort } from "@/application/auth/ports/tenant-repository-port";
 
@@ -21,7 +21,7 @@ function toDomain(row: TenantRow): Tenant {
 }
 
 export class SupabaseTenantRepository implements TenantRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async create(input: { name: string; createdBy: string }): Promise<Tenant> {
     const { data, error } = await this.client

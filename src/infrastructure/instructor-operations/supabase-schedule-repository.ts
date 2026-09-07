@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   ClassSchedule,
   ClassTemplate,
@@ -39,7 +39,7 @@ interface ClassScheduleRow extends BaseRow {
 }
 
 export class SupabaseScheduleRepository implements ScheduleRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async createDiscipline(input: { tenantId: string; name: string }) {
     const { data, error } = await this.client

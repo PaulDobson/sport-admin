@@ -9,6 +9,8 @@ export type StudentMembershipStatus =
   | "cancelled";
 export type MembershipTransition = "pause" | "renew" | "expire" | "cancel";
 
+export type MembershipPlanStatus = "active" | "archived";
+
 export interface MembershipPlan {
   id: string;
   tenantId: string;
@@ -17,6 +19,21 @@ export interface MembershipPlan {
   currency: string;
   billingCycle: BillingCycle;
   expirationGraceDays: number;
+  benefits: string[];
+  status: MembershipPlanStatus;
+  membershipCount?: number;
+}
+
+export function isPlanAssignable(plan: MembershipPlan) {
+  return plan.status === "active";
+}
+
+export function assertPlanAssignable(plan: MembershipPlan) {
+  if (!isPlanAssignable(plan)) {
+    throw new BusinessRuleViolationError(
+      "Cannot assign an archived membership plan",
+    );
+  }
 }
 
 export interface StudentMembership {

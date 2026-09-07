@@ -8,6 +8,7 @@ const memberships: ProjectionMembership[] = [
   ["semiannual", 600, "USD"],
   ["annual", 1200, "USD"],
   ["monthly", 120, "EUR"],
+  ["monthly", 30000, "CLP"],
 ].map(([billingCycle, agreedPrice, currency], index) => ({
   id: `membership-${index}`,
   startsOn: "2026-01-01",
@@ -28,6 +29,7 @@ describe("monthly financial projections", () => {
       amount: 250,
       currency: "USD",
       status: "paid" as const,
+      method: "transfer" as const,
       paidAt: new Date("2026-08-15T12:00:00Z"),
       operationId: "operation",
       createdAt: new Date("2026-08-15T12:00:00Z"),
@@ -73,6 +75,13 @@ describe("monthly financial projections", () => {
     expect(projections).toEqual([
       {
         period: "2026-08",
+        currency: "CLP",
+        contractedAmount: 30000,
+        collectibleAmount: 30000,
+        collectedAmount: 0,
+      },
+      {
+        period: "2026-08",
         currency: "EUR",
         contractedAmount: 120,
         collectibleAmount: 120,
@@ -115,6 +124,7 @@ describe("monthly financial projections", () => {
           amount: 40,
           currency: "USD",
           status: "paid",
+          method: "cash" as const,
           paidAt: new Date("2026-08-05T12:00:00Z"),
           operationId: "late-operation",
           createdAt: new Date("2026-08-05T12:00:00Z"),

@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
+import { Button } from "@/presentation/components/primitives";
 import { enqueueOfflineCommand } from "@/application/synchronization/use-cases/enqueue-offline-command";
 import type { AttendanceParticipant } from "@/domain/evolution-health-attendance/attendance";
 import type { AttendanceStatus } from "@/domain/evolution-health-attendance/attendance";
@@ -77,7 +78,7 @@ export function AttendanceForm({
   return (
     <form action={formAction}>
       <input type="hidden" name="sessionId" value={sessionId} />
-      <div className="divide-y divide-border border-y border-border">
+      <div className="divide-y divide-border rounded-xl border border-border bg-card px-4 shadow-lg shadow-black/10">
         {participants.map((participant, index) => (
           <fieldset
             key={participant.studentId}
@@ -105,7 +106,7 @@ export function AttendanceForm({
               <select
                 name="status"
                 defaultValue={participant.currentStatus ?? "present"}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
               >
                 <option value="present">Presente</option>
                 <option value="late">Tarde</option>
@@ -119,7 +120,7 @@ export function AttendanceForm({
                 name="note"
                 defaultValue={participant.note}
                 placeholder="Opcional"
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground"
+                className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
               />
             </label>
           </fieldset>
@@ -140,13 +141,15 @@ export function AttendanceForm({
           Sin conexión. Asistencia pendiente de sincronización.
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
-        disabled={pending || participants.length === 0}
-        className="mt-5 h-11 w-full rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60 sm:w-auto"
+        variant="primary"
+        isLoading={pending}
+        disabled={participants.length === 0}
+        className="mt-5 h-11 w-full sm:w-auto"
       >
         {pending ? "Guardando..." : "Guardar asistencia"}
-      </button>
+      </Button>
     </form>
   );
 }

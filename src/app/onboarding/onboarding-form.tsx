@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/presentation/components/primitives";
 import { completeOnboardingAction, type OnboardingFormState } from "./actions";
 
 const initialState: OnboardingFormState = { error: null };
@@ -26,13 +27,14 @@ export function OnboardingForm() {
           {state.error}
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="py-2"
       >
         {pending ? "Creando…" : "Comenzar"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -30,10 +30,27 @@ beforeEach(() => {
     currency: "USD",
     billingCycle: "quarterly",
     expirationGraceDays: 10,
+    benefits: [],
+    status: "active",
   });
 });
 
 describe("membership lifecycle", () => {
+  it("defaults new plans to CLP", async () => {
+    const plan = await createMembershipPlan(
+      {
+        tenantId,
+        name: "Local Monthly",
+        price: 30000,
+        billingCycle: "monthly",
+        expirationGraceDays: 10,
+      },
+      { memberships: repository },
+    );
+
+    expect(plan.currency).toBe("CLP");
+  });
+
   it("creates an active plan definition", async () => {
     const plan = await createMembershipPlan(
       {

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   HealthCondition,
   HealthRestriction,
@@ -102,7 +102,7 @@ function restrictionFromRow(row: HealthRestrictionRow): HealthRestriction {
 }
 
 export class SupabaseHealthRepository implements HealthRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async createCondition(input: CreateHealthConditionInput) {
     const { data, error } = await this.client
