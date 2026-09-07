@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   AttendanceRecord,
   AttendanceStatus,
@@ -34,7 +34,7 @@ function toAttendance(row: AttendanceRow): AttendanceRecord {
 }
 
 export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async listExpectedParticipants(tenantId: string, sessionId: string) {
     const [enrollments, attendance] = await Promise.all([

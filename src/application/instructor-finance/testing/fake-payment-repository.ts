@@ -4,6 +4,7 @@ import {
   calculateMembershipBalance,
   type FinancialAdjustment,
   type MembershipPayment,
+  type PaymentMethod,
 } from "@/domain/instructor-finance/payment";
 import type {
   PaymentRepositoryPort,
@@ -42,6 +43,7 @@ export class FakePaymentRepository implements PaymentRepositoryPort {
       amount: input.amount,
       currency: input.currency,
       status: "paid",
+      method: input.method,
       paidAt: input.paidAt,
       reference: input.reference,
       operationId: input.operationId,
@@ -103,5 +105,19 @@ export class FakePaymentRepository implements PaymentRepositoryPort {
           adjustment.membershipId === membershipId,
       ),
     };
+  }
+
+  async listPaymentsByPeriod(
+    tenantId: string,
+    period: string,
+    method?: PaymentMethod,
+  ) {
+    return this.payments.filter(
+      (payment) =>
+        payment.tenantId === tenantId &&
+        payment.status === "paid" &&
+        payment.paidAt?.toISOString().slice(0, 7) === period &&
+        (!method || payment.method === method),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { SaasFinancialDashboardPort } from "@/application/saas-administration/ports/saas-financial-dashboard-port";
 
 interface FinancialMetricRow {
@@ -19,7 +19,7 @@ interface FinancialMetricRow {
 }
 
 export class SupabaseSaasFinancialDashboard implements SaasFinancialDashboardPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async isPlatformAdmin(): Promise<boolean> {
     const { data, error } = await this.client.rpc("is_platform_admin");

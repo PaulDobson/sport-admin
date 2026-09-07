@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
+import type { Json } from "@/infrastructure/supabase/database.types";
 import type {
   MetricDefinition,
   MetricEvaluation,
@@ -66,7 +67,7 @@ function toDefinition(row: MetricDefinitionRow): MetricDefinition {
 }
 
 export class SupabaseMetricRepository implements MetricRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async createDefinition(input: CreateMetricDefinitionInput) {
     const { data, error } = await this.client
@@ -106,7 +107,7 @@ export class SupabaseMetricRepository implements MetricRepositoryPort {
         student_id: input.studentId,
         author_membership_id: input.authorMembershipId,
         evaluated_at: input.evaluatedAt.toISOString(),
-        values: input.values,
+        values: input.values as Json,
         notes: input.notes,
       })
       .select()

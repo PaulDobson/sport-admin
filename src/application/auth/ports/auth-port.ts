@@ -11,5 +11,6 @@ export interface AuthPort {
   }): Promise<{ userId: string }>;
   requestPasswordReset(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
+  signOut(): Promise<void>;
   getCurrentUserId(): Promise<string | null>;
 }

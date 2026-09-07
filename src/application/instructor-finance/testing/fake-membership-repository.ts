@@ -4,17 +4,21 @@ import {
   assertMembershipTransition,
   type BillingCycle,
   type MembershipPlan,
+  type MembershipPlanStatus,
   type StudentMembership,
 } from "@/domain/instructor-finance/membership";
 import type {
   CreateMembershipInput,
   CreateMembershipPlanInput,
   MembershipRepositoryPort,
+  SetMembershipPlanStatusInput,
   TransitionMembershipInput,
+  UpdateMembershipPlanInput,
 } from "../ports/membership-repository-port";
 
-interface FakePlan extends Omit<MembershipPlan, "name"> {
+interface FakePlan extends Omit<MembershipPlan, "name" | "benefits"> {
   name?: string;
+  benefits?: string[];
 }
 
 function addCycle(date: string, cycle: BillingCycle) {
@@ -42,15 +46,71 @@ export class FakeMembershipRepository implements MembershipRepositoryPort {
   readonly events: Array<{ type: string; operationId: string }> = [];
 
   async createPlan(input: CreateMembershipPlanInput) {
-    const plan = { id: randomUUID(), ...input };
+    const plan = { id: randomUUID(), status: "active" as const, ...input };
     this.plans.push(plan);
     return plan;
   }
 
+  async updatePlan(input: UpdateMembershipPlanInput) {
+    const plan = this.requirePlan(input.tenantId, input.planId);
+    Object.assign(plan, {
+      name: input.name,
+      price: input.price,
+      currency: input.currency,
+      billingCycle: input.billingCycle,
+      expirationGraceDays: input.expirationGraceDays,
+      benefits: input.benefits,
+    });
+    return this.toPlan(plan);
+  }
+
+  async setPlanStatus(input: SetMembershipPlanStatusInput) {
+    const plan = this.requirePlan(input.tenantId, input.planId);
+    plan.status = input.status;
+    return this.toPlan(plan);
+  }
+
+  async findPlans(tenantId: string, status?: MembershipPlanStatus) {
+    return this.plans
+      .filter(
+        (plan) =>
+          plan.tenantId === tenantId && (!status || plan.status === status),
+      )
+      .map((plan) => ({
+        ...this.toPlan(plan),
+        membershipCount: this.memberships.filter(
+          (membership) => membership.planId === plan.id,
+        ).length,
+      }));
+  }
+
+  async findPlanById(tenantId: string, planId: string) {
+    const plan = this.plans.find(
+      (candidate) => candidate.tenantId === tenantId && candidate.id === planId,
+    );
+    return plan ? this.toPlan(plan) : null;
+  }
+
   async findActivePlans(tenantId: string) {
     return this.plans
-      .filter((plan) => plan.tenantId === tenantId)
-      .map((plan) => ({ ...plan, name: plan.name ?? "Plan" }));
+      .filter((plan) => plan.tenantId === tenantId && plan.status === "active")
+      .map((plan) => this.toPlan(plan));
+  }
+
+  private requirePlan(tenantId: string, planId: string) {
+    const plan = this.plans.find(
+      (candidate) => candidate.tenantId === tenantId && candidate.id === planId,
+    );
+    if (!plan) throw new NotFoundError("Membership plan", planId);
+    return plan;
+  }
+
+  private toPlan(plan: FakePlan): MembershipPlan {
+    return {
+      ...plan,
+      name: plan.name ?? "Plan",
+      benefits: plan.benefits ?? [],
+    };
   }
 
   async create(input: CreateMembershipInput) {

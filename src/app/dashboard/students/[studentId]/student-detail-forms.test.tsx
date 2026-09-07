@@ -98,6 +98,8 @@ describe("mobile student health and finance flow", () => {
             currency: "USD",
             billingCycle: "monthly",
             expirationGraceDays: 5,
+            benefits: [],
+            status: "active" as const,
           },
         ]}
       />,

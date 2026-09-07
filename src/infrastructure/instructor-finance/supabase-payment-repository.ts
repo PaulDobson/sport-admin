@@ -1,8 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   FinancialAdjustment,
   MembershipPayment,
   MembershipPaymentStatus,
+  PaymentMethod,
 } from "@/domain/instructor-finance/payment";
 import { calculateMembershipBalance } from "@/domain/instructor-finance/payment";
 import type {
@@ -17,6 +18,7 @@ interface PaymentRow {
   amount: number | string;
   currency: string;
   status: MembershipPaymentStatus;
+  method: PaymentMethod;
   paid_at: string | null;
   reference: string | null;
   operation_id: string;
@@ -44,6 +46,7 @@ function toPayment(row: PaymentRow): MembershipPayment {
     amount: Number(row.amount),
     currency: row.currency,
     status: row.status,
+    method: row.method ?? "other",
     paidAt: row.paid_at ? new Date(row.paid_at) : undefined,
     reference: row.reference ?? undefined,
     operationId: row.operation_id,
@@ -67,7 +70,7 @@ function toAdjustment(row: AdjustmentRow): FinancialAdjustment {
 }
 
 export class SupabasePaymentRepository implements PaymentRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async record(input: RecordPaymentInput) {
     const { data, error } = await this.client.rpc("record_membership_payment", {
@@ -76,9 +79,10 @@ export class SupabasePaymentRepository implements PaymentRepositoryPort {
       target_amount: input.amount,
       target_currency: input.currency,
       target_paid_at: input.paidAt.toISOString(),
-      target_reference: input.reference ?? null,
+      target_reference: input.reference ?? "",
       target_actor_membership: input.actorMembershipId,
       target_operation_id: input.operationId,
+      target_method: input.method,
       target_adjustments: input.adjustments,
     });
     if (error) throw error;
@@ -133,5 +137,27 @@ export class SupabasePaymentRepository implements PaymentRepositoryPort {
       payments: (paymentResult.data as PaymentRow[]).map(toPayment),
       adjustments: (adjustmentResult.data as AdjustmentRow[]).map(toAdjustment),
     };
+  }
+
+  async listPaymentsByPeriod(
+    tenantId: string,
+    period: string,
+    method?: PaymentMethod,
+  ) {
+    const periodStart = new Date(`${period}-01T00:00:00Z`);
+    const periodEnd = new Date(periodStart);
+    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + 1);
+    const query = this.client
+      .from("student_membership_payments")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .gte("paid_at", periodStart.toISOString())
+      .lt("paid_at", periodEnd.toISOString());
+    const { data, error } = await (
+      method ? query.eq("method", method) : query
+    ).order("paid_at", { ascending: false });
+    if (error) throw error;
+    return (data as PaymentRow[]).map(toPayment);
   }
 }

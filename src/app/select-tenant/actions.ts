@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
-import { writeActiveTenantCookie } from "@/infrastructure/tenants/active-tenant-cookie";
+import { writeActiveTenantCookie } from "@/infrastructure/composition/tenant-context-composition";
 import { resolveOperationalContextForUser } from "@/app/_lib/operational-context";
 
 export async function selectTenantAction(formData: FormData) {

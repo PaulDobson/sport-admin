@@ -3,7 +3,7 @@ import type { TenantMembershipRepositoryPort } from "@/application/auth/ports/te
 import { resolveActiveTenant } from "@/application/product-experience/resolve-active-tenant";
 import type { TenantMembership } from "@/domain/tenants/tenant-membership";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
-import { readActiveTenantCookie } from "@/infrastructure/tenants/active-tenant-cookie";
+import { readActiveTenantCookie } from "@/infrastructure/composition/tenant-context-composition";
 
 export type OperationalContext =
   | { status: "unauthenticated" }

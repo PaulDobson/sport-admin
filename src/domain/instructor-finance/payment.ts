@@ -5,6 +5,14 @@ export type MembershipPaymentStatus =
   | "failed"
   | "refunded"
   | "voided";
+export type PaymentMethod = "cash" | "transfer" | "card" | "other";
+
+export const paymentMethods: readonly PaymentMethod[] = [
+  "cash",
+  "transfer",
+  "card",
+  "other",
+];
 
 export interface MembershipPayment {
   id: string;
@@ -13,6 +21,7 @@ export interface MembershipPayment {
   amount: number;
   currency: string;
   status: MembershipPaymentStatus;
+  method: PaymentMethod;
   paidAt?: Date;
   reference?: string;
   operationId: string;

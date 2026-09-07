@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
+import type { Database } from "@/infrastructure/supabase/database.types";
 import { NotFoundError } from "@/domain/shared/errors";
 import type {
   ClassSession,
@@ -11,6 +12,9 @@ import type {
   GenerateSessionInput,
   SessionRepositoryPort,
 } from "@/application/instructor-operations/ports/session-repository-port";
+
+type ClassSessionUpdate =
+  Database["public"]["Tables"]["class_sessions"]["Update"];
 
 interface SessionRow {
   id: string;
@@ -40,7 +44,7 @@ interface EnrollmentRow {
 }
 
 export class SupabaseSessionRepository implements SessionRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async generate(input: GenerateSessionInput) {
     const { data, error } = await this.client.rpc("generate_class_session", {
@@ -55,7 +59,7 @@ export class SupabaseSessionRepository implements SessionRepositoryPort {
   }
 
   async update(input: EditSessionInput) {
-    const values: Record<string, unknown> = {};
+    const values: ClassSessionUpdate = {};
     if (input.locationId !== undefined) values.location_id = input.locationId;
     if (input.instructorMembershipId !== undefined) {
       values.instructor_membership_id = input.instructorMembershipId;

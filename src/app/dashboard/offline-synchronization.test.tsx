@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OfflineSynchronization } from "./offline-synchronization";
 import { synchronizeOfflineCommands } from "@/application/synchronization/use-cases/synchronize-offline-commands";
@@ -18,6 +18,20 @@ vi.mock("@/infrastructure/composition/synchronization-composition", () => ({
 }));
 
 const tenantId = "c84d5db9-bc46-4f45-aa31-d16e77327c01";
+const pendingCommand = {
+  operationId: "operation-1",
+  tenantId,
+  type: "attendance.batch" as const,
+  payload: {
+    sessionId: "session-1",
+    recordedByMembershipId: "membership-1",
+    items: [],
+  },
+  status: "pending" as const,
+  retryCount: 0,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
 
 describe("OfflineSynchronization observability", () => {
   beforeEach(() => {
@@ -51,5 +65,57 @@ describe("OfflineSynchronization observability", () => {
       errorCode: "NETWORK_FAILURE",
     });
     expect(serialized).not.toContain(tenantId);
+  });
+
+  it("shows offline status without opening a synchronization loop", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+
+    render(<OfflineSynchronization tenantId={tenantId} />);
+
+    expect(await waitFor(() => screen.getByText("Sin conexión"))).toBeTruthy();
+    expect(synchronizeOfflineCommands).not.toHaveBeenCalled();
+  });
+
+  it("shows pending queue state after a successful flush", async () => {
+    vi.mocked(synchronizeOfflineCommands).mockResolvedValue({
+      confirmed: 0,
+      failed: 0,
+    });
+    list.mockResolvedValue([
+      { id: "operation-1", tenantId, payload: pendingCommand },
+    ]);
+
+    render(<OfflineSynchronization tenantId={tenantId} />);
+
+    expect(
+      await waitFor(() => screen.getByText(/Cambios pendientes/)),
+    ).toBeTruthy();
+    expect(screen.getByText(/1 pendientes/)).toBeTruthy();
+  });
+
+  it("shows conflict state with text and alert semantics", async () => {
+    vi.mocked(synchronizeOfflineCommands).mockResolvedValue({
+      confirmed: 0,
+      failed: 0,
+    });
+    list.mockResolvedValue([
+      {
+        id: "operation-1",
+        tenantId,
+        payload: { ...pendingCommand, status: "conflict" },
+      },
+    ]);
+
+    render(<OfflineSynchronization tenantId={tenantId} />);
+
+    expect(
+      await waitFor(() => screen.getByText(/Conflicto por resolver/)),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("alert", { name: "Conflictos de sincronización" }),
+    ).toBeTruthy();
   });
 });

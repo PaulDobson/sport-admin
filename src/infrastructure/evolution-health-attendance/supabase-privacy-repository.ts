@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { PrivacyRepositoryPort } from "@/application/evolution-health-attendance/ports/privacy-repository-port";
 import type {
   ErasureStatus,
@@ -6,7 +6,7 @@ import type {
 } from "@/domain/evolution-health-attendance/privacy";
 
 export class SupabasePrivacyRepository implements PrivacyRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async getStudentState(tenantId: string, studentId: string) {
     const [policy, consent, erasure] = await Promise.all([

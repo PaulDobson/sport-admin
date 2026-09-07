@@ -1,60 +1,78 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-navigation: var(--navigation);
+  --color-navigation-active: var(--navigation-active);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-chart-muted: var(--chart-muted);
+  --color-map: var(--map);
+  --font-sans: 'Manrope Variable', 'Manrope', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
 
 :root {
-  --background: 220 20% 8%;
-  --foreground: 220 10% 92%;
-  --card: 220 18% 12%;
-  --card-foreground: 220 10% 95%;
-  --popover: 220 18% 11%;
-  --popover-foreground: 220 10% 94%;
-  --primary: 155 84% 48%;
-  --primary-foreground: 150 15% 7%;
-  --secondary: 220 15% 16%;
-  --secondary-foreground: 220 10% 92%;
-  --muted: 220 15% 16%;
-  --muted-foreground: 220 10% 68%;
-  --accent: 264 78% 65%;
-  --accent-foreground: 260 20% 98%;
-  --destructive: 0 82% 60%;
-  --destructive-foreground: 0 12% 98%;
-  --success: 142 72% 48%;
-  --success-foreground: 142 18% 98%;
-  --warning: 38 92% 55%;
-  --warning-foreground: 38 20% 12%;
-  --info: 199 89% 58%;
-  --info-foreground: 198 20% 98%;
-  --border: 220 15% 18%;
-  --input: 220 15% 18%;
-  --ring: 155 84% 48%;
-  --radius: 1rem;
-}
-
-html {
   color-scheme: dark;
+  --background: #111619;
+  --foreground: #eef5f1;
+  --card: #1c2428;
+  --card-foreground: #eef5f1;
+  --muted: #263034;
+  --muted-foreground: #9aa8a3;
+  --primary: #31d19f;
+  --primary-foreground: #061f18;
+  --secondary: #243039;
+  --secondary-foreground: #dce7e3;
+  --success: #47d990;
+  --warning: #f2bd49;
+  --destructive: #ff6b6b;
+  --info: #6fb8ff;
+  --border: #334046;
+  --input: #3b474d;
+  --ring: #31d19f;
+  --navigation: #151d21;
+  --navigation-active: #1d332e;
+  --surface-raised: #232d32;
+  --surface-overlay: #273238;
+  --chart-muted: #8fa09a;
+  --map: #182025;
+  --sidebar-width: 16.5rem;
+  --topbar-height: 4.5rem;
+  --bottom-nav-height: 4.75rem;
+  --context-rail-width: 22rem;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-body {
-  @apply min-h-screen bg-background text-foreground antialiased;
-  background-image:
-    radial-gradient(circle at top, rgba(23, 176, 122, 0.16), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(154, 116, 255, 0.12), transparent 28%);
-}
+* { border-color: var(--border); }
+html { background: var(--background); }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: 'Manrope Variable', 'Manrope', sans-serif; }
+button { cursor: pointer; }
 
-* {
-  @apply border-border;
-}
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.metric-number { font-family: 'JetBrains Mono Variable', 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 
-@layer components {
-  .surface-panel {
-    @apply rounded-2xl border border-border bg-card text-card-foreground shadow-lg shadow-black/10;
-  }
-}
-
-@layer utilities {
-  .metric-number {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.06em;
-  }
-}
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+section, nav { animation: rise .5s ease both; }
+section:nth-child(2) { animation-delay: .05s; } section:nth-child(3) { animation-delay: .1s; } section:nth-child(4) { animation-delay: .15s; }

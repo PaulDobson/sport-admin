@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { evaluateCollectionNotices } from "@/application/notifications/use-cases/evaluate-collection-notices";
 import { processNextNotificationDelivery } from "@/application/notifications/use-cases/process-next-notification-delivery";
 import { createNotificationDeliveryDeps } from "@/infrastructure/composition/notification-delivery-composition";
 import { getNotificationWorkerSecret } from "@/infrastructure/supabase/env";
@@ -28,15 +29,21 @@ export async function POST(request: Request) {
   const deps = createNotificationDeliveryDeps();
   const results = [];
   try {
+    const now = new Date();
+    const emittedNotices = await evaluateCollectionNotices(
+      { referenceDate: now.toISOString().slice(0, 10), renewalWindowDays: 7 },
+      deps,
+    );
     for (let index = 0; index < batchSize; index += 1) {
-      const result = await processNextNotificationDelivery(
-        { now: new Date() },
-        deps,
-      );
+      const result = await processNextNotificationDelivery({ now }, deps);
       if (result.status === "idle") break;
       results.push(result);
     }
-    return Response.json({ processed: results.length, results });
+    return Response.json({
+      emittedNotices,
+      processed: results.length,
+      results,
+    });
   } catch (error) {
     console.error("Notification delivery processing failed", {
       name: error instanceof Error ? error.name : "UnknownError",

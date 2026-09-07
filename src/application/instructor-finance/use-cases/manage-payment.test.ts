@@ -23,6 +23,38 @@ beforeEach(() => {
 });
 
 describe("membership payments", () => {
+  it("preserves CLP on the payment, adjustments, and balance", async () => {
+    repository.memberships[0].currency = "CLP";
+
+    await recordMembershipPayment(
+      {
+        tenantId,
+        membershipId,
+        amount: 30000,
+        currency: "CLP",
+        method: "transfer",
+        paidAt: new Date("2026-08-22T12:00:00Z"),
+        actorMembershipId,
+        operationId,
+        adjustments: [{ kind: "discount", amount: 1000, reason: "Promo" }],
+      },
+      { payments: repository },
+    );
+
+    await expect(
+      getMembershipBalance(
+        { tenantId, membershipId },
+        { payments: repository },
+      ),
+    ).resolves.toMatchObject({
+      currency: "CLP",
+      contractedAmount: 1000,
+      paidAmount: 30000,
+    });
+    expect(repository.payments[0].currency).toBe("CLP");
+    expect(repository.adjustments[0].currency).toBe("CLP");
+  });
+
   it("calculates adjusted amount and remaining balance", async () => {
     await recordMembershipPayment(
       {
@@ -30,6 +62,7 @@ describe("membership payments", () => {
         membershipId,
         amount: 500,
         currency: "USD",
+        method: "cash",
         paidAt: new Date("2026-08-22T12:00:00Z"),
         reference: "receipt-500",
         actorMembershipId,
@@ -64,6 +97,7 @@ describe("membership payments", () => {
       membershipId,
       amount: 500,
       currency: "USD",
+      method: "card" as const,
       paidAt: new Date("2026-08-22T12:00:00Z"),
       actorMembershipId,
       operationId,
@@ -91,6 +125,7 @@ describe("membership payments", () => {
         membershipId,
         amount: 500,
         currency: "USD",
+        method: "cash",
         paidAt: new Date("2026-08-22T12:00:00Z"),
         actorMembershipId,
         operationId,

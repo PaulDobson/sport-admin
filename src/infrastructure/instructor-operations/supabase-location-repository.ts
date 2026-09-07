@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   Location,
   LocationStatus,
@@ -30,7 +30,7 @@ function toDomain(row: LocationRow): Location {
 }
 
 export class SupabaseLocationRepository implements LocationRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async create(
     input: Parameters<LocationRepositoryPort["create"]>[0],

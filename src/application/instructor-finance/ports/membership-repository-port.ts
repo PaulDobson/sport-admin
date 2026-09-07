@@ -1,5 +1,6 @@
 import type {
   MembershipPlan,
+  MembershipPlanStatus,
   MembershipTransition,
   StudentMembership,
 } from "@/domain/instructor-finance/membership";
@@ -20,6 +21,24 @@ export interface CreateMembershipPlanInput {
   currency: string;
   billingCycle: "monthly" | "quarterly" | "semiannual" | "annual";
   expirationGraceDays: number;
+  benefits: string[];
+}
+
+export interface UpdateMembershipPlanInput {
+  tenantId: string;
+  planId: string;
+  name: string;
+  price: number;
+  currency: string;
+  billingCycle: "monthly" | "quarterly" | "semiannual" | "annual";
+  expirationGraceDays: number;
+  benefits: string[];
+}
+
+export interface SetMembershipPlanStatusInput {
+  tenantId: string;
+  planId: string;
+  status: MembershipPlanStatus;
 }
 
 export interface TransitionMembershipInput {
@@ -33,7 +52,17 @@ export interface TransitionMembershipInput {
 
 export interface MembershipRepositoryPort {
   createPlan(input: CreateMembershipPlanInput): Promise<MembershipPlan>;
+  updatePlan(input: UpdateMembershipPlanInput): Promise<MembershipPlan>;
+  setPlanStatus(input: SetMembershipPlanStatusInput): Promise<MembershipPlan>;
   findActivePlans(tenantId: string): Promise<MembershipPlan[]>;
+  findPlans(
+    tenantId: string,
+    status?: MembershipPlanStatus,
+  ): Promise<MembershipPlan[]>;
+  findPlanById(
+    tenantId: string,
+    planId: string,
+  ): Promise<MembershipPlan | null>;
   create(input: CreateMembershipInput): Promise<StudentMembership>;
   transition(input: TransitionMembershipInput): Promise<StudentMembership>;
   findById(

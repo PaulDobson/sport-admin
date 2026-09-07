@@ -1,7 +1,102 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useId } from "react";
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+} from "react";
+import { Spinner } from "./spinner";
 
 function classes(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
+
+const buttonVariants: Record<ButtonVariant, string> = {
+  primary:
+    "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+  secondary:
+    "border-border bg-surface-raised text-foreground hover:bg-surface-overlay",
+  quiet:
+    "border-transparent bg-transparent text-foreground hover:bg-surface-raised",
+  danger:
+    "border-destructive/35 bg-destructive/10 text-destructive hover:bg-destructive/15",
+};
+
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  isLoading?: boolean;
+}
+
+export function Button({
+  children,
+  className,
+  type = "button",
+  variant = "secondary",
+  isLoading = false,
+  disabled,
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      type={type}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      className={classes(
+        "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+        buttonVariants[variant],
+        className,
+      )}
+      {...props}
+    >
+      {isLoading ? <Spinner className="h-4 w-4 shrink-0" /> : null}
+      {children}
+    </button>
+  );
+}
+
+type SurfaceTone = "default" | "raised" | "subtle";
+
+const surfaceTones: Record<SurfaceTone, string> = {
+  default: "border-border bg-card shadow-lg shadow-black/10",
+  raised: "border-border bg-surface-raised shadow-lg shadow-black/10",
+  subtle: "border-border bg-transparent",
+};
+
+export function Surface({
+  children,
+  className,
+  tone = "default",
+  ...props
+}: HTMLAttributes<HTMLElement> & { tone?: SurfaceTone }) {
+  return (
+    <section
+      className={classes(
+        "rounded-xl border p-4",
+        surfaceTones[tone],
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </section>
+  );
+}
+
+export function FieldControl({
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={classes(
+        "h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground transition-colors placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-45",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -112,6 +207,26 @@ export function StatusBadge({
   );
 }
 
+type SyncStatusTone = "synced" | "offline" | "syncing" | "pending" | "conflict";
+
+const syncStatusTone: Record<SyncStatusTone, StatusTone> = {
+  synced: "success",
+  offline: "neutral",
+  syncing: "info",
+  pending: "warning",
+  conflict: "destructive",
+};
+
+export function SyncStatusBadge({
+  status,
+  children,
+}: {
+  status: SyncStatusTone;
+  children: ReactNode;
+}) {
+  return <StatusBadge tone={syncStatusTone[status]}>{children}</StatusBadge>;
+}
+
 export function EmptyState({
   title,
   description,
@@ -161,12 +276,16 @@ export function Alert({
   children: ReactNode;
   tone?: AlertTone;
 }) {
+  const titleId = useId();
   return (
     <section
       role={tone === "info" ? "status" : "alert"}
+      aria-labelledby={titleId}
       className={classes("rounded-md border p-4", alertClasses[tone])}
     >
-      <h2 className="font-semibold text-foreground">{title}</h2>
+      <h2 id={titleId} className="font-semibold text-foreground">
+        {title}
+      </h2>
       <div className="mt-1 text-sm text-muted-foreground">{children}</div>
     </section>
   );

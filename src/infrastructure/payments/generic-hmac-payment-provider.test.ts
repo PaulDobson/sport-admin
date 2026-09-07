@@ -41,6 +41,60 @@ describe("GenericHmacPaymentProvider", () => {
     );
   });
 
+  it("accepts CLP using the provider's two-decimal transport format", () => {
+    const body = JSON.stringify({
+      id: "event-clp",
+      type: "charge.succeeded",
+      subscriptionId: "subscription-1",
+      invoiceId: "invoice-1",
+      chargeId: "charge-clp",
+      amount: "30000.00",
+      currency: "CLP",
+      occurredAt: "2026-08-22T10:00:00Z",
+    });
+
+    const event = new GenericHmacPaymentProvider(secret).verifyAndNormalize({
+      rawBody: body,
+      signature: sign(body),
+      timestamp,
+      now,
+    });
+
+    expect(event).toEqual(
+      expect.objectContaining({
+        amount: "30000.00",
+        currency: "CLP",
+      }),
+    );
+  });
+
+  it("rejects integer transport amounts and lowercase currencies", () => {
+    for (const [amount, currency] of [
+      ["30000", "CLP"],
+      ["30000.00", "clp"],
+    ]) {
+      const body = JSON.stringify({
+        id: `event-invalid-${amount}-${currency}`,
+        type: "charge.succeeded",
+        subscriptionId: "subscription-1",
+        invoiceId: "invoice-1",
+        chargeId: "charge-invalid",
+        amount,
+        currency,
+        occurredAt: "2026-08-22T10:00:00Z",
+      });
+
+      expect(() =>
+        new GenericHmacPaymentProvider(secret).verifyAndNormalize({
+          rawBody: body,
+          signature: sign(body),
+          timestamp,
+          now,
+        }),
+      ).toThrow(ValidationError);
+    }
+  });
+
   it("rejects invalid signatures and stale timestamps", () => {
     const provider = new GenericHmacPaymentProvider(secret);
     expect(() =>

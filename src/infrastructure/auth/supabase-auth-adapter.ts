@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { AuthPort } from "@/application/auth/ports/auth-port";
 
 /**
@@ -7,7 +7,7 @@ import type { AuthPort } from "@/application/auth/ports/auth-port";
  */
 export class SupabaseAuthAdapter implements AuthPort {
   constructor(
-    private readonly client: SupabaseClient,
+    private readonly client: SupabaseDatabaseClient,
     private readonly siteUrl: string,
   ) {}
 
@@ -48,6 +48,11 @@ export class SupabaseAuthAdapter implements AuthPort {
 
   async updatePassword(password: string): Promise<void> {
     const { error } = await this.client.auth.updateUser({ password });
+    if (error) throw error;
+  }
+
+  async signOut(): Promise<void> {
+    const { error } = await this.client.auth.signOut();
     if (error) throw error;
   }
 

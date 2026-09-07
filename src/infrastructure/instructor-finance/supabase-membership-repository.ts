@@ -1,6 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   BillingCycle,
+  MembershipPlan,
+  MembershipPlanStatus,
   StudentMembership,
   StudentMembershipStatus,
 } from "@/domain/instructor-finance/membership";
@@ -8,8 +10,20 @@ import type {
   CreateMembershipInput,
   CreateMembershipPlanInput,
   MembershipRepositoryPort,
+  SetMembershipPlanStatusInput,
   TransitionMembershipInput,
+  UpdateMembershipPlanInput,
 } from "@/application/instructor-finance/ports/membership-repository-port";
+
+const planColumns =
+  "id,tenant_id,name,price,currency,billing_cycle,expiration_grace_days,benefits,status";
+
+const cycleDurationDays: Record<BillingCycle, number> = {
+  monthly: 30,
+  quarterly: 90,
+  semiannual: 180,
+  annual: 365,
+};
 
 interface MembershipRow {
   id: string;
@@ -39,6 +53,22 @@ interface MembershipPlanRow {
   currency: string;
   billing_cycle: BillingCycle;
   expiration_grace_days: number;
+  benefits: unknown;
+  status: MembershipPlanStatus;
+}
+
+function toPlan(row: MembershipPlanRow): MembershipPlan {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    name: row.name,
+    price: Number(row.price),
+    currency: row.currency,
+    billingCycle: row.billing_cycle,
+    expirationGraceDays: row.expiration_grace_days,
+    benefits: Array.isArray(row.benefits) ? (row.benefits as string[]) : [],
+    status: row.status,
+  };
 }
 
 function toMembership(row: MembershipRow): StudentMembership {
@@ -64,62 +94,98 @@ function toMembership(row: MembershipRow): StudentMembership {
 }
 
 export class SupabaseMembershipRepository implements MembershipRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async createPlan(input: CreateMembershipPlanInput) {
-    const durationDays = {
-      monthly: 30,
-      quarterly: 90,
-      semiannual: 180,
-      annual: 365,
-    }[input.billingCycle];
     const { data, error } = await this.client
       .from("membership_plans")
       .insert({
         tenant_id: input.tenantId,
         name: input.name,
         price: input.price,
-        duration_days: durationDays,
+        duration_days: cycleDurationDays[input.billingCycle],
         currency: input.currency,
         billing_cycle: input.billingCycle,
         expiration_grace_days: input.expirationGraceDays,
+        benefits: input.benefits,
       })
-      .select(
-        "id,tenant_id,name,price,currency,billing_cycle,expiration_grace_days",
-      )
+      .select(planColumns)
       .single();
     if (error) throw error;
-    const row = data as MembershipPlanRow;
-    return {
-      id: row.id,
-      tenantId: row.tenant_id,
-      name: row.name,
-      price: Number(row.price),
-      currency: row.currency,
-      billingCycle: row.billing_cycle,
-      expirationGraceDays: row.expiration_grace_days,
-    };
+    return toPlan(data as unknown as MembershipPlanRow);
+  }
+
+  async updatePlan(input: UpdateMembershipPlanInput) {
+    const { data, error } = await this.client
+      .from("membership_plans")
+      .update({
+        name: input.name,
+        price: input.price,
+        duration_days: cycleDurationDays[input.billingCycle],
+        currency: input.currency,
+        billing_cycle: input.billingCycle,
+        expiration_grace_days: input.expirationGraceDays,
+        benefits: input.benefits,
+      })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.planId)
+      .select(planColumns)
+      .single();
+    if (error) throw error;
+    return toPlan(data as unknown as MembershipPlanRow);
+  }
+
+  async setPlanStatus(input: SetMembershipPlanStatusInput) {
+    const { data, error } = await this.client
+      .from("membership_plans")
+      .update({ status: input.status })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.planId)
+      .select(planColumns)
+      .single();
+    if (error) throw error;
+    return toPlan(data as unknown as MembershipPlanRow);
+  }
+
+  async findPlanById(tenantId: string, planId: string) {
+    const { data, error } = await this.client
+      .from("membership_plans")
+      .select(planColumns)
+      .eq("tenant_id", tenantId)
+      .eq("id", planId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? toPlan(data as unknown as MembershipPlanRow) : null;
+  }
+
+  async findPlans(tenantId: string, status?: MembershipPlanStatus) {
+    const query = this.client
+      .from("membership_plans")
+      .select(`${planColumns},student_memberships(count)`)
+      .eq("tenant_id", tenantId);
+    const { data, error } = await (
+      status ? query.eq("status", status) : query
+    ).order("name");
+    if (error) throw error;
+    return (
+      data as unknown as Array<
+        MembershipPlanRow & { student_memberships: Array<{ count: number }> }
+      >
+    ).map((row) => ({
+      ...toPlan(row),
+      membershipCount: row.student_memberships?.[0]?.count ?? 0,
+    }));
   }
 
   async findActivePlans(tenantId: string) {
     const { data, error } = await this.client
       .from("membership_plans")
-      .select(
-        "id,tenant_id,name,price,currency,billing_cycle,expiration_grace_days",
-      )
+      .select(planColumns)
       .eq("tenant_id", tenantId)
       .eq("status", "active")
       .order("name");
     if (error) throw error;
-    return (data as MembershipPlanRow[]).map((row) => ({
-      id: row.id,
-      tenantId: row.tenant_id,
-      name: row.name,
-      price: Number(row.price),
-      currency: row.currency,
-      billingCycle: row.billing_cycle,
-      expirationGraceDays: row.expiration_grace_days,
-    }));
+    return (data as unknown as MembershipPlanRow[]).map(toPlan);
   }
 
   async create(input: CreateMembershipInput) {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { Button } from "@/presentation/components/primitives";
 import {
   confirmPasswordAction,
   type ConfirmPasswordFormState,
@@ -58,13 +59,14 @@ export function ConfirmPasswordForm() {
           {state.error}
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
-        disabled={pending}
-        className="rounded-lg bg-primary px-4 py-2 text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="py-2"
       >
         {pending ? "Actualizando…" : "Actualizar contraseña"}
-      </button>
+      </Button>
     </form>
   );
 }

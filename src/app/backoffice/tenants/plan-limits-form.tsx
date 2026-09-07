@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/presentation/components/primitives";
 import type {
   SaasPlanOption,
   TenantEntitlementUsage,
@@ -92,13 +93,15 @@ export function PlanLimitsForm({
         Si el nuevo cupo es menor al uso actual, se conservarán los datos y se
         bloquearán nuevas altas.
       </p>
-      <button
+      <Button
         type="submit"
-        disabled={pending || plans.length === 0}
-        className="h-10 w-full rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-50"
+        variant="primary"
+        isLoading={pending}
+        disabled={plans.length === 0}
+        className="h-10 w-full rounded-md"
       >
         {pending ? "Programando..." : "Programar cambio"}
-      </button>
+      </Button>
       {state.error ? (
         <p className="text-sm font-medium text-destructive" role="alert">
           {state.error}

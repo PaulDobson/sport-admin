@@ -4,8 +4,19 @@ import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import { getInstructorDay } from "@/application/instructor-operations/use-cases/get-instructor-day";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { loadOperationalContext } from "@/app/_lib/operational-context";
+import { AppShell, ProductMark } from "@/presentation/components/app-shell";
+import { AccountContextMenu } from "@/presentation/components/account-context-menu";
+import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
+import { CurrentSessionPanel } from "@/presentation/components/current-session-panel";
+import { SessionContextRefresh } from "@/presentation/components/session-context-refresh";
+import { EmptyState, Surface } from "@/presentation/components/primitives";
+import {
+  DesktopNavigation,
+  MobileNavigation,
+} from "@/presentation/components/primary-navigation";
 import { CurrentSessionPrecache } from "./current-session-precache";
 import { OfflineSynchronization } from "./offline-synchronization";
+import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 
 interface DashboardPageProps {
   searchParams: Promise<{ location?: string }>;
@@ -68,151 +79,231 @@ export default async function DashboardPage({
   const membership = context.membership;
 
   const { location } = await searchParams;
+  const auth = await createAuthDeps();
+  const userId = await auth.auth.getCurrentUserId();
+  if (!userId) redirect("/log-in");
   const operations = await createInstructorOperationsDeps();
-  const day = await getInstructorDay(
-    {
-      tenantId: membership.tenantId,
-      locationId: location,
-      now: new Date(),
-    },
-    operations,
+  const [day, profile, tenants] = await Promise.all([
+    getInstructorDay(
+      {
+        tenantId: membership.tenantId,
+        locationId: location,
+        now: new Date(),
+      },
+      operations,
+    ),
+    auth.profiles.findByUserId(userId),
+    auth.tenants.findOperationalByUser(userId),
+  ]);
+
+  const roleLabel =
+    membership.role === "owner"
+      ? "Dueño"
+      : membership.role === "assistant"
+        ? "Asistente"
+        : membership.role === "admin"
+          ? "Administrador"
+          : membership.role;
+
+  const contextPanel = (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border bg-surface-raised p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Estado de jornada
+        </p>
+        <div className="mt-4 space-y-3">
+          <div>
+            <p className="metric-number text-2xl font-semibold text-primary">
+              {day.activeStudents}
+            </p>
+            <p className="text-sm text-muted-foreground">alumnos activos</p>
+          </div>
+          <div>
+            <p className="metric-number text-2xl font-semibold">
+              {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">sesiones abiertas</p>
+          </div>
+        </div>
+      </div>
+
+      <CurrentSessionPanel
+        currentSession={day.currentSession}
+        nextSession={day.upcomingSessions[0]}
+        role={membership.role}
+      />
+    </div>
   );
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      <OfflineSynchronization tenantId={membership.tenantId} />
-      <header className="mb-6 flex items-end justify-between gap-4">
+    <AppShell
+      sidebarHeader={<ProductMark context={roleLabel} />}
+      navigation={<DesktopNavigation role={membership.role} />}
+      mobileNavigation={
+        <MobileNavigation
+          role={membership.role}
+          quickAction={
+            <QuickActionMenu
+              role={membership.role}
+              currentSessionId={day.currentSession?.id}
+            />
+          }
+        />
+      }
+      topbar={
         <div>
-          <p className="mb-1 text-sm font-medium text-primary">Jornada</p>
-          <h1 className="text-3xl font-semibold">Panel operativo</h1>
-        </div>
-        <p className="hidden text-sm text-muted-foreground sm:block">
-          {new Intl.DateTimeFormat("es", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          }).format(new Date())}
-        </p>
-      </header>
-
-      <nav className="mb-6 flex flex-wrap justify-end gap-2">
-        <Link
-          href="/dashboard/students"
-          className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold text-foreground"
-        >
-          Alumnos
-        </Link>
-        <Link
-          href="/dashboard/finance"
-          className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold text-foreground"
-        >
-          Membresías y finanzas
-        </Link>
-        <Link
-          href="/dashboard/reports"
-          className="inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-semibold text-foreground"
-        >
-          Reportes
-        </Link>
-      </nav>
-
-      <section className="mb-6 grid grid-cols-2 border-y border-border sm:grid-cols-3">
-        <div className="py-4">
-          <p className="metric-number text-3xl font-semibold">
-            {day.activeStudents}
+          <p className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-primary">
+            Jornada
           </p>
-          <p className="text-sm text-muted-foreground">Alumnos activos</p>
+          <h1 className="text-xl font-semibold sm:text-2xl">Panel operativo</h1>
         </div>
-        <div className="border-l border-border py-4 pl-4">
-          <p className="metric-number text-3xl font-semibold">
-            {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
-          </p>
-          <p className="text-sm text-muted-foreground">Sesiones abiertas</p>
-        </div>
-        <div className="col-span-2 border-t border-border py-4 sm:col-span-1 sm:border-l sm:border-t-0 sm:pl-4">
-          <p className="metric-number text-3xl font-semibold text-warning">
-            {day.pendingEnrollments}
-          </p>
-          <p className="text-sm text-muted-foreground">En espera</p>
-        </div>
-      </section>
+      }
+      topbarActions={
+        <AccountContextMenu
+          profileName={profile?.fullName || "Tu cuenta"}
+          currentTenantId={membership.tenantId}
+          roleLabel={roleLabel}
+          tenants={tenants.map((tenant) => ({
+            id: tenant.id,
+            name: tenant.name,
+          }))}
+          locations={day.locations}
+          currentLocationId={location}
+        />
+      }
+      context={contextPanel}
+    >
+      <div className="mx-auto max-w-5xl">
+        <OfflineSynchronization tenantId={membership.tenantId} />
+        <SessionContextRefresh
+          boundaryTimes={[
+            ...(day.currentSession
+              ? [
+                  day.currentSession.startsAt.toISOString(),
+                  day.currentSession.endsAt.toISOString(),
+                ]
+              : []),
+            ...(day.upcomingSessions[0]
+              ? [day.upcomingSessions[0].startsAt.toISOString()]
+              : []),
+          ]}
+        />
 
-      <form className="mb-6 flex items-end gap-3" method="get">
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-muted-foreground">
-          Locación
-          <select
-            name="location"
-            defaultValue={location ?? ""}
-            className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
-          >
-            <option value="">Todas</option>
-            {day.locations.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="h-10 rounded-md bg-primary px-4 font-semibold text-primary-foreground"
+        <nav
+          className="mb-6 flex flex-wrap justify-end gap-2"
+          aria-label="Accesos rápidos"
         >
-          Aplicar
-        </button>
-      </form>
-
-      {day.currentSession ? (
-        <section className="mb-8 rounded-lg border border-primary bg-card p-5 shadow-lg shadow-black/10">
-          <CurrentSessionPrecache sessionId={day.currentSession.id} />
-          <p className="mb-3 text-sm font-semibold uppercase text-primary">
-            En curso ahora
-          </p>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-semibold">
-                {day.currentSession.name}
-              </h2>
-              <p className="mt-1 text-muted-foreground">
-                {day.currentSession.locationName} · hasta las{" "}
-                {timeFormatter.format(day.currentSession.endsAt)}
-              </p>
-            </div>
-            <p className="shrink-0 text-right">
-              <span className="metric-number block text-2xl font-semibold">
-                {day.currentSession.confirmedCount}/
-                {day.currentSession.capacity}
-              </span>
-              <span className="text-sm text-muted-foreground">presentes</span>
-            </p>
-          </div>
           <Link
-            href={`/dashboard/sessions/${day.currentSession.id}/attendance`}
-            className="mt-5 inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-primary-foreground"
+            href="/dashboard/students"
+            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
           >
-            Abrir asistencia
+            Alumnos
           </Link>
-        </section>
-      ) : null}
+          <Link
+            href="/dashboard/finance"
+            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
+          >
+            Membresías y finanzas
+          </Link>
+          <Link
+            href="/dashboard/reports"
+            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
+          >
+            Reportes
+          </Link>
+        </nav>
 
-      <section>
-        <div className="mb-2 flex items-baseline justify-between">
-          <h2 className="text-xl font-semibold">Próximas sesiones</h2>
-          <span className="text-sm text-muted-foreground">
-            {day.upcomingSessions.length} programadas
-          </span>
-        </div>
-        {day.upcomingSessions.length > 0 ? (
-          <div className="surface-panel px-4">
-            {day.upcomingSessions.map((session) => (
-              <SessionRow key={session.id} session={session} />
-            ))}
+        <Surface className="mb-6 grid grid-cols-2 gap-0 p-0 sm:grid-cols-3">
+          <div className="p-4">
+            <p className="metric-number text-3xl font-semibold">
+              {day.activeStudents}
+            </p>
+            <p className="text-sm text-muted-foreground">Alumnos activos</p>
           </div>
-        ) : (
-          <p className="border-y border-border py-8 text-center text-muted-foreground">
-            No hay próximas sesiones para este filtro.
-          </p>
-        )}
-      </section>
-    </main>
+          <div className="border-l border-border p-4">
+            <p className="metric-number text-3xl font-semibold">
+              {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
+            </p>
+            <p className="text-sm text-muted-foreground">Sesiones abiertas</p>
+          </div>
+          <div className="col-span-2 border-t border-border p-4 sm:col-span-1 sm:border-l sm:border-t-0">
+            <p className="metric-number text-3xl font-semibold text-warning">
+              {day.pendingEnrollments}
+            </p>
+            <p className="text-sm text-muted-foreground">En espera</p>
+          </div>
+        </Surface>
+
+        <form
+          className="mb-6 flex items-end gap-3"
+          method="get"
+          aria-label="Filtrar jornada"
+        >
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-muted-foreground">
+            Locación
+            <select
+              name="location"
+              defaultValue={location ?? ""}
+              className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
+            >
+              <option value="">Todas</option>
+              {day.locations.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="h-10 rounded-lg bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Aplicar
+          </button>
+        </form>
+
+        {day.currentSession || day.upcomingSessions[0] ? (
+          <div className="mb-8 lg:hidden">
+            {day.currentSession ? (
+              <CurrentSessionPrecache sessionId={day.currentSession.id} />
+            ) : null}
+            <CurrentSessionPanel
+              currentSession={day.currentSession}
+              nextSession={day.upcomingSessions[0]}
+              role={membership.role}
+            />
+          </div>
+        ) : null}
+
+        <section>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-xl font-semibold">Próximas sesiones</h2>
+            <span className="text-sm text-muted-foreground">
+              {day.upcomingSessions.length} programadas
+            </span>
+          </div>
+          {day.upcomingSessions.length > 0 ? (
+            <Surface className="px-4 py-0">
+              {day.upcomingSessions.map((session) => (
+                <SessionRow key={session.id} session={session} />
+              ))}
+            </Surface>
+          ) : (
+            <EmptyState
+              title="Sin próximas sesiones"
+              description="No hay próximas sesiones para este filtro. Cambia la locación o revisa la agenda."
+              action={
+                <Link
+                  href="/dashboard/schedule"
+                  className="inline-flex min-h-10 items-center rounded-lg border border-border px-3 text-sm font-semibold transition-colors hover:bg-surface-raised"
+                >
+                  Ver agenda
+                </Link>
+              }
+            />
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 }

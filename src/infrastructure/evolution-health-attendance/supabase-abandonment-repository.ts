@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type {
   AbandonmentAlert,
   AbandonmentPolicy,
@@ -59,7 +59,7 @@ function alertFromRow(row: AlertRow): AbandonmentAlert {
 }
 
 export class SupabaseAbandonmentRepository implements AbandonmentRepositoryPort {
-  constructor(private readonly client: SupabaseClient) {}
+  constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async savePolicy(policy: AbandonmentPolicy) {
     const { data, error } = await this.client

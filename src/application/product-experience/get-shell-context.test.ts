@@ -45,6 +45,7 @@ describe("getShellContext", () => {
       findByUserId: vi.fn(
         () => new Promise<null>((resolve) => (resolveProfile = resolve)),
       ),
+      updateByUserId: vi.fn(),
     };
     const memberships = {
       create: vi.fn(),
@@ -97,7 +98,10 @@ describe("getShellContext", () => {
         now: new Date(),
       },
       {
-        profiles: { findByUserId: vi.fn().mockResolvedValue(null) },
+        profiles: {
+          findByUserId: vi.fn().mockResolvedValue(null),
+          updateByUserId: vi.fn(),
+        },
         memberships: {
           create: vi.fn(),
           findActiveByUser: vi.fn(),

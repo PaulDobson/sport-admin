@@ -113,6 +113,10 @@ export class FakeAuthPort implements AuthPort {
     this.passwordUpdateCalls.push(password);
   }
 
+  async signOut(): Promise<void> {
+    this.currentUserId = null;
+  }
+
   async getCurrentUserId(): Promise<string | null> {
     return this.currentUserId;
   }
