@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { getStudentHealthHistory } from "@/application/evolution-health-attendance/use-cases/manage-student-health";
 import { getStudentPrivacyState } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
 import { listCurrentMemberships } from "@/application/instructor-finance/use-cases/manage-membership";
@@ -8,263 +9,107 @@ import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
-import { AppShell, ProductMark } from "@/presentation/components/app-shell";
-import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
-import {
-  DesktopNavigation,
-  MobileNavigation,
-} from "@/presentation/components/primary-navigation";
-import { StatusBadge, Surface } from "@/presentation/components/primitives";
+import { Avatar, StatusBadge, Surface } from "@/presentation/components/primitives";
+import { parseStudentListQuery, studentListHref, studentTaskHref, studentLinkClass, type StudentListParams } from "@/presentation/navigation/student-navigation";
 import { formatMoney } from "@/lib/format-money";
-import {
-  ConsentForm,
-  ErasureRequestForm,
-  MembershipForm,
-  PersonalDataCorrectionForm,
-  RestrictionForm,
-} from "./student-detail-forms";
+import { StudentContact, StudentStatus } from "../student-list";
+import { StudentWorkspace } from "../student-workspace";
+import { StudentArchiveButton } from "../student-archive-button";
+import { StudentPortalInviteButton } from "./student-portal-invite-button";
+import { ConsentForm, ErasureRequestForm, MembershipForm, PersonalDataCorrectionForm, RestrictionForm } from "./student-detail-forms";
 
-export default async function StudentDetailPage({
-  params,
-}: {
+export default async function StudentDetailPage({ params, searchParams }: {
   params: Promise<{ studentId: string }>;
+  searchParams: Promise<StudentListParams & { section?: string }>;
 }) {
   const membership = await requireOperationalMembership();
-  const tenantId = membership.tenantId;
   const { studentId } = await params;
-  const today = new Date().toISOString().slice(0, 10);
-  const [operations, finance, health] = await Promise.all([
-    createInstructorOperationsDeps(),
-    createInstructorFinanceDeps(),
-    createEvolutionHealthAttendanceDeps(),
-  ]);
-  const student = await operations.students.findById(tenantId, studentId);
+  const search = await searchParams;
+  const query = parseStudentListQuery(search);
+  const canManage = membership.role !== "assistant";
+  const section = canManage && (search.section === "membership" || search.section === "health" || search.section === "privacy") ? search.section : "summary";
+  const operations = await createInstructorOperationsDeps();
+  const student = await operations.students.findAdministrationRowById(membership.tenantId, studentId);
   if (!student) notFound();
-  const canManageSensitiveData = membership.role !== "assistant";
-  const privacy = canManageSensitiveData
-    ? await getStudentPrivacyState({ tenantId, studentId }, health)
+  const tenantId = membership.tenantId;
+  const today = new Date().toISOString().slice(0, 10);
+  const detailHref = studentTaskHref(`/dashboard/students/${studentId}`, query);
+  const health = section === "health" || section === "privacy" ? await createEvolutionHealthAttendanceDeps() : null;
+  const privacy = health ? await getStudentPrivacyState({ tenantId, studentId }, health) : null;
+  const canAccessHealth = Boolean(privacy?.healthEnabled && privacy.hasCurrentConsent);
+  const history = section === "health" && canAccessHealth && health
+    ? await getStudentHealthHistory({ tenantId, studentId }, health)
     : null;
-  const canAccessHealth = Boolean(
-    privacy?.healthEnabled && privacy.hasCurrentConsent,
-  );
-  const [plans, memberships, history] = await Promise.all([
+  const finance = section === "membership" ? await createInstructorFinanceDeps() : null;
+  const [plans, memberships] = finance ? await Promise.all([
     finance.memberships.findActivePlans(tenantId),
     listCurrentMemberships({ tenantId, studentId, onDate: today }, finance),
-    canAccessHealth
-      ? getStudentHealthHistory({ tenantId, studentId }, health)
-      : Promise.resolve({ conditions: [], injuries: [], restrictions: [] }),
-  ]);
-  const activeRestrictions = history.restrictions.filter(
-    (item) => item.status === "active",
-  );
-  const balanceEntries = canManageSensitiveData
-    ? await Promise.all(
-        memberships.map(async (item) => {
-          const balance = await getMembershipBalance(
-            { tenantId, membershipId: item.id },
-            finance,
-          );
-          return [item.id, balance.balance] as const;
-        }),
-      )
-    : [];
-  const balances = Object.fromEntries(balanceEntries);
-  const roleLabel =
-    membership.role === "owner"
-      ? "Dueño"
-      : membership.role === "assistant"
-        ? "Asistente"
-        : membership.role === "admin"
-          ? "Administrador"
-          : membership.role;
+  ]) : [[], []];
+  const balances = finance ? Object.fromEntries(await Promise.all(memberships.map(async item => [item.id, (await getMembershipBalance({ tenantId, membershipId: item.id }, finance)).balance] as const))) : {};
 
   return (
-    <AppShell
-      sidebarHeader={<ProductMark context={roleLabel} />}
-      navigation={<DesktopNavigation role={membership.role} />}
-      mobileNavigation={
-        <MobileNavigation
-          role={membership.role}
-          quickAction={<QuickActionMenu role={membership.role} />}
-        />
-      }
-      topbar={
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-primary">
-              Alumno
-            </p>
-            <h1 className="text-xl font-semibold sm:text-2xl">
-              {student.fullName}
-            </h1>
+    <div className="mx-auto max-w-5xl">
+      <StudentWorkspace key={`${studentId}-${section}`}>
+        <Link href={studentListHref(query)} className={`${studentLinkClass} mb-4`}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Volver a alumnos</Link>
+        <Surface className="mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 basis-56 items-start gap-3">
+              <Avatar name={student.fullName} src={student.photoUrl} size="lg" />
+              <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ficha del alumno</p><h2 className="mt-1 text-2xl font-bold [overflow-wrap:anywhere]">{student.fullName}</h2><div className="mt-2"><StudentStatus status={student.status} /></div></div>
+            </div>
+            {canManage ? <div className="flex flex-wrap gap-2"><Link href={studentTaskHref(`/dashboard/students/${studentId}/edit`, query)} className={studentLinkClass}><Pencil className="h-4 w-4" aria-hidden="true" />Editar alumno</Link>{student.status === "active" ? <StudentArchiveButton studentId={studentId} studentName={student.fullName} /> : null}</div> : null}
           </div>
-          <Link
-            href="/dashboard/students"
-            className="text-sm font-semibold text-primary"
-          >
-            Volver a alumnos
-          </Link>
-        </div>
-      }
-      topbarActions={
-        <>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold text-foreground"
-            aria-label="Seleccionar tenant"
-          >
-            <span
-              className="h-2 w-2 rounded-full bg-success"
-              aria-hidden="true"
-            />
-            {roleLabel}
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-raised px-3 py-1.5 text-xs font-semibold text-foreground"
-            aria-label="Cuenta"
-          >
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-              {membership.role.slice(0, 1).toUpperCase()}
-            </span>
-            Cuenta
-          </button>
-        </>
-      }
-    >
-      <div className="mx-auto max-w-4xl">
-        <div className="grid gap-8 lg:grid-cols-2">
-          {canManageSensitiveData ? (
-            <section>
-              <h2 className="mb-3 text-xl font-semibold">Membresía</h2>
-              {memberships.length > 0 ? (
-                memberships.map((membershipItem) => (
-                  <Surface key={membershipItem.id} className="mb-3">
-                    <StatusBadge
-                      tone={
-                        membershipItem.status === "past_due"
-                          ? "warning"
-                          : "success"
-                      }
-                    >
-                      {membershipItem.status === "past_due"
-                        ? "En mora"
-                        : "Activa"}
-                    </StatusBadge>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {membershipItem.agreedPrice} {membershipItem.currency} ·
-                      próxima fecha {membershipItem.nextBillingDate}
-                    </p>
-                    <p className="metric-number mt-2 text-lg font-semibold">
-                      Saldo{" "}
-                      {formatMoney(
-                        balances[membershipItem.id] ?? 0,
-                        membershipItem.currency,
-                      )}
-                    </p>
-                    {(balances[membershipItem.id] ?? 0) > 0 ? (
-                      <Link
-                        href="/dashboard/finance?section=collections"
-                        className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary"
-                      >
-                        Registrar cobro
-                      </Link>
-                    ) : null}
-                  </Surface>
-                ))
-              ) : (
-                <MembershipForm
-                  studentId={studentId}
-                  plans={plans}
-                  startsOn={today}
-                />
-              )}
-              {memberships.length === 0 && plans.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Crea un plan de membresía antes de asignarlo.
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-          {canAccessHealth ? (
-            <section>
-              <h2 className="mb-3 text-xl font-semibold">Alertas operativas</h2>
-              {activeRestrictions.map((restriction) => (
-                <article
-                  key={restriction.id}
-                  className="mb-3 grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-border bg-card p-4 shadow-lg shadow-black/10"
-                >
-                  <span
-                    className={`mt-1 h-3 w-3 rounded-full ${restriction.severity === "red" ? "bg-destructive" : restriction.severity === "yellow" ? "bg-warning" : "bg-success"}`}
-                    aria-label={`Nivel ${restriction.severity}`}
-                  />
-                  <div>
-                    <p className="font-semibold">{restriction.description}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {restriction.operationalAction}
-                    </p>
-                  </div>
-                </article>
-              ))}
-              <RestrictionForm studentId={studentId} startsOn={today} />
-            </section>
-          ) : null}
-          {canManageSensitiveData && privacy ? (
-            <section className="grid content-start gap-3 lg:col-span-2">
-              <div>
-                <h2 className="text-xl font-semibold">Privacidad y salud</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Política {privacy.policyVersion ?? "sin configurar"}
-                  {privacy.jurisdictionCode
-                    ? ` · ${privacy.jurisdictionCode}`
-                    : ""}
-                </p>
-              </div>
-              {!privacy.healthEnabled ? (
-                <Surface role="status">
-                  <p className="font-semibold">Datos de salud bloqueados</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    La política jurisdiccional aún no está aprobada y activa.
-                  </p>
-                </Surface>
-              ) : privacy.policyVersion ? (
-                <ConsentForm
-                  studentId={studentId}
-                  policyVersion={privacy.policyVersion}
-                  hasCurrentConsent={privacy.hasCurrentConsent}
-                />
-              ) : null}
-              {privacy.healthEnabled ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <PersonalDataCorrectionForm
-                    studentId={studentId}
-                    fullName={student.fullName}
-                    birthDate={student.birthDate}
-                  />
-                  <div className="grid content-start gap-3">
-                    <a
-                      href={`/api/students/${studentId}/personal-data`}
-                      className="flex h-10 items-center justify-center rounded-lg border border-input bg-background px-4 font-semibold text-foreground transition-colors hover:bg-surface-raised"
-                    >
-                      Exportar datos personales
-                    </a>
-                  </div>
-                </div>
-              ) : null}
-              {privacy.erasureRequest ? (
-                <Surface role="status" className="text-sm">
-                  Solicitud de eliminación: {privacy.erasureRequest.status}.
-                  Ejecución no anterior al{" "}
-                  {privacy.erasureRequest.executeAfter.toLocaleDateString("es")}
-                  .
-                </Surface>
-              ) : (
-                <ErasureRequestForm studentId={studentId} />
-              )}
-            </section>
-          ) : null}
-        </div>
-      </div>
-    </AppShell>
+          {student.status === "archived" ? <p className="mt-4 text-sm text-muted-foreground">Este alumno está archivado. Su historial se conserva.</p> : null}
+        </Surface>
+        <nav aria-label="Secciones de la ficha" className="mb-5 flex flex-wrap gap-2">
+          {([["summary", "Resumen"], ...(canManage ? [["membership", "Membresía"], ["health", "Salud"], ["privacy", "Privacidad"]] : [])]).map(([value, label]) => <Link key={value} href={`${detailHref}&section=${value}`} aria-current={section === value ? "page" : undefined} className={`${studentLinkClass} ${section === value ? "border-primary/30 bg-primary/10 text-primary" : "bg-card text-muted-foreground"}`}>{label}</Link>)}
+        </nav>
+        {section === "summary" ? (
+          <div className="grid min-w-0 gap-5 lg:grid-cols-2">
+            <Surface className="min-w-0">
+              <h3 className="text-lg font-semibold">Datos del alumno</h3>
+              <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div><dt className="text-muted-foreground">Nacimiento</dt><dd className="mt-1 font-medium">{student.birthDate ?? "No registrado"}</dd></div>
+                <div><dt className="text-muted-foreground">Género</dt><dd className="mt-1 font-medium">{student.gender === "female" ? "Femenino" : student.gender === "male" ? "Masculino" : student.gender === "other" ? "Otro" : "Sin especificar"}</dd></div>
+                <div><dt className="text-muted-foreground">Estatura</dt><dd className="mt-1 font-medium">{student.heightCm === null ? "No registrada" : `${student.heightCm} cm`}</dd></div>
+                <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-medium">{student.weightKg === null ? "No registrado" : `${student.weightKg} kg`}</dd></div>
+              </dl>
+              <h3 className="mb-3 mt-6 font-semibold">Contacto principal</h3>
+              <StudentContact student={student} />
+            </Surface>
+            {canManage ? <div className="min-w-0 space-y-5">
+              <Surface className="min-w-0"><h3 className="text-lg font-semibold">Contacto de emergencia</h3><dl className="mt-4 grid gap-3 text-sm">{[["Nombre", student.emergencyContactName], ["Correo", student.emergencyContactEmail], ["Teléfono", student.emergencyContactPhone]].map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="break-all font-medium">{value ?? "No registrado"}</dd></div>)}</dl></Surface>
+              <StudentPortalInviteButton studentId={studentId} />
+            </div> : null}
+          </div>
+        ) : null}
+        {section === "membership" ? <section aria-labelledby="membership-heading" className="space-y-4">
+          <div><h3 id="membership-heading" className="text-xl font-semibold">Membresía</h3><p className="mt-1 text-sm text-muted-foreground">Planes, próximos vencimientos y saldo del alumno.</p></div>
+          {memberships.length ? <div className="grid gap-4 sm:grid-cols-2">{memberships.map(item => <Surface key={item.id}>
+            <StatusBadge tone={item.status === "past_due" ? "warning" : "success"}>{item.status === "past_due" ? "En mora" : "Activa"}</StatusBadge>
+            <p className="mt-3 text-sm text-muted-foreground">{formatMoney(item.agreedPrice, item.currency)} · próxima fecha {item.nextBillingDate}</p>
+            <p className="metric-number mt-3 text-xl font-semibold">Saldo {formatMoney(balances[item.id] ?? 0, item.currency)}</p>
+            {(balances[item.id] ?? 0) > 0 ? <Link href="/dashboard/finance?section=collections" className={`${studentLinkClass} mt-4 text-primary`}>Registrar cobro</Link> : null}
+          </Surface>)}</div> : <div className="max-w-xl"><MembershipForm studentId={studentId} plans={plans} startsOn={today} />{plans.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Crea un plan de membresía antes de asignarlo.</p> : null}</div>}
+        </section> : null}
+        {section === "health" ? <section aria-labelledby="health-heading" className="space-y-4">
+          <h3 id="health-heading" className="text-xl font-semibold">Salud y alertas operativas</h3>
+          {!canAccessHealth ? <Surface><h4 className="font-semibold">Datos de salud bloqueados</h4><p className="mt-2 text-sm text-muted-foreground">{!privacy?.healthEnabled ? "La política de salud aún no está aprobada y activa." : "Se requiere el consentimiento vigente del alumno o su tutor."}</p><Link href={`${detailHref}&section=privacy`} className={`${studentLinkClass} mt-4`}>Gestionar privacidad y consentimiento</Link></Surface> : <div className="grid gap-5 lg:grid-cols-2">
+            <div className="space-y-3">
+              {history?.conditions.filter(item => item.status === "active" && item.name === "Alergias").map(item => <Surface key={item.id}><h4 className="font-semibold">{item.name}</h4>{item.notes ? <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{item.notes}</p> : null}</Surface>)}
+              {history?.restrictions.filter(item => item.status === "active").map(item => <Surface key={item.id}><StatusBadge tone={item.severity === "red" ? "destructive" : item.severity === "yellow" ? "warning" : "success"}>{item.severity === "red" ? "Nivel rojo" : item.severity === "yellow" ? "Nivel amarillo" : "Nivel verde"}</StatusBadge><p className="mt-3 break-words font-semibold">{item.description}</p><p className="mt-1 break-words text-sm text-muted-foreground">{item.operationalAction}</p></Surface>)}
+              {!history?.restrictions.some(item => item.status === "active") && !history?.conditions.some(item => item.status === "active" && item.name === "Alergias") ? <Surface><p className="text-sm text-muted-foreground">No hay alergias ni restricciones activas registradas.</p></Surface> : null}
+            </div>
+            <div><h4 className="mb-3 font-semibold">Registrar alerta</h4><RestrictionForm studentId={studentId} startsOn={today} /></div>
+          </div>}
+        </section> : null}
+        {section === "privacy" && privacy ? <section aria-labelledby="privacy-heading" className="space-y-5">
+          <div><h3 id="privacy-heading" className="text-xl font-semibold">Privacidad y consentimiento</h3><p className="mt-1 text-sm text-muted-foreground">Política {privacy.policyVersion ?? "sin configurar"}{privacy.jurisdictionCode ? ` · ${privacy.jurisdictionCode}` : ""}</p></div>
+          {!privacy.healthEnabled ? <Surface role="status"><p className="font-semibold">Datos de salud bloqueados</p><p className="mt-2 text-sm text-muted-foreground">La política jurisdiccional aún no está aprobada y activa.</p></Surface> : privacy.policyVersion ? <ConsentForm studentId={studentId} policyVersion={privacy.policyVersion} hasCurrentConsent={privacy.hasCurrentConsent} /> : null}
+          {privacy.healthEnabled ? <div className="grid gap-5 lg:grid-cols-2"><div><h4 className="mb-3 font-semibold">Corrección de datos personales</h4><PersonalDataCorrectionForm studentId={studentId} fullName={student.fullName} birthDate={student.birthDate} /></div><Surface><h4 className="font-semibold">Portabilidad de datos</h4><p className="mt-2 text-sm text-muted-foreground">Descarga los datos personales de esta ficha.</p><a href={`/api/students/${studentId}/personal-data`} download className={`${studentLinkClass} mt-4`}>Exportar datos personales</a></Surface></div> : null}
+          <Surface><h4 className="font-semibold">Solicitud de eliminación de datos</h4><p className="mb-4 mt-2 text-sm text-muted-foreground">Este proceso de privacidad es distinto de archivar al alumno.</p>{privacy.erasureRequest ? <p role="status" className="text-sm">Solicitud de eliminación: {privacy.erasureRequest.status}. Ejecución no anterior al {privacy.erasureRequest.executeAfter.toLocaleDateString("es-CL")}.</p> : <ErasureRequestForm studentId={studentId} />}</Surface>
+        </section> : null}
+      </StudentWorkspace>
+    </div>
   );
 }

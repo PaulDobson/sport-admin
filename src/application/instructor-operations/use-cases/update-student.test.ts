@@ -7,7 +7,7 @@ import { FakeStudentRepository } from "../testing/fakes";
 const tenantId = "10000000-0000-4000-8000-000000000001";
 
 describe("updateStudent", () => {
-  it("updates basic student data and replaces the primary contact", async () => {
+  it("updates the student profile and both contact fields", async () => {
     const students = new FakeStudentRepository();
     const { student } = await createStudent(
       {
@@ -24,11 +24,15 @@ describe("updateStudent", () => {
         studentId: student.id,
         fullName: "  Ana Bravo  ",
         birthDate: "1994-04-10",
-        primaryContact: {
-          type: "email",
-          label: "Personal",
-          value: " ana@example.com ",
-        },
+        photoUrl: "https://example.com/ana.jpg",
+        gender: "female",
+        heightCm: "164",
+        weightKg: "58.2",
+        emergencyContactName: "  Alex Bravo ",
+        emergencyContactEmail: "alex@example.com",
+        emergencyContactPhone: "+56 9 1234 5678",
+        contactEmail: " ana@example.com ",
+        contactPhone: "+56 9 8765 4321 ",
       },
       { students },
     );
@@ -36,12 +40,25 @@ describe("updateStudent", () => {
     expect(result.student).toMatchObject({
       fullName: "Ana Bravo",
       birthDate: "1994-04-10",
+      photoUrl: "https://example.com/ana.jpg",
+      gender: "female",
+      heightCm: 164,
+      weightKg: 58.2,
+      emergencyContactName: "Alex Bravo",
+      emergencyContactEmail: "alex@example.com",
+      emergencyContactPhone: "+56 9 1234 5678",
     });
     expect(result.contacts).toEqual([
       expect.objectContaining({
         type: "email",
-        label: "Personal",
+        label: null,
         value: "ana@example.com",
+        isPrimary: true,
+      }),
+      expect.objectContaining({
+        type: "phone",
+        label: null,
+        value: "+56 9 8765 4321",
         isPrimary: true,
       }),
     ]);
@@ -57,7 +74,15 @@ describe("updateStudent", () => {
           studentId: "student-1",
           fullName: " ",
           birthDate: null,
-          primaryContact: null,
+          photoUrl: null,
+          gender: null,
+          heightCm: null,
+          weightKg: null,
+          emergencyContactName: null,
+          emergencyContactEmail: null,
+          emergencyContactPhone: null,
+          contactEmail: null,
+          contactPhone: null,
         },
         { students },
       ),

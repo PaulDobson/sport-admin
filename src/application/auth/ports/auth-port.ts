@@ -4,6 +4,7 @@ export interface AuthPort {
     email: string;
     password: string;
     fullName: string;
+    emailRedirectTo?: string;
   }): Promise<{ userId: string }>;
   signInWithPassword(input: {
     email: string;

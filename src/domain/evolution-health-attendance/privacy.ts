@@ -24,4 +24,9 @@ export interface StudentPrivacyState {
   };
 }
 
+export interface TenantHealthPolicy {
+  healthEnabled: boolean;
+  policyVersion?: string;
+}
+
 export type StudentPersonalDataExport = Record<string, unknown>;

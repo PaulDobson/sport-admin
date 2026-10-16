@@ -44,6 +44,16 @@ export function getStudentPrivacyState(
   return deps.privacy.getStudentState(parsed.tenantId, parsed.studentId);
 }
 
+const tenantSchema = z.object({ tenantId: z.string().uuid() });
+
+export function getTenantHealthPolicy(
+  input: z.input<typeof tenantSchema>,
+  deps: { privacy: PrivacyRepositoryPort },
+) {
+  const parsed = parseWithSchema(tenantSchema, input);
+  return deps.privacy.getTenantHealthPolicy(parsed.tenantId);
+}
+
 export function registerStudentHealthConsent(
   input: z.input<typeof consentSchema>,
   deps: { privacy: PrivacyRepositoryPort },

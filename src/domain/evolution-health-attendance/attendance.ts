@@ -5,6 +5,7 @@ export interface AttendanceParticipant {
   studentName: string;
   currentStatus?: AttendanceStatus;
   note?: string;
+  withoutReservation?: boolean;
 }
 
 export interface AttendanceRecord {

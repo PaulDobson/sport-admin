@@ -1,92 +1,29 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Save } from "lucide-react";
+import { Button } from "@/presentation/components/primitives";
+import { parseStudentListQuery, studentTaskHref, studentLinkClass, type StudentListQuery } from "@/presentation/navigation/student-navigation";
 import { updateStudentAction, type StudentFormState } from "../../actions";
+import { StudentFields, type StudentBasicFields } from "../../student-fields";
+import { StudentActionForm } from "../../student-workspace";
 
 const initialState: StudentFormState = { error: null, saved: false };
 
-export function StudentEditForm({
-  student,
-}: {
-  student: {
-    id: string;
-    fullName: string;
-    birthDate: string | null;
-    primaryContact: {
-      type: "email" | "phone" | "emergency";
-      value: string;
-    } | null;
-  };
-}) {
-  const [state, formAction, pending] = useActionState(
-    updateStudentAction,
-    initialState,
-  );
-
+export function StudentEditForm({ student, query = parseStudentListQuery({}) }: { student: StudentBasicFields & { id: string }; query?: StudentListQuery }) {
+  const [state, formAction, pending] = useActionState(updateStudentAction, initialState);
   return (
-    <form
-      action={formAction}
-      className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-lg shadow-black/10 sm:grid-cols-2"
-    >
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="space-y-4">
       <input type="hidden" name="studentId" value={student.id} />
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Nombre completo
-        <input
-          name="fullName"
-          required
-          defaultValue={student.fullName}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Fecha de nacimiento
-        <input
-          name="birthDate"
-          type="date"
-          defaultValue={student.birthDate ?? ""}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Tipo de contacto principal
-        <select
-          name="contactType"
-          defaultValue={student.primaryContact?.type ?? "phone"}
-          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
-        >
-          <option value="phone">Teléfono</option>
-          <option value="email">Email</option>
-          <option value="emergency">Emergencia</option>
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Contacto principal
-        <input
-          name="contactValue"
-          defaultValue={student.primaryContact?.value ?? ""}
-          placeholder="Opcional"
-          className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
-        />
-      </label>
-      {state.error ? (
-        <p role="alert" className="text-sm text-destructive sm:col-span-2">
-          {state.error}
-        </p>
-      ) : null}
-      {state.saved ? (
-        <p role="status" className="text-sm text-success sm:col-span-2">
-          Alumno actualizado.
-        </p>
-      ) : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60 sm:col-start-2"
-      >
-        <Save className="h-4 w-4" aria-hidden="true" />
-        {pending ? "Guardando..." : "Guardar cambios"}
-      </button>
-    </form>
+      <fieldset disabled={pending} className="min-w-0"><StudentFields student={student} /></fieldset>
+      <p className="text-sm text-muted-foreground">Las alertas de salud y los consentimientos se administran desde la ficha.</p>
+      {state.error ? <p role="alert" className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{state.error}</p> : null}
+      {state.saved ? <p role="status" className="rounded-lg bg-success/10 p-4 text-sm text-success">Alumno actualizado.</p> : null}
+      <div className="flex flex-wrap justify-end gap-3">
+        <Link href={studentTaskHref(`/dashboard/students/${student.id}`, query)} className={studentLinkClass}>{state.saved ? "Volver a la ficha" : "Cancelar"}</Link>
+        <Button type="submit" variant="primary" isLoading={pending} className="min-h-11"><Save className="h-4 w-4" aria-hidden="true" />{pending ? "Guardando..." : "Guardar cambios"}</Button>
+      </div>
+    </StudentActionForm>
   );
 }

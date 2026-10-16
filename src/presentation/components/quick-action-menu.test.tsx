@@ -13,6 +13,7 @@ describe("QuickActionMenu", () => {
       screen.getByRole("menuitem", { name: "Abrir asistencia" }),
     ).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Ver agenda" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Nuevo alumno" }).getAttribute("href")).toBe("/dashboard/students/new");
   });
 
   it("does not offer attendance when there is no current session", () => {
@@ -23,5 +24,6 @@ describe("QuickActionMenu", () => {
       screen.queryByRole("menuitem", { name: "Abrir asistencia" }),
     ).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Ver agenda" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Nuevo alumno" })).toBeNull();
   });
 });

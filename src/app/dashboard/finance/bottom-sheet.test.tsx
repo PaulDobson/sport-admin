@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { BottomSheet } from "./bottom-sheet";
 
@@ -64,5 +64,43 @@ describe("bottom sheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cobrar" }));
     fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("escapes transformed catalog ancestors and restores scrolling and focus after dismissal", () => {
+    const { container } = render(
+      <section style={{ transform: "translateY(0)", overflow: "hidden" }}>
+        <BottomSheet title="Editar plan" trigger="Editar">
+          <input aria-label="Nombre" />
+        </BottomSheet>
+      </section>,
+    );
+    const trigger = screen.getByRole("button", { name: "Editar" });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog");
+    expect(container.contains(dialog)).toBe(false);
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar panel" }));
+    expect(document.body.style.overflow).toBe("");
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("keeps keyboard focus inside the editor in both directions", () => {
+    render(
+      <BottomSheet title="Editar plan" trigger="Editar">
+        <input aria-label="Nombre" />
+        <button disabled>Guardar</button>
+      </BottomSheet>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const dialog = screen.getByRole("dialog");
+    const first = within(dialog).getByRole("textbox");
+    const last = within(dialog).getByRole("button", { name: "Cerrar" });
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
   });
 });

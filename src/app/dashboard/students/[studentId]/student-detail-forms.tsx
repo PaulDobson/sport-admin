@@ -2,6 +2,9 @@
 
 import { useActionState } from "react";
 import type { MembershipPlan } from "@/domain/instructor-finance/membership";
+import { Button } from "@/presentation/components/primitives";
+import { StudentActionForm } from "../student-workspace";
+import { StudentCheckbox, StudentField, StudentSelect } from "../student-fields";
 import {
   activateMembershipAction,
   correctPersonalDataAction,
@@ -43,14 +46,14 @@ export function MembershipForm({
     initialState,
   );
   return (
-    <form action={formAction} className="surface-panel grid gap-4 p-4">
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
       <input type="hidden" name="studentId" value={studentId} />
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Plan
-        <select
+        <StudentSelect
           name="planId"
           required
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         >
           <option value="">Selecciona un plan</option>
           {plans.map((plan) => (
@@ -58,27 +61,29 @@ export function MembershipForm({
               {plan.name} · {plan.price} {plan.currency}
             </option>
           ))}
-        </select>
+        </StudentSelect>
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Inicio
-        <input
+        <StudentField
           type="date"
           name="startsOn"
           required
           defaultValue={startsOn}
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
       <Feedback state={state} />
-      <button
+      <Button
         type="submit"
         disabled={pending || plans.length === 0}
-        className="h-10 rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="min-h-11"
       >
         {pending ? "Asignando..." : "Asignar membresía"}
-      </button>
-    </form>
+      </Button>
+    </StudentActionForm>
   );
 }
 
@@ -94,65 +99,67 @@ export function RestrictionForm({
     initialState,
   );
   return (
-    <form action={formAction} className="surface-panel grid gap-4 p-4">
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
       <input type="hidden" name="studentId" value={studentId} />
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Nivel
-        <select
+        <StudentSelect
           name="severity"
           defaultValue="yellow"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         >
           <option value="green">Verde</option>
           <option value="yellow">Amarillo</option>
           <option value="red">Rojo</option>
-        </select>
+        </StudentSelect>
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Motivo
-        <input
+        <StudentField
           name="description"
           required
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Acción operativa
-        <input
+        <StudentField
           name="operationalAction"
           required
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm text-muted-foreground">
           Desde
-          <input
+          <StudentField
             type="date"
             name="startsOn"
             required
             defaultValue={startsOn}
-            className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
+            className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-muted-foreground">
           Hasta
-          <input
+          <StudentField
             type="date"
             name="endsOn"
-            className="h-10 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
+            className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
           />
         </label>
       </div>
       <Feedback state={state} />
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="h-10 rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="min-h-11"
       >
         {pending ? "Guardando..." : "Guardar alerta"}
-      </button>
-    </form>
+      </Button>
+    </StudentActionForm>
   );
 }
 
@@ -171,18 +178,17 @@ export function ConsentForm({
   );
   const decision = hasCurrentConsent ? "revoked" : "granted";
   return (
-    <form action={formAction} className="surface-panel grid gap-4 p-4">
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
       <input type="hidden" name="studentId" value={studentId} />
       <input type="hidden" name="policyVersion" value={policyVersion} />
       <input type="hidden" name="decision" value={decision} />
       {!hasCurrentConsent ? (
-        <label className="flex items-start gap-3 text-sm text-foreground">
-          <input
-            type="checkbox"
+        <label className="flex min-h-11 items-start gap-3 text-sm text-foreground">
+          <StudentCheckbox
             name="representedConsentConfirmed"
             value="confirmed"
             required
-            className="mt-1 h-4 w-4"
+            className="mt-1 h-5 w-5 shrink-0"
           />
           Confirmo que el alumno o su tutor otorgó consentimiento explícito para
           tratar datos de salud bajo la política {policyVersion}.
@@ -193,10 +199,11 @@ export function ConsentForm({
         </p>
       )}
       <Feedback state={state} />
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className={`h-10 rounded-md px-4 font-semibold disabled:opacity-60 ${
+        isLoading={pending}
+        className={`min-h-11 rounded-md px-4 font-semibold disabled:opacity-60 ${
           hasCurrentConsent
             ? "border border-input bg-background text-foreground"
             : "bg-primary text-primary-foreground"
@@ -207,8 +214,8 @@ export function ConsentForm({
           : hasCurrentConsent
             ? "Revocar consentimiento"
             : "Registrar consentimiento"}
-      </button>
-    </form>
+      </Button>
+    </StudentActionForm>
   );
 }
 
@@ -226,35 +233,37 @@ export function PersonalDataCorrectionForm({
     initialState,
   );
   return (
-    <form action={formAction} className="surface-panel grid gap-4 p-4">
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
       <input type="hidden" name="studentId" value={studentId} />
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Nombre completo
-        <input
+        <StudentField
           name="fullName"
           required
           defaultValue={fullName}
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
       <label className="flex flex-col gap-1 text-sm text-muted-foreground">
         Fecha de nacimiento
-        <input
+        <StudentField
           type="date"
           name="birthDate"
           defaultValue={birthDate ?? ""}
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
         />
       </label>
       <Feedback state={state} />
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="h-10 rounded-md bg-primary px-4 font-semibold text-primary-foreground disabled:opacity-60"
+        variant="primary"
+        isLoading={pending}
+        className="min-h-11"
       >
         {pending ? "Corrigiendo..." : "Corregir datos"}
-      </button>
-    </form>
+      </Button>
+    </StudentActionForm>
   );
 }
 
@@ -264,7 +273,7 @@ export function ErasureRequestForm({ studentId }: { studentId: string }) {
     initialState,
   );
   return (
-    <form action={formAction} className="surface-panel grid gap-4 p-4">
+    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
       <input type="hidden" name="studentId" value={studentId} />
       <input type="hidden" name="reason" value="subject_request" />
       <p className="text-sm text-muted-foreground">
@@ -272,13 +281,15 @@ export function ErasureRequestForm({ studentId }: { studentId: string }) {
         mientras exista una retención aplicable.
       </p>
       <Feedback state={state} />
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="h-10 rounded-md border border-destructive bg-background px-4 font-semibold text-destructive disabled:opacity-60"
+        variant="danger"
+        isLoading={pending}
+        className="min-h-11"
       >
         {pending ? "Solicitando..." : "Solicitar eliminación"}
-      </button>
-    </form>
+      </Button>
+    </StudentActionForm>
   );
 }

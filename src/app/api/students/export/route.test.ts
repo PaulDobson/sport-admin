@@ -57,12 +57,8 @@ describe("GET /api/students/export", () => {
           status: "active",
           createdAt: new Date("2026-09-01T00:00:00.000Z"),
           archivedAt: null,
-          primaryContact: {
-            type: "email",
-            label: null,
-            value: "ana@example.com",
-            isPrimary: true,
-          },
+          contactEmail: "ana@example.com",
+          contactPhone: "+56 9 1111",
         },
       ],
     });
@@ -96,7 +92,8 @@ describe("GET /api/students/export", () => {
     const worksheet = workbook.getWorksheet("Alumnos");
     expect(worksheet?.getCell("B1").value).toBe("Academia Norte");
     expect(worksheet?.getCell("A10").value).toBe("Ana Bravo");
-    expect(worksheet?.getCell("B10").value).toBe("Email: ana@example.com");
+    expect(worksheet?.getCell("B10").value).toBe("+56 9 1111");
+    expect(worksheet?.getCell("C10").value).toBe("ana@example.com");
   });
 
   it("rejects student export for assistants", async () => {
@@ -112,5 +109,16 @@ describe("GET /api/students/export", () => {
 
     expect(response.status).toBe(403);
     expect(listStudentsForAdministration).not.toHaveBeenCalled();
+  });
+
+  it("writes the normalized page returned by the shared query and supports empty exports", async () => {
+    listStudentsForAdministration.mockResolvedValue({ page: 1, pageSize: 10, total: 0, rows: [] });
+    const response = await GET(new Request("http://localhost/api/students/export?page=999"));
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await response.arrayBuffer());
+    const sheet = workbook.getWorksheet("Alumnos");
+    expect(sheet?.getCell("B6").value).toBe("1");
+    expect(sheet?.getCell("A9").value).toBe("Nombre");
+    expect(sheet?.getCell("A10").value).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ import {
   getSupabaseUrl,
 } from "@/infrastructure/supabase/env";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/onboarding"];
+const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/portal"];
 
 /**
  * Refreshes the Supabase session cookie on every request and redirects
@@ -27,13 +27,23 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
-    request.nextUrl.pathname.startsWith(prefix),
+  const user = await supabase.auth.getUser().then(
+    ({ data }) => data.user,
+    () => {
+      // A stale/invalid refresh token cookie was rejected by Supabase; treat as signed out
+      // and drop the cookie so it isn't resent on every subsequent request.
+      for (const cookie of request.cookies.getAll())
+        if (cookie.name.startsWith("sb-")) response.cookies.delete(cookie.name);
+      return null;
+    },
   );
+
+  const isPublicPortalInvite = request.nextUrl.pathname === "/portal/accept";
+  const isProtected =
+    !isPublicPortalInvite &&
+    PROTECTED_PREFIXES.some((prefix) =>
+      request.nextUrl.pathname.startsWith(prefix),
+    );
   if (isProtected && !user) {
     const redirectUrl = new URL("/log-in", request.url);
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);
@@ -44,5 +54,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/onboarding/:path*"],
+  matcher: ["/dashboard/:path*", "/onboarding/:path*", "/portal/:path*"],
 };

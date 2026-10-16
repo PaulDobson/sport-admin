@@ -2,7 +2,9 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   CircleDollarSign,
+  Dumbbell,
   House,
+  Repeat2,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -15,6 +17,47 @@ export interface NavigationDestination {
   icon: LucideIcon;
   mobile: boolean;
   roles?: readonly TenantMembershipRole[];
+}
+
+export type ScheduleSection = "sessions" | "programming" | "disciplines";
+
+const scheduleSections: ReadonlyArray<{
+  id: ScheduleSection;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  roles?: readonly TenantMembershipRole[];
+}> = [
+  { id: "sessions", label: "Sesiones", href: "/dashboard/schedule", icon: CalendarDays },
+  {
+    id: "programming",
+    label: "Programación",
+    href: "/dashboard/schedule/programming",
+    icon: Repeat2,
+    roles: ["owner", "admin", "instructor"],
+  },
+  {
+    id: "disciplines",
+    label: "Disciplinas",
+    href: "/dashboard/disciplines",
+    icon: Dumbbell,
+  },
+];
+
+export function scheduleSectionsForRole(role: TenantMembershipRole) {
+  return scheduleSections.filter(
+    (section) => !section.roles || section.roles.includes(role),
+  );
+}
+
+export function activeScheduleSection(pathname: string): ScheduleSection | null {
+  if (pathname === "/dashboard/disciplines") return "disciplines";
+  if (pathname === "/dashboard/schedule/programming") return "programming";
+  if (
+    pathname === "/dashboard/schedule" ||
+    /^\/dashboard\/sessions\/[^/]+\/attendance\/?$/.test(pathname)
+  ) return "sessions";
+  return null;
 }
 
 export const operationalDestinations: readonly NavigationDestination[] = [
@@ -66,6 +109,7 @@ export function isDestinationActive(
   pathname: string,
 ) {
   if (destination.id === "home") return pathname === destination.href;
+  if (destination.id === "schedule" && activeScheduleSection(pathname)) return true;
   return (
     pathname === destination.href || pathname.startsWith(`${destination.href}/`)
   );

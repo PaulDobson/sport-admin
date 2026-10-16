@@ -21,6 +21,12 @@ interface StudentRow {
   full_name: string;
   photo_url: string | null;
   birth_date: string | null;
+  gender: "female" | "male" | "other" | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  emergency_contact_name: string | null;
+  emergency_contact_email: string | null;
+  emergency_contact_phone: string | null;
   status: StudentStatus;
   archived_at: string | null;
   created_at: string;
@@ -45,6 +51,12 @@ function toStudent(row: StudentRow): Student {
     fullName: row.full_name,
     photoUrl: row.photo_url,
     birthDate: row.birth_date,
+    gender: row.gender,
+    heightCm: row.height_cm,
+    weightKg: row.weight_kg,
+    emergencyContactName: row.emergency_contact_name,
+    emergencyContactEmail: row.emergency_contact_email,
+    emergencyContactPhone: row.emergency_contact_phone,
     status: row.status,
     archivedAt: row.archived_at ? new Date(row.archived_at) : null,
     createdAt: new Date(row.created_at),
@@ -67,24 +79,31 @@ function toContact(row: StudentContactRow): StudentContact {
 
 function toAdministrationRow(
   row: StudentRow,
-  primaryContact: StudentContactRow | null,
+  primaryContacts: StudentContactRow[],
 ): StudentAdministrationRow {
+  const emailContact = primaryContacts.find(
+    (contact) => contact.type === "email",
+  );
+  const phoneContact = primaryContacts.find(
+    (contact) => contact.type === "phone",
+  );
   return {
     id: row.id,
     tenantId: row.tenant_id,
     fullName: row.full_name,
     birthDate: row.birth_date,
+    photoUrl: row.photo_url,
+    gender: row.gender,
+    heightCm: row.height_cm,
+    weightKg: row.weight_kg,
+    emergencyContactName: row.emergency_contact_name,
+    emergencyContactEmail: row.emergency_contact_email,
+    emergencyContactPhone: row.emergency_contact_phone,
     status: row.status,
     archivedAt: row.archived_at ? new Date(row.archived_at) : null,
     createdAt: new Date(row.created_at),
-    primaryContact: primaryContact
-      ? {
-          type: primaryContact.type,
-          label: primaryContact.label,
-          value: primaryContact.value,
-          isPrimary: primaryContact.is_primary,
-        }
-      : null,
+    contactEmail: emailContact?.value ?? null,
+    contactPhone: phoneContact?.value ?? null,
   };
 }
 
@@ -99,6 +118,12 @@ export class SupabaseStudentRepository implements StudentRepositoryPort {
         full_name: input.fullName,
         photo_url: input.photoUrl,
         birth_date: input.birthDate,
+        gender: input.gender,
+        height_cm: input.heightCm,
+        weight_kg: input.weightKg,
+        emergency_contact_name: input.emergencyContactName,
+        emergency_contact_email: input.emergencyContactEmail,
+        emergency_contact_phone: input.emergencyContactPhone,
       })
       .select()
       .single();
@@ -158,6 +183,13 @@ export class SupabaseStudentRepository implements StudentRepositoryPort {
       .update({
         full_name: input.fullName,
         birth_date: input.birthDate,
+        photo_url: input.photoUrl,
+        gender: input.gender,
+        height_cm: input.heightCm,
+        weight_kg: input.weightKg,
+        emergency_contact_name: input.emergencyContactName,
+        emergency_contact_email: input.emergencyContactEmail,
+        emergency_contact_phone: input.emergencyContactPhone,
       })
       .eq("tenant_id", input.tenantId)
       .eq("id", input.studentId)
@@ -172,20 +204,31 @@ export class SupabaseStudentRepository implements StudentRepositoryPort {
       .eq("tenant_id", input.tenantId)
       .eq("student_id", input.studentId)
       .eq("status", "active")
-      .eq("is_primary", true);
+      .eq("is_primary", true)
+      .in("type", ["email", "phone"]);
     if (archiveContactsError) throw archiveContactsError;
 
-    if (input.primaryContact) {
+    const contactsToInsert = [
+      ...(input.contactEmail
+        ? [{ type: "email" as const, value: input.contactEmail }]
+        : []),
+      ...(input.contactPhone
+        ? [{ type: "phone" as const, value: input.contactPhone }]
+        : []),
+    ];
+    if (contactsToInsert.length > 0) {
       const { error: insertContactError } = await this.client
         .from("student_contacts")
-        .insert({
-          tenant_id: input.tenantId,
-          student_id: input.studentId,
-          type: input.primaryContact.type,
-          label: input.primaryContact.label,
-          value: input.primaryContact.value,
-          is_primary: true,
-        });
+        .insert(
+          contactsToInsert.map((contact) => ({
+            tenant_id: input.tenantId,
+            student_id: input.studentId,
+            type: contact.type,
+            label: null,
+            value: contact.value,
+            is_primary: true,
+          })),
+        );
       if (insertContactError) throw insertContactError;
     }
 
@@ -254,16 +297,16 @@ export class SupabaseStudentRepository implements StudentRepositoryPort {
       );
     if (contactError) throw contactError;
 
-    const contactsByStudent = new Map<string, StudentContactRow>();
+    const contactsByStudent = new Map<string, StudentContactRow[]>();
     for (const contact of (contactData ?? []) as StudentContactRow[]) {
-      if (!contactsByStudent.has(contact.student_id)) {
-        contactsByStudent.set(contact.student_id, contact);
-      }
+      const studentContacts = contactsByStudent.get(contact.student_id) ?? [];
+      studentContacts.push(contact);
+      contactsByStudent.set(contact.student_id, studentContacts);
     }
 
     return {
       rows: studentRows.map((student) =>
-        toAdministrationRow(student, contactsByStudent.get(student.id) ?? null),
+        toAdministrationRow(student, contactsByStudent.get(student.id) ?? []),
       ),
       total: count ?? studentRows.length,
       page: query.page,
@@ -292,7 +335,7 @@ export class SupabaseStudentRepository implements StudentRepositoryPort {
 
     return toAdministrationRow(
       data as StudentRow,
-      ((contactData ?? []) as StudentContactRow[])[0] ?? null,
+      (contactData ?? []) as StudentContactRow[],
     );
   }
 

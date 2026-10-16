@@ -19,6 +19,9 @@ async function expectShellNavigation(page: Page) {
       ? page.getByRole("navigation", { name: "Secciones" })
       : page.getByRole("navigation", { name: "Navegación móvil" });
   await expect(navigation).toBeVisible();
+  if (width < 1024) {
+    await expect(page.getByRole("button", { name: /Colapsar navegación|Expandir navegación/ })).toBeHidden();
+  }
 }
 
 test.describe("authenticated product shell", () => {
@@ -53,5 +56,35 @@ test.describe("authenticated product shell", () => {
     await expect(page.getByText("Sin conexión")).toBeVisible();
     await expectShellNavigation(page);
     await context.setOffline(false);
+  });
+
+  test("collapses the desktop sidebar while preserving navigation and focus", async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) < 1024, "Desktop sidebar only");
+    await signIn(page);
+    const sidebar = page.getByRole("complementary", { name: "Navegación principal" });
+    const expandedWidth = await sidebar.evaluate((element) => element.getBoundingClientRect().width);
+    const toggle = page.getByRole("button", { name: "Colapsar navegación" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    const expand = page.getByRole("button", { name: "Expandir navegación" });
+    await expect(expand).toBeFocused();
+    await expect(expand).toHaveAttribute("aria-expanded", "false");
+    await expect(sidebar).toHaveCSS("width", "80px");
+    expect(expandedWidth).toBeGreaterThan(80);
+
+    const disciplines = sidebar.getByRole("link", { name: "Disciplinas", exact: true });
+    await disciplines.focus();
+    await expect(page.getByRole("tooltip", { name: "Disciplinas", exact: true })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/dashboard\/disciplines$/);
+    await expect(disciplines).toHaveAttribute("aria-current", "page");
+    await expect(sidebar).toHaveCSS("width", "80px");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await expand.focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("button", { name: "Colapsar navegación" })).toBeFocused();
+    await expect(sidebar).toHaveCSS("width", `${expandedWidth}px`);
   });
 });

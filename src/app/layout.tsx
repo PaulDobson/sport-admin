@@ -7,7 +7,8 @@ import { ServiceWorkerRegistration } from "./service-worker-registration";
 
 export const metadata: Metadata = {
   title: "Sport Admin",
-  description: "Plataforma SaaS multi-tenant para instructores independientes.",
+  description:
+    "Gestión de alumnos, clases, asistencia y cobros para organizaciones deportivas.",
   manifest: "/manifest.webmanifest",
 };
 
@@ -23,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-background">
+    <html lang="es" className="bg-background">
       <body className="antialiased">
         <NavigationProgressBar />
         <ServiceWorkerRegistration />

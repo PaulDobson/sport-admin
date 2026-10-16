@@ -1,5 +1,6 @@
 export type StudentStatus = "active" | "archived";
 export type StudentContactType = "email" | "phone" | "emergency";
+export type StudentGender = "female" | "male" | "other";
 
 export interface Student {
   id: string;
@@ -7,6 +8,12 @@ export interface Student {
   fullName: string;
   photoUrl: string | null;
   birthDate: string | null;
+  gender: StudentGender | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  emergencyContactName: string | null;
+  emergencyContactEmail: string | null;
+  emergencyContactPhone: string | null;
   status: StudentStatus;
   archivedAt: Date | null;
   createdAt: Date;

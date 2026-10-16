@@ -2533,31 +2533,49 @@ export type Database = {
           archived_at: string | null;
           birth_date: string | null;
           created_at: string;
+          emergency_contact_email: string | null;
+          emergency_contact_name: string | null;
+          emergency_contact_phone: string | null;
           full_name: string;
+          gender: string | null;
+          height_cm: number | null;
           id: string;
           photo_url: string | null;
           status: string;
           tenant_id: string;
+          weight_kg: number | null;
         };
         Insert: {
           archived_at?: string | null;
           birth_date?: string | null;
           created_at?: string;
+          emergency_contact_email?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
           full_name: string;
+          gender?: string | null;
+          height_cm?: number | null;
           id?: string;
           photo_url?: string | null;
           status?: string;
           tenant_id: string;
+          weight_kg?: number | null;
         };
         Update: {
           archived_at?: string | null;
           birth_date?: string | null;
           created_at?: string;
+          emergency_contact_email?: string | null;
+          emergency_contact_name?: string | null;
+          emergency_contact_phone?: string | null;
           full_name?: string;
+          gender?: string | null;
+          height_cm?: number | null;
           id?: string;
           photo_url?: string | null;
           status?: string;
           tenant_id?: string;
+          weight_kg?: number | null;
         };
         Relationships: [
           {
@@ -2730,6 +2748,32 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      programming_batch_row_uuid: {
+        Args: { value: string };
+        Returns: string;
+      };
+      program_class_batch: {
+        Args: {
+          target_tenant_id: string;
+          target_instructor_membership_id: string;
+          target_programming: Json;
+          target_intent: string;
+          target_commit: boolean;
+          target_preview_fingerprint?: string | null;
+        };
+        Returns: Json;
+      };
+      list_class_templates_for_administration: {
+        Args: { target_tenant_id: string };
+        Returns: {
+          id: string;
+          name: string;
+          capacity: number;
+          discipline_name: string;
+          schedule_count: number;
+          session_count: number;
+        }[];
+      };
       activate_student_membership: {
         Args: {
           target_actor_membership: string;
@@ -2748,6 +2792,10 @@ export type Database = {
       can_access_student_health: {
         Args: { target_tenant: string };
         Returns: boolean;
+      };
+      search_attendance_students: {
+        Args: { target_tenant: string; search_text: string; page_number?: number };
+        Returns: { student_id: string; student_name: string; total_count: number }[];
       };
       can_manage_instructor_scope: {
         Args: { target_instructor_membership: string; target_tenant: string };
@@ -2792,6 +2840,14 @@ export type Database = {
       can_view_instructor_scope: {
         Args: { target_instructor_membership: string; target_tenant: string };
         Returns: boolean;
+      };
+      cancel_student_portal_enrollment: {
+        Args: {
+          target_session_id: string;
+          target_student_id: string;
+          target_tenant_id: string;
+        };
+        Returns: undefined;
       };
       cancel_session_enrollment: {
         Args: {
@@ -2893,6 +2949,10 @@ export type Database = {
         Args: { target_membership: string; target_tenant: string };
         Returns: number;
       };
+      redeem_student_portal_invitation: {
+        Args: { target_token_hash: string };
+        Returns: undefined;
+      };
       current_saas_limits: {
         Args: { effective_on?: string; target_tenant: string };
         Returns: {
@@ -2904,6 +2964,53 @@ export type Database = {
         }[];
       };
       current_tenant_ids: { Args: never; Returns: string[] };
+      create_one_off_class_session: {
+        Args: {
+          target_class_template_id: string;
+          target_ends_at_local: string;
+          target_instructor_membership_id: string;
+          target_location_id: string;
+          target_starts_at_local: string;
+          target_tenant_id: string;
+          target_timezone: string;
+          target_waitlist_enabled?: boolean;
+        };
+        Returns: {
+          capacity: number;
+          class_schedule_id: string;
+          class_template_id: string;
+          created_at: string;
+          ends_at: string;
+          id: string;
+          instructor_membership_id: string;
+          location_id: string;
+          starts_at: string;
+          status: string;
+          tenant_id: string;
+          timezone: string;
+          updated_at: string;
+          waitlist_enabled: boolean;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "class_sessions";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      create_student_portal_invitation: {
+        Args: {
+          target_expires_at: string;
+          target_student_id: string;
+          target_tenant_id: string;
+          target_token_hash: string;
+        };
+        Returns: {
+          expires_at: string;
+          invited_email: string;
+          tenant_name: string;
+        }[];
+      };
       enroll_student_in_session: {
         Args: {
           target_session_id: string;
@@ -2960,6 +3067,55 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      has_pending_student_portal_invitation: {
+        Args: never;
+        Returns: boolean;
+      };
+      list_my_student_portal_sessions: {
+        Args: { target_student_id: string };
+        Returns: {
+          capacity: number;
+          class_name: string;
+          confirmed_count: number;
+          enrollment_status: string | null;
+          ends_at: string;
+          location_name: string;
+          session_id: string;
+          starts_at: string;
+          student_id: string;
+          tenant_id: string;
+          timezone: string;
+          waitlist_enabled: boolean;
+          waitlisted_count: number;
+        }[];
+      };
+      list_my_student_portal_students: {
+        Args: never;
+        Returns: {
+          full_name: string;
+          student_id: string;
+          tenant_id: string;
+          tenant_name: string;
+        }[];
+      };
+      publish_recurring_class_sessions: {
+        Args: {
+          target_class_schedule_id: string;
+          target_from_date: string;
+          target_tenant_id: string;
+          target_through_date: string;
+          target_waitlist_enabled?: boolean;
+        };
+        Returns: number;
+      };
+      lookup_student_portal_invitation: {
+        Args: { target_token_hash: string };
+        Returns: {
+          expires_at: string;
+          invited_email: string;
+          tenant_name: string;
+        }[];
       };
       get_saas_financial_dashboard: {
         Args: { target_period: string };

@@ -1,22 +1,15 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, MapPin, SlidersHorizontal } from "lucide-react";
 import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import { getInstructorDay } from "@/application/instructor-operations/use-cases/get-instructor-day";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { loadOperationalContext } from "@/app/_lib/operational-context";
-import { AppShell, ProductMark } from "@/presentation/components/app-shell";
-import { AccountContextMenu } from "@/presentation/components/account-context-menu";
-import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
 import { CurrentSessionPanel } from "@/presentation/components/current-session-panel";
 import { SessionContextRefresh } from "@/presentation/components/session-context-refresh";
-import { EmptyState, Surface } from "@/presentation/components/primitives";
-import {
-  DesktopNavigation,
-  MobileNavigation,
-} from "@/presentation/components/primary-navigation";
+import { EmptyState } from "@/presentation/components/primitives";
 import { CurrentSessionPrecache } from "./current-session-precache";
 import { OfflineSynchronization } from "./offline-synchronization";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 
 interface DashboardPageProps {
   searchParams: Promise<{ location?: string }>;
@@ -29,30 +22,37 @@ const timeFormatter = new Intl.DateTimeFormat("es", {
 
 function SessionRow({ session }: { session: DaySession }) {
   return (
-    <article className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 border-b border-border py-4 last:border-b-0">
-      <time
-        className="metric-number text-xl font-semibold text-primary"
-        dateTime={session.startsAt.toISOString()}
-      >
-        {timeFormatter.format(session.startsAt)}
-      </time>
-      <div className="min-w-0">
-        <h3 className="truncate font-semibold">{session.name}</h3>
-        <p className="truncate text-sm text-muted-foreground">
-          {session.locationName}
+    <article className="group grid grid-cols-[3.75rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition-colors hover:bg-white/2.5 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto_auto] sm:px-5">
+      <div className="text-center">
+        <time
+          className="metric-number block text-lg font-bold text-primary"
+          dateTime={session.startsAt.toISOString()}
+        >
+          {timeFormatter.format(session.startsAt)}
+        </time>
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          Inicio
+        </span>
+      </div>
+      <div className="min-w-0 border-l border-white/6 pl-4">
+        <h3 className="truncate font-bold text-foreground">{session.name}</h3>
+        <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{session.locationName}</span>
         </p>
       </div>
-      <p className="text-right text-sm text-muted-foreground">
-        <span className="block font-semibold text-foreground">
-          {session.confirmedCount}/{session.capacity}
+      <p className="text-right text-xs text-muted-foreground sm:text-sm">
+        <span className="metric-number block font-bold text-foreground">
+          {session.confirmedCount + (session.walkInCount ?? 0)}/{session.capacity}
         </span>
         alumnos
       </p>
       <Link
         href={`/dashboard/sessions/${session.id}/attendance`}
-        className="col-span-3 justify-self-end text-sm font-semibold text-primary"
+        className="col-span-3 inline-flex min-h-9 items-center gap-1.5 justify-self-end rounded-lg bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/15 sm:col-span-1"
       >
-        Tomar asistencia
+        Asistencia
+        <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
       </Link>
     </article>
   );
@@ -79,231 +79,141 @@ export default async function DashboardPage({
   const membership = context.membership;
 
   const { location } = await searchParams;
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
   const operations = await createInstructorOperationsDeps();
-  const [day, profile, tenants] = await Promise.all([
-    getInstructorDay(
-      {
-        tenantId: membership.tenantId,
-        locationId: location,
-        now: new Date(),
-      },
-      operations,
-    ),
-    auth.profiles.findByUserId(userId),
-    auth.tenants.findOperationalByUser(userId),
-  ]);
-
-  const roleLabel =
-    membership.role === "owner"
-      ? "Dueño"
-      : membership.role === "assistant"
-        ? "Asistente"
-        : membership.role === "admin"
-          ? "Administrador"
-          : membership.role;
-
-  const contextPanel = (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-surface-raised p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Estado de jornada
-        </p>
-        <div className="mt-4 space-y-3">
-          <div>
-            <p className="metric-number text-2xl font-semibold text-primary">
-              {day.activeStudents}
-            </p>
-            <p className="text-sm text-muted-foreground">alumnos activos</p>
-          </div>
-          <div>
-            <p className="metric-number text-2xl font-semibold">
-              {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
-            </p>
-            <p className="text-sm text-muted-foreground">sesiones abiertas</p>
-          </div>
-        </div>
-      </div>
-
-      <CurrentSessionPanel
-        currentSession={day.currentSession}
-        nextSession={day.upcomingSessions[0]}
-        role={membership.role}
-      />
-    </div>
+  const day = await getInstructorDay(
+    {
+      tenantId: membership.tenantId,
+      locationId: location,
+      now: new Date(),
+    },
+    operations,
   );
 
   return (
-    <AppShell
-      sidebarHeader={<ProductMark context={roleLabel} />}
-      navigation={<DesktopNavigation role={membership.role} />}
-      mobileNavigation={
-        <MobileNavigation
-          role={membership.role}
-          quickAction={
-            <QuickActionMenu
-              role={membership.role}
-              currentSessionId={day.currentSession?.id}
-            />
-          }
-        />
-      }
-      topbar={
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-primary">
-            Jornada
-          </p>
-          <h1 className="text-xl font-semibold sm:text-2xl">Panel operativo</h1>
+    <div className="mx-auto max-w-6xl py-1">
+      <OfflineSynchronization tenantId={membership.tenantId} />
+      <SessionContextRefresh
+        boundaryTimes={[
+          ...(day.currentSession
+            ? [
+                day.currentSession.startsAt.toISOString(),
+                day.currentSession.endsAt.toISOString(),
+              ]
+            : []),
+          ...(day.upcomingSessions[0]
+            ? [day.upcomingSessions[0].startsAt.toISOString()]
+            : []),
+        ]}
+      />
+
+      {day.currentSession || day.upcomingSessions[0] ? (
+        <div className="mb-8">
+          {day.currentSession ? (
+            <CurrentSessionPrecache sessionId={day.currentSession.id} />
+          ) : null}
+          <CurrentSessionPanel
+            currentSession={day.currentSession}
+            nextSession={day.upcomingSessions[0]}
+            role={membership.role}
+          />
         </div>
-      }
-      topbarActions={
-        <AccountContextMenu
-          profileName={profile?.fullName || "Tu cuenta"}
-          currentTenantId={membership.tenantId}
-          roleLabel={roleLabel}
-          tenants={tenants.map((tenant) => ({
-            id: tenant.id,
-            name: tenant.name,
-          }))}
-          locations={day.locations}
-          currentLocationId={location}
-        />
-      }
-      context={contextPanel}
-    >
-      <div className="mx-auto max-w-5xl">
-        <OfflineSynchronization tenantId={membership.tenantId} />
-        <SessionContextRefresh
-          boundaryTimes={[
-            ...(day.currentSession
-              ? [
-                  day.currentSession.startsAt.toISOString(),
-                  day.currentSession.endsAt.toISOString(),
-                ]
-              : []),
-            ...(day.upcomingSessions[0]
-              ? [day.upcomingSessions[0].startsAt.toISOString()]
-              : []),
-          ]}
-        />
+      ) : null}
 
-        <nav
-          className="mb-6 flex flex-wrap justify-end gap-2"
-          aria-label="Accesos rápidos"
-        >
-          <Link
-            href="/dashboard/students"
-            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
-          >
-            Alumnos
-          </Link>
-          <Link
-            href="/dashboard/finance"
-            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
-          >
-            Membresías y finanzas
-          </Link>
-          <Link
-            href="/dashboard/reports"
-            className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-raised"
-          >
-            Reportes
-          </Link>
-        </nav>
+      <section
+        aria-label="Resumen de jornada"
+        className="mb-10 grid grid-cols-3 border-y border-white/7"
+      >
+        <div className="py-5 pr-3 sm:py-6 sm:pr-6">
+          <p className="metric-number text-2xl font-bold sm:text-3xl">
+            {day.activeStudents}
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground sm:text-sm">
+            Alumnos activos
+          </p>
+        </div>
+        <div className="border-l border-white/7 px-3 py-5 sm:px-6 sm:py-6">
+          <p className="metric-number text-2xl font-bold sm:text-3xl">
+            {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground sm:text-sm">
+            Sesiones abiertas
+          </p>
+        </div>
+        <div className="border-l border-white/7 py-5 pl-3 sm:py-6 sm:pl-6">
+          <p className="metric-number text-2xl font-bold text-warning sm:text-3xl">
+            {day.pendingEnrollments}
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-muted-foreground sm:text-sm">
+            En espera
+          </p>
+        </div>
+      </section>
 
-        <Surface className="mb-6 grid grid-cols-2 gap-0 p-0 sm:grid-cols-3">
-          <div className="p-4">
-            <p className="metric-number text-3xl font-semibold">
-              {day.activeStudents}
+      <section>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              Agenda de hoy
             </p>
-            <p className="text-sm text-muted-foreground">Alumnos activos</p>
-          </div>
-          <div className="border-l border-border p-4">
-            <p className="metric-number text-3xl font-semibold">
-              {day.upcomingSessions.length + (day.currentSession ? 1 : 0)}
+            <h2 className="text-xl font-bold">Próximas sesiones</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {day.upcomingSessions.length} programadas para esta jornada
             </p>
-            <p className="text-sm text-muted-foreground">Sesiones abiertas</p>
           </div>
-          <div className="col-span-2 border-t border-border p-4 sm:col-span-1 sm:border-l sm:border-t-0">
-            <p className="metric-number text-3xl font-semibold text-warning">
-              {day.pendingEnrollments}
-            </p>
-            <p className="text-sm text-muted-foreground">En espera</p>
-          </div>
-        </Surface>
-
-        <form
-          className="mb-6 flex items-end gap-3"
-          method="get"
-          aria-label="Filtrar jornada"
-        >
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-muted-foreground">
-            Locación
+          <form
+            className="flex items-center gap-2"
+            method="get"
+            aria-label="Filtrar jornada"
+          >
+            <SlidersHorizontal
+              aria-hidden="true"
+              className="hidden h-4 w-4 text-muted-foreground sm:block"
+            />
+            <label htmlFor="dashboard-location" className="sr-only">
+              Locación
+            </label>
             <select
+              id="dashboard-location"
               name="location"
               defaultValue={location ?? ""}
-              className="h-10 rounded-lg border border-input bg-background px-3 text-foreground"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-white/8 bg-card/65 px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:w-44"
             >
-              <option value="">Todas</option>
+              <option value="">Todas las locaciones</option>
               {day.locations.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>
               ))}
             </select>
-          </label>
-          <button
-            type="submit"
-            className="h-10 rounded-lg bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Aplicar
-          </button>
-        </form>
-
-        {day.currentSession || day.upcomingSessions[0] ? (
-          <div className="mb-8 lg:hidden">
-            {day.currentSession ? (
-              <CurrentSessionPrecache sessionId={day.currentSession.id} />
-            ) : null}
-            <CurrentSessionPanel
-              currentSession={day.currentSession}
-              nextSession={day.upcomingSessions[0]}
-              role={membership.role}
-            />
+            <button
+              type="submit"
+              className="h-10 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Aplicar
+            </button>
+          </form>
+        </div>
+        {day.upcomingSessions.length > 0 ? (
+          <div className="divide-y divide-white/5 overflow-hidden rounded-xl bg-card/55">
+            {day.upcomingSessions.map((session) => (
+              <SessionRow key={session.id} session={session} />
+            ))}
           </div>
-        ) : null}
-
-        <section>
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-xl font-semibold">Próximas sesiones</h2>
-            <span className="text-sm text-muted-foreground">
-              {day.upcomingSessions.length} programadas
-            </span>
-          </div>
-          {day.upcomingSessions.length > 0 ? (
-            <Surface className="px-4 py-0">
-              {day.upcomingSessions.map((session) => (
-                <SessionRow key={session.id} session={session} />
-              ))}
-            </Surface>
-          ) : (
-            <EmptyState
-              title="Sin próximas sesiones"
-              description="No hay próximas sesiones para este filtro. Cambia la locación o revisa la agenda."
-              action={
-                <Link
-                  href="/dashboard/schedule"
-                  className="inline-flex min-h-10 items-center rounded-lg border border-border px-3 text-sm font-semibold transition-colors hover:bg-surface-raised"
-                >
-                  Ver agenda
-                </Link>
-              }
-            />
-          )}
-        </section>
-      </div>
-    </AppShell>
+        ) : (
+          <EmptyState
+            title="Sin próximas sesiones"
+            description="No hay próximas sesiones para este filtro. Cambia la locación o revisa la agenda."
+            action={
+              <Link
+                href="/dashboard/schedule"
+                className="inline-flex min-h-10 items-center rounded-lg border border-border px-3 text-sm font-semibold transition-colors hover:bg-surface-raised"
+              >
+                Ver agenda
+              </Link>
+            }
+          />
+        )}
+      </section>
+    </div>
   );
 }

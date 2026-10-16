@@ -21,7 +21,9 @@ export interface StudentDetailFormState {
 }
 
 async function getRequestMembership() {
-  return requireOperationalMembership();
+  const membership = await requireOperationalMembership();
+  if (membership.role === "assistant") redirect("/dashboard/students");
+  return membership;
 }
 
 export async function activateMembershipAction(

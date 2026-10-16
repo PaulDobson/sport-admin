@@ -2,151 +2,57 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StudentsPage from "./page";
 
-const requireOperationalMembership = vi.fn();
-const createAuthDeps = vi.fn();
-const createInstructorOperationsDeps = vi.fn();
-const listStudentsForAdministration = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  redirect: vi.fn((path: string) => {
-    throw new Error(`redirect:${path}`);
-  }),
-  usePathname: () => "/dashboard/students",
-}));
-vi.mock("@/app/_lib/operational-context", () => ({
-  requireOperationalMembership: () => requireOperationalMembership(),
-}));
-vi.mock("@/infrastructure/composition/auth-composition", () => ({
-  createAuthDeps: () => createAuthDeps(),
-}));
-vi.mock(
-  "@/infrastructure/composition/instructor-operations-composition",
-  () => ({
-    createInstructorOperationsDeps: () => createInstructorOperationsDeps(),
-  }),
-);
-vi.mock(
-  "@/application/instructor-operations/use-cases/list-students-for-administration",
-  () => ({
-    listStudentsForAdministration: (...args: unknown[]) =>
-      listStudentsForAdministration(...args),
-  }),
-);
-vi.mock("./student-archive-button", () => ({
-  StudentArchiveButton: ({ studentName }: { studentName: string }) => (
-    <button type="button">Eliminar {studentName}</button>
-  ),
-}));
+const membership = vi.hoisted(() => vi.fn());
+const list = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
+vi.mock("@/app/_lib/operational-context", () => ({ requireOperationalMembership: membership }));
+vi.mock("@/infrastructure/composition/instructor-operations-composition", () => ({ createInstructorOperationsDeps: async () => ({ students: {} }) }));
+vi.mock("@/application/instructor-operations/use-cases/list-students-for-administration", () => ({ listStudentsForAdministration: list }));
+vi.mock("./student-archive-button", () => ({ StudentArchiveButton: ({ studentName }: { studentName: string }) => <button>Archivar {studentName}</button> }));
 
 afterEach(cleanup);
+beforeEach(() => {
+  membership.mockResolvedValue({ tenantId: "tenant-1", role: "owner" });
+  list.mockResolvedValue({ page: 2, pageSize: 10, total: 11, rows: [{ id: "student-1", fullName: "Ana Bravo", photoUrl: null, birthDate: null, status: "active", createdAt: new Date("2026-09-01"), contactPhone: "+56 9 1111", contactEmail: "ana@example.com" }] });
+});
 
 describe("StudentsPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    requireOperationalMembership.mockResolvedValue({
-      tenantId: "tenant-1",
-      role: "owner",
-    });
-    createAuthDeps.mockResolvedValue({
-      auth: { getCurrentUserId: async () => "user-1" },
-      profiles: { findByUserId: async () => ({ fullName: "Maya Torres" }) },
-      tenants: {
-        findOperationalByUser: async () => [
-          { id: "tenant-1", name: "Academia Norte" },
-        ],
-      },
-    });
-    createInstructorOperationsDeps.mockResolvedValue({ students: {} });
-    listStudentsForAdministration.mockResolvedValue({
-      page: 2,
-      pageSize: 10,
-      total: 11,
-      rows: [
-        {
-          id: "student-1",
-          tenantId: "tenant-1",
-          fullName: "Ana Bravo",
-          birthDate: "1995-01-01",
-          status: "active",
-          createdAt: new Date("2026-09-01T00:00:00.000Z"),
-          archivedAt: null,
-          primaryContact: {
-            type: "phone",
-            label: null,
-            value: "+56 9 1111",
-            isPrimary: true,
-          },
-        },
-      ],
-    });
-  });
-
-  it("renders academy context, table actions, and export for the current view", async () => {
-    render(
-      await StudentsPage({
-        searchParams: Promise.resolve({
-          search: "Ana",
-          status: "active",
-          page: "2",
-          pageSize: "10",
-        }),
-      }),
-    );
-
-    expect(
-      screen.getAllByText(/Academia Norte · Dueño/).length,
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText("Administración de alumnos").length,
-    ).toBeGreaterThan(0);
-    expect(
-      screen.queryByRole("complementary", { name: "Contexto operativo" }),
-    ).toBeNull();
-    expect(listStudentsForAdministration).toHaveBeenCalledWith(
-      {
-        tenantId: "tenant-1",
-        page: 2,
-        pageSize: 10,
-        search: "Ana",
-        status: "active",
-      },
-      expect.anything(),
-    );
-
+  const query = { search: "Ana", status: "active", page: "2", pageSize: "10" };
+  it("renders equivalent cards/table and separate creation with current query", async () => {
+    render(await StudentsPage({ searchParams: Promise.resolve(query) }));
     const table = screen.getByRole("table");
-    expect(within(table).getByText("Ana Bravo")).toBeTruthy();
-    expect(within(table).getByText("Teléfono: +56 9 1111")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("link", { name: "Visualizar Ana Bravo" })
-        .getAttribute("href"),
-    ).toBe("/dashboard/students/student-1");
-    expect(
-      screen
-        .getByRole("link", { name: "Editar Ana Bravo" })
-        .getAttribute("href"),
-    ).toBe("/dashboard/students/student-1/edit");
-    expect(
-      screen.getByRole("link", { name: "Exportar Excel" }).getAttribute("href"),
-    ).toBe("/api/students/export?search=Ana&status=active&page=2&pageSize=10");
+    const cards = screen.getByRole("list", { name: "Alumnos" });
+    for (const view of [table, cards]) {
+      expect(within(view).getByText("ana@example.com")).toBeTruthy();
+      expect(within(view).getByText("Activo")).toBeTruthy();
+      expect(within(view).getByRole("link", { name: "Ver ficha de Ana Bravo" }).getAttribute("href")).toBe("/dashboard/students/student-1?search=Ana&status=active&page=2&pageSize=10");
+    }
+    expect(screen.getByRole("link", { name: "Nuevo alumno" }).getAttribute("href")).toBe("/dashboard/students/new?search=Ana&status=active&page=2&pageSize=10");
+    expect(screen.queryByLabelText("Nombre completo")).toBeNull();
+    expect(screen.getByRole("link", { name: "Exportar página a Excel" }).getAttribute("href")).toBe("/api/students/export?search=Ana&status=active&page=2&pageSize=10");
+    expect(screen.getByText("Mostrando 11–11 de 11")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Archivados" }).getAttribute("href")).toContain("status=archived&page=1");
   });
 
-  it("hides mutating and export actions for assistants", async () => {
-    requireOperationalMembership.mockResolvedValue({
-      tenantId: "tenant-1",
-      role: "assistant",
-    });
+  it("hides administrative actions for assistants", async () => {
+    membership.mockResolvedValue({ tenantId: "tenant-1", role: "assistant" });
+    render(await StudentsPage({ searchParams: Promise.resolve(query) }));
+    expect(screen.queryByRole("link", { name: "Nuevo alumno" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Exportar/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Editar/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Archivar/ })).toBeNull();
+  });
 
-    render(
-      await StudentsPage({
-        searchParams: Promise.resolve({}),
-      }),
-    );
+  it("redirects to the actual page when results shrink", async () => {
+    list.mockResolvedValue({ page: 1, pageSize: 10, total: 0, rows: [] });
+    await expect(StudentsPage({ searchParams: Promise.resolve(query) })).rejects.toThrow("redirect:/dashboard/students?search=Ana&status=active&page=1&pageSize=10");
+  });
 
-    expect(screen.queryByRole("link", { name: "Exportar Excel" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Editar Ana Bravo" })).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /Eliminar Ana Bravo/ }),
-    ).toBeNull();
+  it("offers filter recovery without a permanent form", async () => {
+    list.mockResolvedValue({ page: 1, pageSize: 10, total: 0, rows: [] });
+    render(await StudentsPage({ searchParams: Promise.resolve({ search: "missing" }) }));
+    expect(screen.getByText("Sin resultados para estos filtros")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Limpiar búsqueda y filtros" })).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
   });
 });

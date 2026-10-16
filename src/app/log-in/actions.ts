@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { signIn } from "@/application/auth/use-cases/sign-in";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createSaasAdministrationDeps } from "@/infrastructure/composition/saas-administration-composition";
+import { createStudentPortalDeps } from "@/infrastructure/composition/student-portal-composition";
 import { formatActionError } from "@/app/_lib/format-error";
 
 export interface LogInFormState {
@@ -14,6 +15,10 @@ export async function logInAction(
   _prevState: LogInFormState,
   formData: FormData,
 ): Promise<LogInFormState> {
+  const requestedNext = String(formData.get("next") ?? "");
+  const portalInviteNext = requestedNext.startsWith("/portal/accept?token=")
+    ? requestedNext
+    : null;
   const deps = await createAuthDeps();
 
   try {
@@ -28,11 +33,18 @@ export async function logInAction(
     return { error: formatActionError(error) };
   }
 
+  if (portalInviteNext) redirect(portalInviteNext);
+
   const userId = await deps.auth.getCurrentUserId();
   const memberships = userId
     ? await deps.memberships.findActiveByUser(userId)
     : [];
   if (memberships.length > 0) redirect("/dashboard");
+
+  if (userId) {
+    const portal = await createStudentPortalDeps();
+    if ((await portal.portal.listMyStudents()).length > 0) redirect("/portal");
+  }
 
   const { tenantBackoffice } = await createSaasAdministrationDeps();
   if (await tenantBackoffice.isPlatformAdmin()) redirect("/backoffice/tenants");

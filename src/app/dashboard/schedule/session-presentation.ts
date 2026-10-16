@@ -1,0 +1,60 @@
+import type { DaySession } from "@/domain/instructor-operations/instructor-day";
+
+export const operationalTimezone = "America/Santiago";
+
+const dateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: operationalTimezone,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export const sessionDateFormatter = new Intl.DateTimeFormat("es-CL", {
+  timeZone: operationalTimezone,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+export const sessionTimeFormatter = new Intl.DateTimeFormat("es-CL", {
+  timeZone: operationalTimezone,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+export function operationalDateKey(date: Date) {
+  return dateKeyFormatter.format(date);
+}
+
+export function isSessionCurrent(session: DaySession, now: Date) {
+  return session.startsAt <= now && session.endsAt > now;
+}
+
+export function sessionOccupiedCount(session: DaySession) {
+  return session.confirmedCount + (session.walkInCount ?? 0);
+}
+
+export function sessionCapacity(session: DaySession) {
+  const occupied = sessionOccupiedCount(session);
+  return {
+    available: Math.max(0, session.capacity - occupied),
+    percent: session.capacity > 0
+      ? Math.min(100, Math.max(0, Math.round(occupied / session.capacity * 100)))
+      : 0,
+  };
+}
+
+export function groupSessionsByDate(sessions: DaySession[]) {
+  const groups = new Map<string, DaySession[]>();
+  for (const session of sessions.toSorted(
+    (first, second) => first.startsAt.getTime() - second.startsAt.getTime(),
+  )) {
+    const key = operationalDateKey(session.startsAt);
+    const group = groups.get(key);
+    if (group) group.push(session);
+    else groups.set(key, [session]);
+  }
+  return [...groups].map(([date, items]) => ({ date, sessions: items }));
+}

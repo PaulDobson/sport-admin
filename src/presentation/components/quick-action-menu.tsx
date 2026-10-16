@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Check, Plus } from "lucide-react";
+import { CalendarDays, Check, Plus, UserPlus } from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 
 export function QuickActionMenu({
@@ -68,6 +68,12 @@ export function QuickActionMenu({
             >
               <Check className="h-4 w-4 text-primary" aria-hidden="true" />
               Abrir asistencia
+            </Link>
+          ) : null}
+          {role !== "assistant" ? (
+            <Link href="/dashboard/students/new" role="menuitem" className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <UserPlus className="h-4 w-4 text-primary" aria-hidden="true" />
+              Nuevo alumno
             </Link>
           ) : null}
           <Link

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import FinancePage from "./page";
 
 const requireOperationalMembership = vi.fn();
+const createAuthDeps = vi.fn();
 const createInstructorFinanceDeps = vi.fn();
 const listPendingCollections = vi.fn();
 const getCollectionPeriodReport = vi.fn();
@@ -19,6 +20,9 @@ vi.mock("@/app/_lib/operational-context", () => ({
 }));
 vi.mock("@/infrastructure/composition/instructor-finance-composition", () => ({
   createInstructorFinanceDeps: () => createInstructorFinanceDeps(),
+}));
+vi.mock("@/infrastructure/composition/auth-composition", () => ({
+  createAuthDeps: () => createAuthDeps(),
 }));
 vi.mock(
   "@/application/instructor-finance/use-cases/list-pending-collections",
@@ -83,6 +87,17 @@ describe("FinancePage", () => {
       tenantId: "tenant-1",
       userId: "user-1",
       role: "owner",
+    });
+    createAuthDeps.mockResolvedValue({
+      auth: { getCurrentUserId: vi.fn().mockResolvedValue("user-1") },
+      profiles: {
+        findByUserId: vi.fn().mockResolvedValue({ fullName: "Ana Silva" }),
+      },
+      tenants: {
+        findOperationalByUser: vi
+          .fn()
+          .mockResolvedValue([{ id: "tenant-1", name: "Academia Norte" }]),
+      },
     });
     createInstructorFinanceDeps.mockResolvedValue({});
     listPendingCollections.mockResolvedValue([overdue]);

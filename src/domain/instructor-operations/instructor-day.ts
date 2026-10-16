@@ -1,6 +1,9 @@
+import type { ClassSessionStatus } from "./session";
+
 export interface DayLocation {
   id: string;
   name: string;
+  address?: string | null;
 }
 
 export interface DaySession {
@@ -13,6 +16,11 @@ export interface DaySession {
   capacity: number;
   confirmedCount: number;
   waitlistedCount: number;
+  /** Students marked present or late without a confirmed reservation. */
+  walkInCount?: number;
+  /** Students marked present or late, with or without reservation. */
+  attendedCount?: number;
+  status?: ClassSessionStatus;
 }
 
 export interface InstructorDay {

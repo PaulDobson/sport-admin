@@ -1,8 +1,8 @@
 import { useId } from "react";
 import type {
   ButtonHTMLAttributes,
+  ComponentProps,
   HTMLAttributes,
-  InputHTMLAttributes,
   ReactNode,
 } from "react";
 import { Spinner } from "./spinner";
@@ -24,7 +24,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
     "border-destructive/35 bg-destructive/10 text-destructive hover:bg-destructive/15",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ComponentProps<"button"> {
   variant?: ButtonVariant;
   isLoading?: boolean;
 }
@@ -73,7 +73,7 @@ export function Surface({
   return (
     <section
       className={classes(
-        "rounded-xl border p-4",
+        "rounded-md border p-4",
         surfaceTones[tone],
         className,
       )}
@@ -84,10 +84,7 @@ export function Surface({
   );
 }
 
-export function FieldControl({
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+export function FieldControl({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={classes(
