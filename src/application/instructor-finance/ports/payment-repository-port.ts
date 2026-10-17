@@ -4,6 +4,7 @@ import type {
   MembershipPayment,
   PaymentMethod,
 } from "@/domain/instructor-finance/payment";
+import type { RecentPayment } from "@/domain/instructor-finance/dashboard";
 
 export interface RecordPaymentInput {
   tenantId: string;
@@ -40,4 +41,6 @@ export interface PaymentRepositoryPort {
     period: string,
     method?: PaymentMethod,
   ): Promise<MembershipPayment[]>;
+  /** Latest paid payments of the tenant with student and plan names, newest first. */
+  listRecentMovements(tenantId: string, limit: number): Promise<RecentPayment[]>;
 }

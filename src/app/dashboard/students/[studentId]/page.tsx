@@ -16,7 +16,10 @@ import { StudentContact, StudentStatus } from "../student-list";
 import { StudentWorkspace } from "../student-workspace";
 import { StudentArchiveButton } from "../student-archive-button";
 import { StudentPortalInviteButton } from "./student-portal-invite-button";
-import { ConsentForm, ErasureRequestForm, MembershipForm, PersonalDataCorrectionForm, RestrictionForm } from "./student-detail-forms";
+import { ConsentForm, ErasureRequestForm, PersonalDataCorrectionForm, RestrictionForm } from "./student-detail-forms";
+import { AssignMembershipSheet } from "../../finance/assign-membership-sheet";
+
+const primaryActionClass = "inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90";
 
 export default async function StudentDetailPage({ params, searchParams }: {
   params: Promise<{ studentId: string }>;
@@ -41,10 +44,7 @@ export default async function StudentDetailPage({ params, searchParams }: {
     ? await getStudentHealthHistory({ tenantId, studentId }, health)
     : null;
   const finance = section === "membership" ? await createInstructorFinanceDeps() : null;
-  const [plans, memberships] = finance ? await Promise.all([
-    finance.memberships.findActivePlans(tenantId),
-    listCurrentMemberships({ tenantId, studentId, onDate: today }, finance),
-  ]) : [[], []];
+  const memberships = finance ? await listCurrentMemberships({ tenantId, studentId, onDate: today }, finance) : [];
   const balances = finance ? Object.fromEntries(await Promise.all(memberships.map(async item => [item.id, (await getMembershipBalance({ tenantId, membershipId: item.id }, finance)).balance] as const))) : {};
 
   return (
@@ -90,7 +90,10 @@ export default async function StudentDetailPage({ params, searchParams }: {
             <p className="mt-3 text-sm text-muted-foreground">{formatMoney(item.agreedPrice, item.currency)} · próxima fecha {item.nextBillingDate}</p>
             <p className="metric-number mt-3 text-xl font-semibold">Saldo {formatMoney(balances[item.id] ?? 0, item.currency)}</p>
             {(balances[item.id] ?? 0) > 0 ? <Link href="/dashboard/finance?section=collections" className={`${studentLinkClass} mt-4 text-primary`}>Registrar cobro</Link> : null}
-          </Surface>)}</div> : <div className="max-w-xl"><MembershipForm studentId={studentId} plans={plans} startsOn={today} />{plans.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Crea un plan de membresía antes de asignarlo.</p> : null}</div>}
+          </Surface>)}</div> : <Surface className="grid max-w-xl gap-3">
+            <div><p className="font-semibold">Sin membresía vigente</p><p className="mt-1 text-sm text-muted-foreground">{student.status === "active" ? "Asigna un plan y registra el primer pago en un solo paso." : "Reactiva al alumno para asignarle un plan."}</p></div>
+            {student.status === "active" ? <AssignMembershipSheet trigger="Asignar plan" triggerClassName={primaryActionClass} initialStudent={{ id: studentId, fullName: student.fullName }} /> : null}
+          </Surface>}
         </section> : null}
         {section === "health" ? <section aria-labelledby="health-heading" className="space-y-4">
           <h3 id="health-heading" className="text-xl font-semibold">Salud y alertas operativas</h3>

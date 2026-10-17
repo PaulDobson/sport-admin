@@ -10,6 +10,8 @@ describe("get monthly financial projection", () => {
     const repository = new FakeFinancialProjectionRepository();
     repository.data.memberships.push({
       id: "membership",
+      planId: "plan",
+      planName: "Plan",
       startsOn: "2026-01-01",
       expiresOn: "2026-12-31",
       agreedPrice: 1200,

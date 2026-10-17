@@ -6,7 +6,11 @@ import {
   isMembershipCurrent,
   type MembershipTransition,
 } from "@/domain/instructor-finance/membership";
+import { ConflictError, NotFoundError } from "@/domain/shared/errors";
+import type { MembershipPayment } from "@/domain/instructor-finance/payment";
+import type { StudentMembership } from "@/domain/instructor-finance/membership";
 import type { MembershipRepositoryPort } from "../ports/membership-repository-port";
+import type { PaymentRepositoryPort } from "../ports/payment-repository-port";
 
 const createSchema = z.object({
   tenantId: z.string().uuid(),
@@ -16,6 +20,36 @@ const createSchema = z.object({
   actorMembershipId: z.string().uuid(),
   operationId: z.string().uuid(),
 });
+
+const assignSchema = z.object({
+  tenantId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  planId: z.string().uuid(),
+  startsOn: z.iso.date(),
+  actorMembershipId: z.string().uuid(),
+  /** Generated once per assignment flow; reused on every retry. */
+  assignmentToken: z.string().uuid(),
+  initialPayment: z
+    .object({
+      amount: z.number().positive(),
+      method: z.enum(["cash", "transfer", "card", "other"]),
+      paidAt: z.date(),
+      reference: z.string().trim().min(1).optional(),
+      /** Deterministic id derived from the assignment token. */
+      operationId: z.string().uuid(),
+    })
+    .optional(),
+});
+
+export const CURRENT_MEMBERSHIP_CONFLICT_MESSAGE =
+  "El alumno ya tiene una membresía vigente.";
+
+export interface AssignMembershipResult {
+  membership: StudentMembership;
+  payment: MembershipPayment | null;
+  /** Set when the membership exists but the initial payment was not recorded. */
+  paymentError?: string;
+}
 
 const createPlanSchema = z.object({
   tenantId: z.string().uuid(),
@@ -70,6 +104,86 @@ export async function activateMembership(
   );
   if (plan) assertPlanAssignable(plan);
   return deps.memberships.create(parsed);
+}
+
+async function activateOrRecover(
+  parsed: z.output<typeof assignSchema>,
+  memberships: MembershipRepositoryPort,
+) {
+  try {
+    return await memberships.create({
+      tenantId: parsed.tenantId,
+      studentId: parsed.studentId,
+      planId: parsed.planId,
+      startsOn: parsed.startsOn,
+      actorMembershipId: parsed.actorMembershipId,
+      operationId: parsed.assignmentToken,
+    });
+  } catch (error) {
+    if (!(error instanceof ConflictError)) throw error;
+    const previous = await memberships.findByActivationOperation(
+      parsed.tenantId,
+      parsed.assignmentToken,
+    );
+    if (
+      previous &&
+      previous.studentId === parsed.studentId &&
+      previous.planId === parsed.planId &&
+      previous.startsOn === parsed.startsOn
+    ) {
+      return previous;
+    }
+    throw new ConflictError(CURRENT_MEMBERSHIP_CONFLICT_MESSAGE);
+  }
+}
+
+/**
+ * Activates a plan for a student and optionally records the initial payment.
+ * Retrying with the same token never duplicates the membership or the payment;
+ * a payment failure keeps the membership and reports `paymentError`.
+ */
+export async function assignMembership(
+  input: z.input<typeof assignSchema>,
+  deps: {
+    memberships: MembershipRepositoryPort;
+    payments: PaymentRepositoryPort;
+  },
+): Promise<AssignMembershipResult> {
+  const parsed = parseWithSchema(assignSchema, input);
+  const plan = await deps.memberships.findPlanById(
+    parsed.tenantId,
+    parsed.planId,
+  );
+  if (!plan) throw new NotFoundError("Membership plan", parsed.planId);
+  assertPlanAssignable(plan);
+
+  const membership = await activateOrRecover(parsed, deps.memberships);
+  if (!parsed.initialPayment) return { membership, payment: null };
+
+  try {
+    const payment = await deps.payments.record({
+      tenantId: parsed.tenantId,
+      membershipId: membership.id,
+      amount: parsed.initialPayment.amount,
+      currency: membership.currency,
+      method: parsed.initialPayment.method,
+      paidAt: parsed.initialPayment.paidAt,
+      reference: parsed.initialPayment.reference,
+      actorMembershipId: parsed.actorMembershipId,
+      operationId: parsed.initialPayment.operationId,
+      adjustments: [],
+    });
+    return { membership, payment };
+  } catch (error) {
+    return {
+      membership,
+      payment: null,
+      paymentError:
+        error instanceof Error && error.message
+          ? error.message
+          : "No se pudo registrar el pago inicial.",
+    };
+  }
 }
 
 export function createMembershipPlan(

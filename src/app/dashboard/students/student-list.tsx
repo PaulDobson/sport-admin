@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Eye, Mail, Pencil, Phone } from "lucide-react";
+import { CreditCard, Eye, Mail, Pencil, Phone } from "lucide-react";
 import type { StudentAdministrationRow } from "@/application/instructor-operations/ports/student-repository-port";
-import { Avatar, StatusBadge } from "@/presentation/components/primitives";
+import { Avatar, StatusBadge, ToneBadge } from "@/presentation/components/primitives";
 import { studentTaskHref, studentLinkClass, type StudentListQuery } from "@/presentation/navigation/student-navigation";
+import { AssignMembershipSheet } from "../finance/assign-membership-sheet";
 import { StudentArchiveButton } from "./student-archive-button";
 
 export function StudentStatus({ status }: { status: StudentAdministrationRow["status"] }) {
@@ -21,10 +22,22 @@ export function StudentContact({ student }: { student: Pick<StudentAdministratio
 
 const iconAction = "inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
-function StudentActions({ student, query, canManage, compact = false }: { student: StudentAdministrationRow; query: StudentListQuery; canManage: boolean; compact?: boolean }) {
+function AssignAction({ student, compact }: { student: StudentAdministrationRow; compact: boolean }) {
+  return (
+    <AssignMembershipSheet
+      initialStudent={{ id: student.id, fullName: student.fullName }}
+      trigger={compact ? <CreditCard className="h-4 w-4" aria-hidden="true" /> : <><CreditCard className="h-4 w-4" aria-hidden="true" />Asignar plan</>}
+      triggerLabel={`Asignar plan a ${student.fullName}`}
+      triggerClassName={compact ? `${iconAction} hover:text-primary` : `${studentLinkClass} text-primary`}
+    />
+  );
+}
+
+function StudentActions({ student, query, canManage, canAssign, compact = false }: { student: StudentAdministrationRow; query: StudentListQuery; canManage: boolean; canAssign: boolean; compact?: boolean }) {
   if (compact) {
     return (
       <div className="flex items-center justify-end gap-0.5">
+        {canAssign ? <AssignAction student={student} compact /> : null}
         <Link href={studentTaskHref(`/dashboard/students/${student.id}`, query)} aria-label={`Ver ficha de ${student.fullName}`} title="Ver ficha" className={iconAction}><Eye className="h-4 w-4" aria-hidden="true" /></Link>
         {canManage ? <Link href={studentTaskHref(`/dashboard/students/${student.id}/edit`, query)} aria-label={`Editar ${student.fullName}`} title="Editar" className={`${iconAction} hover:text-primary`}><Pencil className="h-4 w-4" aria-hidden="true" /></Link> : null}
         {canManage && student.status === "active" ? <StudentArchiveButton studentId={student.id} studentName={student.fullName} compact /> : null}
@@ -33,6 +46,7 @@ function StudentActions({ student, query, canManage, compact = false }: { studen
   }
   return (
     <div className="flex flex-wrap items-start gap-2">
+      {canAssign ? <AssignAction student={student} compact={false} /> : null}
       <Link href={studentTaskHref(`/dashboard/students/${student.id}`, query)} aria-label={`Ver ficha de ${student.fullName}`} className={studentLinkClass}><Eye className="h-4 w-4" aria-hidden="true" />Ver ficha</Link>
       {canManage ? <Link href={studentTaskHref(`/dashboard/students/${student.id}/edit`, query)} aria-label={`Editar ${student.fullName}`} className={studentLinkClass}><Pencil className="h-4 w-4" aria-hidden="true" />Editar</Link> : null}
       {canManage && student.status === "active" ? <StudentArchiveButton studentId={student.id} studentName={student.fullName} /> : null}
@@ -46,7 +60,10 @@ function formatDate(value: Date) {
 
 const headCell = "px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
 
-export function StudentList({ rows, query, canManage }: { rows: StudentAdministrationRow[]; query: StudentListQuery; canManage: boolean }) {
+/** `studentsWithMembership` lists active students that already hold a current membership; omit it to hide plan assignment. */
+export function StudentList({ rows, query, canManage, studentsWithMembership }: { rows: StudentAdministrationRow[]; query: StudentListQuery; canManage: boolean; studentsWithMembership?: string[] }) {
+  const withMembership = studentsWithMembership ? new Set(studentsWithMembership) : null;
+  const needsPlan = (student: StudentAdministrationRow) => Boolean(canManage && withMembership && student.status === "active" && !withMembership.has(student.id));
   return (
     <>
       <ul aria-label="Alumnos" className="divide-y divide-border md:hidden">
@@ -57,10 +74,10 @@ export function StudentList({ rows, query, canManage }: { rows: StudentAdministr
               <div className="min-w-0 flex-1">
                 <Link className="flex min-h-11 items-center font-semibold [overflow-wrap:anywhere] hover:text-primary" href={studentTaskHref(`/dashboard/students/${student.id}`, query)}>{student.fullName}</Link>
               </div>
-              <StudentStatus status={student.status} />
+              <div className="flex shrink-0 flex-col items-end gap-1"><StudentStatus status={student.status} />{needsPlan(student) ? <ToneBadge tone="warning">Sin plan</ToneBadge> : null}</div>
             </div>
             <StudentContact student={student} />
-            <StudentActions student={student} query={query} canManage={canManage} />
+            <StudentActions student={student} query={query} canManage={canManage} canAssign={needsPlan(student)} />
           </li>
         ))}
       </ul>
@@ -94,8 +111,8 @@ export function StudentList({ rows, query, canManage }: { rows: StudentAdministr
                 </td>
                 <td className="metric-number hidden px-3 py-2.5 text-xs text-muted-foreground lg:table-cell">{formatDate(student.createdAt)}</td>
                 <td className="metric-number hidden px-3 py-2.5 text-xs text-muted-foreground lg:table-cell">{student.birthDate ?? "—"}</td>
-                <td className="px-3 py-2.5"><StudentStatus status={student.status} /></td>
-                <td className="py-2.5 pl-3 pr-4"><StudentActions student={student} query={query} canManage={canManage} compact /></td>
+                <td className="px-3 py-2.5"><div className="flex flex-wrap items-center gap-1"><StudentStatus status={student.status} />{needsPlan(student) ? <ToneBadge tone="warning">Sin plan</ToneBadge> : null}</div></td>
+                <td className="py-2.5 pl-3 pr-4"><StudentActions student={student} query={query} canManage={canManage} canAssign={needsPlan(student)} compact /></td>
               </tr>
             ))}
           </tbody>

@@ -72,7 +72,11 @@ begin
   if first_payment <> repeated_payment then
     raise exception 'idempotent payment id changed';
   end if;
-  if (select count(*) from public.student_membership_payments) <> 1 then
+  if (
+    select count(*) from public.student_membership_payments
+    where tenant_id = 'd0000000-0000-4000-8000-000000000001'
+      and membership_id = 'd0000000-0000-4000-8000-000000000041'
+  ) <> 1 then
     raise exception 'partial payment was duplicated';
   end if;
 
@@ -118,7 +122,8 @@ begin
     from public.activity_notifications notification
     join public.activity_events event
       on event.tenant_id = notification.tenant_id and event.id = notification.event_id
-    where event.event_type = 'finance.collection_due'
+    where event.tenant_id = 'd0000000-0000-4000-8000-000000000001'
+      and event.event_type = 'finance.collection_due'
       and notification.status = 'pending'
   ) <> 1 then
     raise exception 'collection notice was not routed as pending';
@@ -141,7 +146,9 @@ begin
     'cash', '[]'::jsonb
   );
   if (
-    select count(*) from public.activity_notifications where status = 'pending'
+    select count(*) from public.activity_notifications
+    where tenant_id = 'd0000000-0000-4000-8000-000000000001'
+      and status = 'pending'
   ) <> 1 then
     raise exception 'partial payment must not resolve the collection notice';
   end if;
@@ -160,13 +167,16 @@ begin
     'card', '[]'::jsonb
   );
   if (
-    select count(*) from public.activity_notifications where status = 'pending'
+    select count(*) from public.activity_notifications
+    where tenant_id = 'd0000000-0000-4000-8000-000000000001'
+      and status = 'pending'
   ) <> 0 then
     raise exception 'settled balance must resolve the collection notice';
   end if;
   if (
     select count(*) from public.activity_notifications
-    where status = 'resolved' and resolved_at is not null
+    where tenant_id = 'd0000000-0000-4000-8000-000000000001'
+      and status = 'resolved' and resolved_at is not null
   ) <> 1 then
     raise exception 'resolved notice must keep its history';
   end if;

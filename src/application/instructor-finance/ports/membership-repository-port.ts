@@ -50,6 +50,12 @@ export interface TransitionMembershipInput {
   operationId: string;
 }
 
+export const CURRENT_MEMBERSHIP_STATUSES = [
+  "active",
+  "paused",
+  "past_due",
+] as const;
+
 export interface MembershipRepositoryPort {
   createPlan(input: CreateMembershipPlanInput): Promise<MembershipPlan>;
   updatePlan(input: UpdateMembershipPlanInput): Promise<MembershipPlan>;
@@ -63,6 +69,7 @@ export interface MembershipRepositoryPort {
     tenantId: string,
     planId: string,
   ): Promise<MembershipPlan | null>;
+  /** Throws `ConflictError` when the student already has a current membership or the operation was used. */
   create(input: CreateMembershipInput): Promise<StudentMembership>;
   transition(input: TransitionMembershipInput): Promise<StudentMembership>;
   findById(
@@ -73,4 +80,14 @@ export interface MembershipRepositoryPort {
     tenantId: string,
     studentId: string,
   ): Promise<StudentMembership[]>;
+  /** Students of the given list (or of the tenant) holding an active, paused or past-due membership. */
+  findStudentIdsWithCurrentMembership(
+    tenantId: string,
+    studentIds?: string[],
+  ): Promise<string[]>;
+  /** Membership created by an `activate_student_membership` call with this operation id. */
+  findByActivationOperation(
+    tenantId: string,
+    operationId: string,
+  ): Promise<StudentMembership | null>;
 }

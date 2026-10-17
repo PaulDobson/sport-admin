@@ -2,13 +2,13 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Dumbbell, Plus, Tags, Trash2 } from "lucide-react";
 import type { ClassTemplateOption, DisciplineOption } from "@/application/instructor-operations/ports/schedule-catalog-port";
 import type { DayLocation } from "@/domain/instructor-operations/instructor-day";
 import { Surface } from "@/presentation/components/primitives";
 import { operationalTimezone } from "./session-presentation";
 import {
-  ClassCreationForm, DisciplineCreationForm, LocationCreationForm,
+  CatalogCreationPanel, ClassCreationForm, DisciplineCreationForm, LocationCreationForm,
   ProgrammingFeedback, programmingFieldClass as fieldClass, programmingLabelClass as labelClass,
   ProgrammingButton as Button,
 } from "./programming-catalog-forms";
@@ -278,14 +278,24 @@ export function ProgrammingWizard({
               {templates.length === 0 ? <p className="text-sm text-muted-foreground">Comienza creando tu disciplina y tu primera clase aquí mismo.</p> : null}
               <Button type="submit" variant="primary">Continuar <ChevronRight aria-hidden="true" className="h-4 w-4" /></Button>
             </form>
-            <details open={disciplineOpen || disciplines.length === 0} onToggle={(event) => setDisciplineOpen(event.currentTarget.open)} className={detailsClass}>
-              <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-primary">Crear una disciplina</summary>
-              <div className="mt-3"><DisciplineCreationForm onCreated={(value) => { onDisciplineCreated(value); setDiscipline(value.name); setClassId(""); setDisciplineOpen(false); setClassOpen(true); invalidateReview(); }} /></div>
-            </details>
-            <details open={classOpen || templates.length === 0} onToggle={(event) => setClassOpen(event.currentTarget.open)} className={detailsClass}>
-              <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-primary">Crear una nueva clase</summary>
-              <div className="mt-3"><ClassCreationForm key={selectedDiscipline?.id || "all"} disciplines={disciplines} defaultDisciplineId={selectedDiscipline?.id} onCreated={(value) => { onClassCreated(value); setClassId(value.id); setDiscipline(value.disciplineName); setClassOpen(false); invalidateReview(); }} /></div>
-            </details>
+            <CatalogCreationPanel
+              title="Crear una disciplina"
+              description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
+              icon={Tags}
+              open={disciplineOpen || disciplines.length === 0}
+              onToggle={(event) => setDisciplineOpen(event.currentTarget.open)}
+            >
+              <DisciplineCreationForm onCreated={(value) => { onDisciplineCreated(value); setDiscipline(value.name); setClassId(""); setDisciplineOpen(false); setClassOpen(true); invalidateReview(); }} />
+            </CatalogCreationPanel>
+            <CatalogCreationPanel
+              title="Crear una nueva clase"
+              description="Define el grupo y sus cupos; luego podrás asignarle horarios y lugares."
+              icon={Dumbbell}
+              open={classOpen || templates.length === 0}
+              onToggle={(event) => setClassOpen(event.currentTarget.open)}
+            >
+              <ClassCreationForm key={selectedDiscipline?.id || "all"} disciplines={disciplines} defaultDisciplineId={selectedDiscipline?.id} onCreated={(value) => { onClassCreated(value); setClassId(value.id); setDiscipline(value.disciplineName); setClassOpen(false); invalidateReview(); }} />
+            </CatalogCreationPanel>
           </> : null}
           {step === 1 ? <>
             <form onSubmit={continueStep} className="space-y-5">

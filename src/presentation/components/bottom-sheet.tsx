@@ -1,17 +1,44 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { Button } from "./primitives";
 
 interface BottomSheetProps {
-  trigger: ReactNode;
+  /** Omit to render only the panel, e.g. when opened from a URL parameter. */
+  trigger?: ReactNode;
   title: string;
   description?: string;
   children: ReactNode;
   triggerClassName?: string;
   triggerLabel?: string;
+  /** Controlled open state; pair with `onOpenChange`. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** `side` keeps the bottom sheet on mobile and docks a full-height panel on desktop. */
+  variant?: "sheet" | "side";
+  /** `wide` gives the desktop side panel room for a two-column layout. */
+  size?: "default" | "wide";
 }
+
+const panelVariants = {
+  sheet:
+    "relative max-h-[85dvh] w-full overscroll-contain overflow-y-auto rounded-t-2xl border border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl outline-none sm:max-w-lg sm:rounded-2xl",
+  side: "relative max-h-[90dvh] w-full overscroll-contain overflow-y-auto rounded-t-2xl border border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl outline-none sm:max-w-lg sm:rounded-2xl lg:ml-auto lg:h-dvh lg:max-h-dvh lg:rounded-none lg:border-y-0 lg:border-r-0 lg:p-6",
+};
+
+const containerVariants = {
+  sheet:
+    "fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4",
+  side: "fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4 lg:items-stretch lg:justify-end lg:p-0",
+};
 
 /** Mobile-first action surface: opens over the list without losing scroll position. */
 export function BottomSheet({
@@ -21,15 +48,37 @@ export function BottomSheet({
   children,
   triggerClassName,
   triggerLabel,
+  open: controlledOpen,
+  onOpenChange,
+  variant = "sheet",
+  size = "default",
 }: BottomSheetProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlledOpen === undefined) setUncontrolledOpen(next);
+      onOpenChangeRef.current?.(next);
+    },
+    [controlledOpen],
+  );
+
   useEffect(() => {
     if (!open) return;
+    const returnFocusTo =
+      triggerRef.current ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     panelRef.current?.focus();
@@ -57,33 +106,34 @@ export function BottomSheet({
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    const trigger = triggerRef.current;
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
-      trigger?.focus();
+      if (returnFocusTo?.isConnected) returnFocusTo.focus();
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-haspopup="dialog"
-        aria-label={triggerLabel}
-        title={triggerLabel}
-        aria-expanded={open}
-        onClick={() => setOpen(true)}
-        className={
-          triggerClassName ??
-          "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface-raised px-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface-overlay"
-        }
-      >
-        {trigger}
-      </button>
+      {trigger !== undefined ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={triggerLabel}
+          title={triggerLabel}
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+          className={
+            triggerClassName ??
+            "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-surface-raised px-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface-overlay"
+          }
+        >
+          {trigger}
+        </button>
+      ) : null}
       {open ? createPortal(
-        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
+        <div className={containerVariants[variant]}>
           <button
             type="button"
             aria-label="Cerrar panel"
@@ -97,7 +147,7 @@ export function BottomSheet({
             aria-labelledby={titleId}
             aria-describedby={description ? descriptionId : undefined}
             tabIndex={-1}
-            className="relative max-h-[85dvh] w-full overscroll-contain overflow-y-auto rounded-t-2xl border border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl outline-none sm:max-w-lg sm:rounded-2xl"
+            className={`${panelVariants[variant]} ${variant === "side" ? (size === "wide" ? "lg:max-w-3xl" : "lg:max-w-xl") : ""}`}
           >
             <div
               className="mx-auto mb-3 h-1 w-10 rounded-full bg-border sm:hidden"

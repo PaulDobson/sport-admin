@@ -64,4 +64,7 @@
 
 - [x] 9.1 Añadir un caso extremo a extremo que cubra crear plan, asignar membresía, registrar dos pagos parciales y comprobar que el pendiente desaparece y el aviso queda resuelto
 - [x] 9.2 Añadir un caso extremo a extremo de accesibilidad en finanzas que recorra las secciones y las acciones de cobro con teclado y verificar que el foco es visible y las hojas se cierran sin perderlo
-- [ ] 9.3 Ejecutar `pnpm lint`, `pnpm tsc --noEmit`, la suite de pruebas unitarias, las pruebas SQL y la suite extremo a extremo, y verificar que todas pasan
+- [x] 9.3 Ejecutar `pnpm lint`, `pnpm tsc --noEmit`, la suite de pruebas unitarias, las pruebas SQL y la suite extremo a extremo, y verificar que todas pasan
+  - Verificación del 2026-10-17: lint y typecheck pasan; suite unitaria completa en verde (672 pruebas, 150 archivos). Se corrigió la expectativa desactualizada del enlace de programación en `schedule/page.test.tsx`.
+  - El usuario confirmó la ejecución correcta en Supabase de `0029_membership_payment_method.sql` y `0030_membership_collection_notices.sql`.
+  - Cierre por instrucción explícita del usuario el 2026-10-17, aceptando la excepción de E2E omitidas. La suite extremo a extremo no se ejecutó ni se considera verificada.

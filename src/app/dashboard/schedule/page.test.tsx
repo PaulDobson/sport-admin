@@ -80,8 +80,11 @@ describe("SchedulePage", () => {
     render(await SchedulePage({ searchParams: Promise.resolve({ location: "location-1" }) }));
     expect(screen.getByRole("heading", { name: "No hay sesiones para estos filtros" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Limpiar filtros" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Programación" }) !== null).toBe(role === "instructor");
-    expect(screen.queryAllByRole("link", { name: "Programar sesiones" }).length > 0).toBe(role === "instructor");
+    const programmingLinks = screen.queryAllByRole("link", { name: "Programar sesiones" });
+    expect(programmingLinks.length).toBe(role === "instructor" ? 2 : 0);
+    for (const link of programmingLinks) {
+      expect(link.getAttribute("href")).toBe("/dashboard/schedule/programming");
+    }
   });
 
   it("offers a useful unfiltered empty state without unauthorized actions", async () => {

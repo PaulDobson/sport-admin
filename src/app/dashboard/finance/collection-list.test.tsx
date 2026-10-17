@@ -118,6 +118,69 @@ describe("collection list", () => {
     expect(options).toContain("renew");
   });
 
+  it("previews the renewal expiry with the billing cycle before applying", () => {
+    render(
+      <CollectionList
+        items={[
+          item({
+            status: "expired",
+            expiresOn: "2026-01-30",
+            nextBillingDate: "2026-01-31",
+            billingCycle: "quarterly",
+          }),
+        ]}
+        today="2026-01-15"
+        canManage
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Membresía" }));
+
+    expect(screen.getByText("Qué pasará")).toBeTruthy();
+    expect(screen.getByText(/Queda activa hasta el 29 abr 2026/)).toBeTruthy();
+    expect(screen.getByText(/cobro de \$45\.000/)).toBeTruthy();
+    const effectiveOn = document.querySelector(
+      'input[name="effectiveOn"]',
+    ) as HTMLInputElement;
+    expect(effectiveOn.value).toBe("2026-01-15");
+  });
+
+  it("explains the grace period and cancellation effects", () => {
+    render(<CollectionList items={[item()]} today="2026-09-02" canManage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Membresía" }));
+    fireEvent.change(screen.getByLabelText("Acción"), {
+      target: { value: "expire" },
+    });
+    expect(
+      screen.getByText(/Pasa a En mora desde el 2 sept 2026|Pasa a En mora desde el 2 sep 2026/),
+    ).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Acción"), {
+      target: { value: "cancel" },
+    });
+    expect(
+      screen.getByText(/saldo pendiente de \$45\.000 queda en el historial/),
+    ).toBeTruthy();
+  });
+
+  it("does not offer expiring a membership before its expiry date", () => {
+    render(
+      <CollectionList
+        items={[item({ status: "active", expiresOn: "2026-09-30" })]}
+        today="2026-09-05"
+        canManage
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Membresía" }));
+    const options = [
+      ...(screen.getByLabelText("Acción") as HTMLSelectElement).options,
+    ].map((option) => option.value);
+    expect(options).not.toContain("expire");
+    expect(options).toContain("pause");
+  });
+
   it("hides collection actions for roles that cannot manage finance", () => {
     render(
       <CollectionList items={[item()]} today="2026-09-05" canManage={false} />,

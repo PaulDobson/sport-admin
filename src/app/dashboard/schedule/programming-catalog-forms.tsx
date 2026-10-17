@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useId, useState, type ComponentProps } from "react";
+import { useActionState, useId, useState, type ComponentProps, type ReactNode } from "react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 import type { DisciplineOption, ClassTemplateOption } from "@/application/instructor-operations/ports/schedule-catalog-port";
 import type { DayLocation } from "@/domain/instructor-operations/instructor-day";
 import { Button } from "@/presentation/components/primitives";
@@ -18,6 +19,46 @@ const initialState: ProgrammingActionState = { error: null, message: null };
 
 export function ProgrammingButton({ className, ...props }: ComponentProps<typeof Button>) {
   return <Button {...props} className={`min-h-11 ${className ?? ""}`} />;
+}
+
+export function CatalogCreationPanel({
+  title,
+  description,
+  icon: Icon,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  open?: boolean;
+  onToggle?: ComponentProps<"details">["onToggle"];
+  children: ReactNode;
+}) {
+  return (
+    <details
+      open={open}
+      onToggle={onToggle}
+      className="group overflow-hidden rounded-xl border border-border bg-card transition-colors open:border-primary/40"
+    >
+      <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Icon aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-foreground">{title}</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+          </span>
+        </span>
+        <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-border px-4 py-4 sm:px-5">
+        {children}
+      </div>
+    </details>
+  );
 }
 
 export function ProgrammingFeedback({ state }: { state: ProgrammingActionState }) {

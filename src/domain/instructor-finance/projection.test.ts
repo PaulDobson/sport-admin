@@ -11,6 +11,8 @@ const memberships: ProjectionMembership[] = [
   ["monthly", 30000, "CLP"],
 ].map(([billingCycle, agreedPrice, currency], index) => ({
   id: `membership-${index}`,
+  planId: "plan",
+  planName: "Plan",
   startsOn: "2026-01-01",
   expiresOn: "2026-12-31",
   agreedPrice: agreedPrice as number,

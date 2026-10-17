@@ -12,13 +12,14 @@ import type { FinancialProjectionRepositoryPort } from "@/application/instructor
 
 interface MembershipRow {
   id: string;
+  plan_id: string;
   starts_at: string;
   expires_at: string;
   agreed_price: number | string;
   currency: string;
   billing_cycle: BillingCycle;
   status: StudentMembershipStatus;
-  membership_plans: { expiration_grace_days: number };
+  membership_plans: { name: string; expiration_grace_days: number };
 }
 
 interface PaymentRow {
@@ -66,7 +67,7 @@ export class SupabaseFinancialProjectionRepository implements FinancialProjectio
         this.client
           .from("student_memberships")
           .select(
-            "id,starts_at,expires_at,agreed_price,currency,billing_cycle,status,membership_plans!inner(expiration_grace_days)",
+            "id,plan_id,starts_at,expires_at,agreed_price,currency,billing_cycle,status,membership_plans!inner(name,expiration_grace_days)",
           )
           .eq("tenant_id", tenantId)
           .lte("starts_at", end)
@@ -97,6 +98,8 @@ export class SupabaseFinancialProjectionRepository implements FinancialProjectio
       memberships: (membershipResult.data as unknown as MembershipRow[]).map(
         (row) => ({
           id: row.id,
+          planId: row.plan_id,
+          planName: row.membership_plans.name,
           startsOn: row.starts_at,
           expiresOn: row.expires_at,
           agreedPrice: Number(row.agreed_price),

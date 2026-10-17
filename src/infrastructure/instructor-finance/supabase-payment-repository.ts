@@ -5,6 +5,7 @@ import type {
   MembershipPaymentStatus,
   PaymentMethod,
 } from "@/domain/instructor-finance/payment";
+import type { RecentPayment } from "@/domain/instructor-finance/dashboard";
 import { calculateMembershipBalance } from "@/domain/instructor-finance/payment";
 import type {
   PaymentRepositoryPort,
@@ -36,6 +37,20 @@ interface AdjustmentRow {
   effective_on: string;
   reason: string;
   created_at: string;
+}
+
+interface RecentPaymentRow {
+  id: string;
+  membership_id: string;
+  amount: number | string;
+  currency: string;
+  status: MembershipPaymentStatus;
+  paid_at: string | null;
+  student_memberships: {
+    student_id: string;
+    students: { full_name: string };
+    membership_plans: { name: string };
+  };
 }
 
 function toPayment(row: PaymentRow): MembershipPayment {
@@ -159,5 +174,33 @@ export class SupabasePaymentRepository implements PaymentRepositoryPort {
     ).order("paid_at", { ascending: false });
     if (error) throw error;
     return (data as PaymentRow[]).map(toPayment);
+  }
+
+  async listRecentMovements(
+    tenantId: string,
+    limit: number,
+  ): Promise<RecentPayment[]> {
+    const { data, error } = await this.client
+      .from("student_membership_payments")
+      .select(
+        "id,membership_id,amount,currency,status,paid_at,student_memberships!inner(student_id,students!inner(full_name),membership_plans!inner(name))",
+      )
+      .eq("tenant_id", tenantId)
+      .eq("status", "paid")
+      .not("paid_at", "is", null)
+      .order("paid_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data as unknown as RecentPaymentRow[]).map((row) => ({
+      id: row.id,
+      membershipId: row.membership_id,
+      studentId: row.student_memberships.student_id,
+      studentName: row.student_memberships.students.full_name,
+      planName: row.student_memberships.membership_plans.name,
+      amount: Number(row.amount),
+      currency: row.currency,
+      status: row.status,
+      paidAt: row.paid_at ? new Date(row.paid_at) : undefined,
+    }));
   }
 }

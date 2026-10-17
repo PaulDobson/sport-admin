@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { loadOperationalContext } from "@/app/_lib/operational-context";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
@@ -8,6 +9,7 @@ import {
   MobileNavigation,
 } from "@/presentation/components/primary-navigation";
 import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
+import { AssignPlanFromUrl } from "./finance/assign-plan-from-url";
 
 function roleLabel(role: string) {
   return role === "owner"
@@ -70,6 +72,11 @@ export default async function DashboardLayout({
       }
     >
       {children}
+      {membership.role !== "assistant" ? (
+        <Suspense fallback={null}>
+          <AssignPlanFromUrl />
+        </Suspense>
+      ) : null}
     </AppShell>
   );
 }

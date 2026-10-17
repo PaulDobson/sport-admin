@@ -1,12 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import type { MembershipPlan } from "@/domain/instructor-finance/membership";
 import { Button } from "@/presentation/components/primitives";
 import { StudentActionForm } from "../student-workspace";
 import { StudentCheckbox, StudentField, StudentSelect } from "../student-fields";
 import {
-  activateMembershipAction,
   correctPersonalDataAction,
   createRestrictionAction,
   registerConsentAction,
@@ -30,61 +28,6 @@ function Feedback({ state }: { state: StudentDetailFormState }) {
       </p>
     );
   return null;
-}
-
-export function MembershipForm({
-  studentId,
-  plans,
-  startsOn,
-}: {
-  studentId: string;
-  plans: MembershipPlan[];
-  startsOn: string;
-}) {
-  const [state, formAction, pending] = useActionState(
-    activateMembershipAction,
-    initialState,
-  );
-  return (
-    <StudentActionForm action={formAction} pending={pending} feedback={state} className="surface-panel grid gap-4 p-4">
-      <input type="hidden" name="studentId" value={studentId} />
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Plan
-        <StudentSelect
-          name="planId"
-          required
-          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
-        >
-          <option value="">Selecciona un plan</option>
-          {plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name} · {plan.price} {plan.currency}
-            </option>
-          ))}
-        </StudentSelect>
-      </label>
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
-        Inicio
-        <StudentField
-          type="date"
-          name="startsOn"
-          required
-          defaultValue={startsOn}
-          className="h-11 min-w-0 rounded-md border border-input bg-background px-3 text-foreground"
-        />
-      </label>
-      <Feedback state={state} />
-      <Button
-        type="submit"
-        disabled={pending || plans.length === 0}
-        variant="primary"
-        isLoading={pending}
-        className="min-h-11"
-      >
-        {pending ? "Asignando..." : "Asignar membresía"}
-      </Button>
-    </StudentActionForm>
-  );
 }
 
 export function RestrictionForm({

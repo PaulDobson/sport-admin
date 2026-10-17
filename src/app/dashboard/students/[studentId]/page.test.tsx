@@ -23,6 +23,7 @@ vi.mock("@/application/evolution-health-attendance/use-cases/manage-student-priv
 vi.mock("@/application/evolution-health-attendance/use-cases/manage-student-health", () => ({ getStudentHealthHistory: mocks.history }));
 vi.mock("@/application/instructor-finance/use-cases/manage-membership", () => ({ listCurrentMemberships: mocks.memberships }));
 vi.mock("@/application/instructor-finance/use-cases/manage-payment", () => ({ getMembershipBalance: mocks.balance }));
+vi.mock("@/app/dashboard/finance/actions", () => ({ assignMembershipAction: vi.fn(), listAssignablePlansAction: vi.fn(async () => []), searchAssignableStudentsAction: vi.fn(async () => []), createPlanAction: vi.fn(), updatePlanAction: vi.fn() }));
 vi.mock("./student-portal-invite-button", () => ({ StudentPortalInviteButton: () => <button>Generar invitación</button> }));
 
 afterEach(cleanup);
@@ -33,7 +34,7 @@ beforeEach(() => {
   mocks.health.mockResolvedValue({});
   mocks.privacy.mockResolvedValue({ healthEnabled: true, hasCurrentConsent: true, policyVersion: "2026-01", erasureRequest: null });
   mocks.history.mockResolvedValue({ conditions: [{ id: "allergy-1", name: "Alergias", status: "active", notes: "Maní" }], restrictions: [], injuries: [] });
-  mocks.finance.mockResolvedValue({ memberships: { findActivePlans: async () => [] } });
+  mocks.finance.mockResolvedValue({});
   mocks.memberships.mockResolvedValue([{ id: "membership-1", status: "past_due", agreedPrice: 10000, currency: "CLP", nextBillingDate: "2026-11-01" }]);
   mocks.balance.mockResolvedValue({ balance: 10000 });
 });
@@ -72,6 +73,19 @@ describe("student task pages", () => {
     render(await StudentDetailPage({ params, searchParams: Promise.resolve({ section: "membership" }) }));
     expect(screen.getByText("En mora")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Registrar cobro" }).getAttribute("href")).toBe("/dashboard/finance?section=collections");
+  });
+  it("offers the unified plan assignment when the student has no current membership", async () => {
+    mocks.memberships.mockResolvedValue([]);
+    render(await StudentDetailPage({ params, searchParams: Promise.resolve({ section: "membership" }) }));
+    expect(screen.getByText("Sin membresía vigente")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Asignar plan" }).getAttribute("aria-haspopup")).toBe("dialog");
+  });
+  it("does not offer assignment to archived students", async () => {
+    mocks.memberships.mockResolvedValue([]);
+    mocks.find.mockResolvedValue({ ...(await mocks.find()), status: "archived" });
+    render(await StudentDetailPage({ params, searchParams: Promise.resolve({ section: "membership" }) }));
+    expect(screen.getByText("Reactiva al alumno para asignarle un plan.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Asignar plan" })).toBeNull();
   });
   it("preserves all privacy actions and communicates archive separately", async () => {
     render(await StudentDetailPage({ params, searchParams: Promise.resolve({ section: "privacy" }) }));

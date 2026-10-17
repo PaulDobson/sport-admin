@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { NotFoundError } from "@/domain/shared/errors";
+import { ConflictError, NotFoundError } from "@/domain/shared/errors";
 import {
   assertMembershipTransition,
   type BillingCycle,
@@ -7,13 +7,14 @@ import {
   type MembershipPlanStatus,
   type StudentMembership,
 } from "@/domain/instructor-finance/membership";
-import type {
-  CreateMembershipInput,
-  CreateMembershipPlanInput,
-  MembershipRepositoryPort,
-  SetMembershipPlanStatusInput,
-  TransitionMembershipInput,
-  UpdateMembershipPlanInput,
+import {
+  CURRENT_MEMBERSHIP_STATUSES,
+  type CreateMembershipInput,
+  type CreateMembershipPlanInput,
+  type MembershipRepositoryPort,
+  type SetMembershipPlanStatusInput,
+  type TransitionMembershipInput,
+  type UpdateMembershipPlanInput,
 } from "../ports/membership-repository-port";
 
 interface FakePlan extends Omit<MembershipPlan, "name" | "benefits"> {
@@ -40,10 +41,21 @@ function addCycle(date: string, cycle: BillingCycle) {
   return result.toISOString().slice(0, 10);
 }
 
+function isCurrent(membership: StudentMembership) {
+  return (CURRENT_MEMBERSHIP_STATUSES as readonly string[]).includes(
+    membership.status,
+  );
+}
+
 export class FakeMembershipRepository implements MembershipRepositoryPort {
   readonly plans: FakePlan[] = [];
   readonly memberships: StudentMembership[] = [];
-  readonly events: Array<{ type: string; operationId: string }> = [];
+  readonly events: Array<{
+    type: string;
+    operationId: string;
+    tenantId?: string;
+    membershipId?: string;
+  }> = [];
 
   async createPlan(input: CreateMembershipPlanInput) {
     const plan = { id: randomUUID(), status: "active" as const, ...input };
@@ -124,10 +136,15 @@ export class FakeMembershipRepository implements MembershipRepositoryPort {
         (membership) =>
           membership.tenantId === input.tenantId &&
           membership.studentId === input.studentId &&
-          ["active", "paused", "past_due"].includes(membership.status),
+          isCurrent(membership),
+      ) ||
+      this.events.some(
+        (event) =>
+          event.tenantId === input.tenantId &&
+          event.operationId === input.operationId,
       )
     ) {
-      throw new Error("Student already has a current membership");
+      throw new ConflictError("Student already has a current membership");
     }
     const now = new Date();
     const nextBillingDate = addCycle(input.startsOn, plan.billingCycle);
@@ -153,6 +170,8 @@ export class FakeMembershipRepository implements MembershipRepositoryPort {
     this.events.push({
       type: "membership_activated",
       operationId: input.operationId,
+      tenantId: input.tenantId,
+      membershipId: membership.id,
     });
     return membership;
   }
@@ -219,5 +238,35 @@ export class FakeMembershipRepository implements MembershipRepositoryPort {
           membership.tenantId === tenantId && membership.id === membershipId,
       ) ?? null
     );
+  }
+
+  async findStudentIdsWithCurrentMembership(
+    tenantId: string,
+    studentIds?: string[],
+  ) {
+    return [
+      ...new Set(
+        this.memberships
+          .filter(
+            (membership) =>
+              membership.tenantId === tenantId &&
+              isCurrent(membership) &&
+              (!studentIds || studentIds.includes(membership.studentId)),
+          )
+          .map((membership) => membership.studentId),
+      ),
+    ];
+  }
+
+  async findByActivationOperation(tenantId: string, operationId: string) {
+    const event = this.events.find(
+      (candidate) =>
+        candidate.type === "membership_activated" &&
+        candidate.tenantId === tenantId &&
+        candidate.operationId === operationId,
+    );
+    return event?.membershipId
+      ? this.findById(tenantId, event.membershipId)
+      : null;
   }
 }

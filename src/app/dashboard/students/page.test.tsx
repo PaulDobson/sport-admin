@@ -4,15 +4,22 @@ import StudentsPage from "./page";
 
 const membership = vi.hoisted(() => vi.fn());
 const list = vi.hoisted(() => vi.fn());
+const withMembership = vi.hoisted(() => vi.fn());
+const finance = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock("@/app/_lib/operational-context", () => ({ requireOperationalMembership: membership }));
 vi.mock("@/infrastructure/composition/instructor-operations-composition", () => ({ createInstructorOperationsDeps: async () => ({ students: {} }) }));
+vi.mock("@/infrastructure/composition/instructor-finance-composition", () => ({ createInstructorFinanceDeps: finance }));
+vi.mock("@/app/dashboard/finance/actions", () => ({ assignMembershipAction: vi.fn(), listAssignablePlansAction: vi.fn(async () => []), searchAssignableStudentsAction: vi.fn(async () => []), createPlanAction: vi.fn(), updatePlanAction: vi.fn() }));
 vi.mock("@/application/instructor-operations/use-cases/list-students-for-administration", () => ({ listStudentsForAdministration: list }));
 vi.mock("./student-archive-button", () => ({ StudentArchiveButton: ({ studentName }: { studentName: string }) => <button>Archivar {studentName}</button> }));
 
 afterEach(cleanup);
 beforeEach(() => {
+  vi.clearAllMocks();
   membership.mockResolvedValue({ tenantId: "tenant-1", role: "owner" });
+  withMembership.mockResolvedValue([]);
+  finance.mockResolvedValue({ memberships: { findStudentIdsWithCurrentMembership: withMembership } });
   list.mockResolvedValue({ page: 2, pageSize: 10, total: 11, rows: [{ id: "student-1", fullName: "Ana Bravo", photoUrl: null, birthDate: null, status: "active", createdAt: new Date("2026-09-01"), contactPhone: "+56 9 1111", contactEmail: "ana@example.com" }] });
 });
 
@@ -34,6 +41,25 @@ describe("StudentsPage", () => {
     expect(screen.getByRole("link", { name: "Archivados" }).getAttribute("href")).toContain("status=archived&page=1");
   });
 
+  it("offers plan assignment only to active students without a current membership", async () => {
+    list.mockResolvedValue({ page: 1, pageSize: 10, total: 2, rows: [
+      { id: "student-1", fullName: "Ana Bravo", photoUrl: null, birthDate: null, status: "active", createdAt: new Date("2026-09-01"), contactPhone: null, contactEmail: null },
+      { id: "student-2", fullName: "Bruno Soto", photoUrl: null, birthDate: null, status: "active", createdAt: new Date("2026-09-01"), contactPhone: null, contactEmail: null },
+    ] });
+    withMembership.mockResolvedValue(["student-2"]);
+    render(await StudentsPage({ searchParams: Promise.resolve({ ...query, page: "1" }) }));
+    expect(withMembership).toHaveBeenCalledWith("tenant-1", ["student-1", "student-2"]);
+    expect(screen.getAllByRole("button", { name: "Asignar plan a Ana Bravo" })).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Asignar plan a Bruno Soto" })).toBeNull();
+    expect(screen.getAllByText("Sin plan")).toHaveLength(2);
+  });
+
+  it("hides plan assignment when memberships cannot be loaded", async () => {
+    withMembership.mockRejectedValue(new Error("offline"));
+    render(await StudentsPage({ searchParams: Promise.resolve(query) }));
+    expect(screen.queryByRole("button", { name: /Asignar plan/ })).toBeNull();
+  });
+
   it("hides administrative actions for assistants", async () => {
     membership.mockResolvedValue({ tenantId: "tenant-1", role: "assistant" });
     render(await StudentsPage({ searchParams: Promise.resolve(query) }));
@@ -41,6 +67,8 @@ describe("StudentsPage", () => {
     expect(screen.queryByRole("link", { name: /Exportar/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Editar/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Archivar/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Asignar plan/ })).toBeNull();
+    expect(finance).not.toHaveBeenCalled();
   });
 
   it("redirects to the actual page when results shrink", async () => {

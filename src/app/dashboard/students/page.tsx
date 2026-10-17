@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Download, FilterX, Plus, Search, Users } from "lucide-react";
 import { listStudentsForAdministration } from "@/application/instructor-operations/use-cases/list-students-for-administration";
+import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import {
@@ -37,6 +38,11 @@ export default async function StudentsPage({
     redirect(studentListHref({ ...query, page: students.page }));
   }
   const canManage = membership.role !== "assistant";
+  const studentsWithMembership = canManage && students.rows.length > 0
+    ? await createInstructorFinanceDeps()
+      .then(finance => finance.memberships.findStudentIdsWithCurrentMembership(membership.tenantId, students.rows.map(row => row.id)))
+      .catch(() => undefined)
+    : undefined;
   const totalPages = Math.max(1, Math.ceil(students.total / students.pageSize));
   const newHref = studentTaskHref("/dashboard/students/new", query);
   const isFiltered = Boolean(query.search || query.status !== "active");
@@ -161,7 +167,7 @@ export default async function StudentsPage({
 
         <section aria-label="Administración de alumnos" className="overflow-hidden rounded-xl border border-border bg-card">
           {students.rows.length ? (
-            <StudentList rows={students.rows} query={query} canManage={canManage} />
+            <StudentList rows={students.rows} query={query} canManage={canManage} studentsWithMembership={studentsWithMembership} />
           ) : (
             <div className="grid justify-items-center gap-3 px-4 py-12 text-center">
               <Users className="h-9 w-9 text-muted-foreground" aria-hidden="true" />

@@ -70,6 +70,12 @@ An owner, admin, or instructor opens a student record and generates a seven-day 
 
 The verification scripts run inside a transaction and roll back their fixture tenants, memberships, and other rows. They do not require Docker, the Supabase CLI, or a local database.
 
+## Membership payment method verification
+
+After applying `migrations/0029_membership_payment_method.sql` and `migrations/0030_membership_collection_notices.sql` with their prerequisites, open `tests/0029_membership_payment_method.sql` in the Supabase SQL Editor. Set `test.user_a` to an existing Auth user UUID and execute the complete script. It verifies payment idempotency, stored payment methods, invalid-method rejection, and collection-notice resolution after full payment.
+
+Payment and notification counts are scoped to the fixture tenant so existing records accessible to the selected user do not affect the assertions. The script ends with `rollback` and does not persist its fixtures. If execution fails in a session that keeps the transaction open, run `rollback;` before retrying the complete script.
+
 ## Student profile details
 
 Execute `migrations/0035_student_profile_details.sql` to add optional gender, height, weight, and emergency-contact details to student profiles. Allergies stay in consent-gated health history rather than the basic profile.
