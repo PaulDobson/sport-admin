@@ -35,6 +35,8 @@ export function OperationalTopbar({
     currentTenantId: string;
     tenants: TenantContextOption[];
     roleLabel: string;
+    canManageGym?: boolean;
+    canReadBilling?: boolean;
     locations?: LocationContextOption[];
     currentLocationId?: string;
   };

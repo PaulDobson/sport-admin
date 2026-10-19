@@ -110,7 +110,9 @@
 
 }
 
-* { border-color: var(--border); }
+@layer base {
+  *, ::before, ::after, ::backdrop { border-color: var(--border); }
+}
 html { background: var(--background); }
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: 'Manrope Variable', 'Manrope', sans-serif; }
 button { cursor: pointer; }

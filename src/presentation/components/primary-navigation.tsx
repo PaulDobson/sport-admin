@@ -20,7 +20,7 @@ const navigationGroups: ReadonlyArray<{
   destinationIds: ReadonlyArray<NavigationDestination["id"]>;
 }> = [
   { label: "Operación", destinationIds: ["home", "schedule", "students"] },
-  { label: "Gestión", destinationIds: ["finance", "reports"] },
+  { label: "Gestión", destinationIds: ["finance", "reports", "gym", "billing"] },
 ];
 
 function DesktopNavigationLink({

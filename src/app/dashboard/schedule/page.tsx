@@ -12,6 +12,7 @@ import {
   ListChecks,
   LayoutGrid,
   Table2,
+  CalendarRange,
 } from "lucide-react";
 import { getScheduleSessions } from "@/application/instructor-operations/use-cases/get-schedule-sessions";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
@@ -24,13 +25,16 @@ import {
 import { ScheduleNavigation } from "@/presentation/components/schedule-navigation";
 import { SessionList } from "./session-list";
 import { SessionTable } from "./session-table";
-import { sessionPeriod } from "./session-period";
+import { SessionCalendar, type CalendarSession } from "./session-calendar";
+import { sessionPeriod, sessionPeriodTitle } from "./session-period";
 import {
   isSessionCurrent,
   operationalDateKey,
-  operationalTimezone,
-  sessionDateFormatter,
+  sessionCalendarState,
+  sessionOccupiedCount,
 } from "./session-presentation";
+
+const calendarPageSize = 500;
 
 interface SchedulePageProps {
   searchParams: Promise<{
@@ -80,8 +84,13 @@ export default async function SchedulePage({
     params.period === "day" || params.period === "week"
       ? params.period
       : "month";
-  const view = params.view === "table" ? "table" : "grid";
+  const view =
+    params.view === "table" || params.view === "calendar"
+      ? params.view
+      : "grid";
+  const isCalendar = view === "calendar";
   const range = sessionPeriod(date, period);
+  const periodTitle = sessionPeriodTitle(range, period);
   const operations = await createInstructorOperationsDeps();
   const schedule = await getScheduleSessions(
     {
@@ -91,7 +100,9 @@ export default async function SchedulePage({
       status: selectedStatus,
       from: range.from,
       through: range.through,
-      page: params.page,
+      ...(isCalendar
+        ? { page: 1, pageSize: calendarPageSize }
+        : { page: params.page }),
     },
     operations,
   );
@@ -228,8 +239,67 @@ export default async function SchedulePage({
       </nav>
     ) : null;
 
+  const calendarQuery = new URLSearchParams(filterParams);
+  calendarQuery.delete("date");
+  calendarQuery.delete("period");
+  const calendarBaseQuery = calendarQuery.toString();
+  const calendarSessions: CalendarSession[] = isCalendar
+    ? sessions.map((session) => ({
+        id: session.id,
+        name: session.name,
+        locationName: session.locationName,
+        startsAt: session.startsAt.toISOString(),
+        endsAt: session.endsAt.toISOString(),
+        dateKey: operationalDateKey(session.startsAt),
+        capacity: session.capacity,
+        occupied: sessionOccupiedCount(session),
+        waitlisted: session.waitlistedCount,
+        state: sessionCalendarState(session, now),
+      }))
+    : [];
+
+  const dateNavigation = (
+    <nav
+      aria-label="Navegación de fechas"
+      className="flex min-w-0 items-center gap-1"
+    >
+      <Link
+        href={displayHref(
+          period,
+          previousDate.toISOString().slice(0, 10),
+        )}
+        aria-label="Período anterior"
+        title="Período anterior"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+      </Link>
+      {isCalendar ? null : (
+        <p className="px-1 text-sm font-semibold first-letter:uppercase">
+          {periodTitle}
+        </p>
+      )}
+      <Link
+        href={displayHref(period, nextDate.toISOString().slice(0, 10))}
+        aria-label="Período siguiente"
+        title="Período siguiente"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+      </Link>
+      <Link
+        href={displayHref(period, operationalDateKey(now))}
+        className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        Hoy
+      </Link>
+    </nav>
+  );
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div
+      className={`mx-auto space-y-6 ${isCalendar ? "max-w-7xl" : "max-w-6xl"}`}
+    >
       <Surface className="border-primary/15 bg-linear-to-br from-primary/10 via-card to-card p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-2xl">
@@ -263,7 +333,7 @@ export default async function SchedulePage({
       >
         {[
           {
-            label: "En esta página",
+            label: isCalendar ? "En este período" : "En esta página",
             value: sessions.length,
             detail: `${schedule.total} resultados · ${currentCount} en curso`,
             icon: CalendarDays,
@@ -407,41 +477,7 @@ export default async function SchedulePage({
               </Link>
             ))}
           </nav>
-          <nav
-            aria-label="Navegación de fechas"
-            className="flex min-w-0 items-center gap-1"
-          >
-            <Link
-              href={displayHref(
-                period,
-                previousDate.toISOString().slice(0, 10),
-              )}
-              aria-label="Período anterior"
-              title="Período anterior"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-            </Link>
-            <p className="px-1 text-sm font-semibold tabular-nums">
-              {range.from === range.through
-                ? range.from
-                : `${range.from} – ${range.through}`}
-            </p>
-            <Link
-              href={displayHref(period, nextDate.toISOString().slice(0, 10))}
-              aria-label="Período siguiente"
-              title="Período siguiente"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <ChevronRight aria-hidden="true" className="h-4 w-4" />
-            </Link>
-            <Link
-              href={displayHref(period, operationalDateKey(now))}
-              className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              Hoy
-            </Link>
-          </nav>
+          {isCalendar ? null : dateNavigation}
           <nav
             aria-label="Vista de sesiones"
             className="ml-auto flex shrink-0 rounded-lg border border-border p-0.5"
@@ -464,6 +500,15 @@ export default async function SchedulePage({
             >
               <Table2 aria-hidden="true" className="h-4 w-4" />
             </Link>
+            <Link
+              href={viewHref("calendar")}
+              aria-label="Calendario"
+              title="Vista de calendario"
+              aria-current={view === "calendar" ? "page" : undefined}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <CalendarRange aria-hidden="true" className="h-4 w-4" />
+            </Link>
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -476,9 +521,21 @@ export default async function SchedulePage({
               {schedule.total} resultados
             </p>
           </div>
-          {pagination}
+          {isCalendar ? null : pagination}
         </div>
-        {sessions.length > 0 ? (
+        {isCalendar ? (
+          <SessionCalendar
+            sessions={calendarSessions}
+            period={period}
+            date={date}
+            today={operationalDateKey(now)}
+            range={range}
+            title={periodTitle}
+            baseQuery={calendarBaseQuery}
+            navigation={dateNavigation}
+            hiddenCount={Math.max(0, schedule.total - sessions.length)}
+          />
+        ) : sessions.length > 0 ? (
           view === "table" ? (
             <SessionTable sessions={sessions} now={now} canManage={canManage} />
           ) : (

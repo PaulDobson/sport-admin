@@ -9,6 +9,20 @@ vi.mock("@/app/select-tenant/actions", () => ({
 afterEach(cleanup);
 
 describe("AccountContextMenu", () => {
+  it.each([true,false])("exposes standalone billing only with owner authorization: %s",canReadBilling => {
+    render(<AccountContextMenu profileName="Ana" currentTenantId="tenant-1" roleLabel="Dueña" tenants={[]} canReadBilling={canReadBilling} />);
+    fireEvent.click(screen.getByRole("button",{ name: "Cuenta de Ana" }));
+    const link = screen.queryByRole("menuitem",{ name: "Mi suscripción" });
+    if (canReadBilling) expect(link?.getAttribute("href")).toBe("/billing?tenant=tenant-1");
+    else expect(link).toBeNull();
+  });
+  it.each([true, false])("exposes gym maintenance only when authorized: %s", canManageGym => {
+    render(<AccountContextMenu profileName="Ana" currentTenantId="tenant-1" roleLabel="Dueña" tenants={[]} canManageGym={canManageGym} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cuenta de Ana" }));
+    const link = screen.queryByRole("menuitem", { name: "Mi gimnasio" });
+    if (canManageGym) expect(link?.getAttribute("href")).toBe("/dashboard/gym");
+    else expect(link).toBeNull();
+  });
   it("opens with account and authorized tenant options", () => {
     render(
       <AccountContextMenu

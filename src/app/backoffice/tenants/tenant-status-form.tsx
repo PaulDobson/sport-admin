@@ -30,20 +30,24 @@ export function TenantStatusForm({
   );
 
   if (availableStatuses.length === 0) {
-    return <p className="text-sm text-muted-foreground">Estado final</p>;
+    return (
+      <p className="rounded-xl bg-white/4 px-3 py-3 text-sm text-muted-foreground">
+        Estado final: este tenant ya no admite transiciones.
+      </p>
+    );
   }
 
   return (
     <form
       action={action}
-      className="grid gap-3 border-t border-border pt-4 sm:grid-cols-[10rem_1fr_auto]"
+      className="grid gap-3"
     >
       <input type="hidden" name="tenantId" value={tenantId} />
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
         Nuevo estado
         <select
           name="status"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
         >
           {availableStatuses.map((status) => (
             <option key={status} value={status}>
@@ -52,7 +56,7 @@ export function TenantStatusForm({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm text-muted-foreground">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
         Motivo
         <input
           required
@@ -60,20 +64,20 @@ export function TenantStatusForm({
           maxLength={500}
           name="reason"
           placeholder="Motivo de la decisión"
-          className="h-10 rounded-md border border-input bg-background px-3 text-foreground"
+          className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
         />
       </label>
       <Button
         type="submit"
         variant="primary"
         isLoading={pending}
-        className="h-10 self-end rounded-md"
+        className="h-11 w-full"
       >
         {pending ? "Guardando..." : "Aplicar"}
       </Button>
       {state.error ? (
         <p
-          className="text-sm font-medium text-destructive sm:col-span-3"
+          className="text-sm font-medium text-destructive"
           role="alert"
         >
           {state.error}
@@ -81,7 +85,7 @@ export function TenantStatusForm({
       ) : null}
       {state.saved ? (
         <p
-          className="text-sm font-medium text-success sm:col-span-3"
+          className="text-sm font-medium text-success"
           role="status"
         >
           Estado actualizado.

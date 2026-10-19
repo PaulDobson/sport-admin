@@ -36,6 +36,24 @@ export function sessionOccupiedCount(session: DaySession) {
   return session.confirmedCount + (session.walkInCount ?? 0);
 }
 
+export type SessionCalendarState =
+  | "upcoming"
+  | "current"
+  | "full"
+  | "completed"
+  | "cancelled";
+
+export function sessionCalendarState(
+  session: DaySession,
+  now: Date,
+): SessionCalendarState {
+  if (session.status === "cancelled") return "cancelled";
+  if (session.status === "completed" || session.endsAt <= now) return "completed";
+  if (isSessionCurrent(session, now)) return "current";
+  if (session.capacity > 0 && sessionOccupiedCount(session) >= session.capacity) return "full";
+  return "upcoming";
+}
+
 export function sessionCapacity(session: DaySession) {
   const occupied = sessionOccupiedCount(session);
   return {

@@ -71,6 +71,7 @@ describe("SaaS tenant administration", () => {
     backoffice.tenants.push({
       id: "e0000000-0000-4000-8000-000000000001",
       name: "Pending Academy",
+      address: null, contactName: null, contactEmail: null, phone: null, city: null, region: null,
       status: "pending",
       billingContactName: null,
       billingContactEmail: null,

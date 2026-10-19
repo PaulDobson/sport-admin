@@ -45,6 +45,9 @@ function routeHeading(pathname: string) {
   if (pathname.startsWith("/dashboard/profile")) {
     return { section: "Cuenta", title: "Perfil y preferencias" };
   }
+  if (pathname === "/dashboard/gym") {
+    return { section: "Gestión", title: "Mi gimnasio" };
+  }
   return { section: "Operación", title: "Sport Admin" };
 }
 
@@ -58,6 +61,8 @@ export function OperationalRouteTopbar({
     currentTenantId: string;
     tenants: TenantContextOption[];
     roleLabel: string;
+    canManageGym?: boolean;
+    canReadBilling?: boolean;
     locations?: LocationContextOption[];
     currentLocationId?: string;
   };

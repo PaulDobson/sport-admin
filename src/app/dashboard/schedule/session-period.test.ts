@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sessionPeriod } from "./session-period";
+import { sessionPeriod, sessionPeriodTitle } from "./session-period";
 
 describe("sessionPeriod", () => {
   it.each([
@@ -13,5 +13,15 @@ describe("sessionPeriod", () => {
 
   it("rejects invalid dates", () => {
     expect(() => sessionPeriod("2026-02-30", "day")).toThrow();
+  });
+});
+
+describe("sessionPeriodTitle", () => {
+  it.each([
+    ["2026-10-17", "day", "sábado, 17 de octubre de 2026"],
+    ["2026-10-17", "week", "12 oct – 18 oct 2026"],
+    ["2026-10-17", "month", "octubre de 2026"],
+  ] as const)("formats %s in %s mode", (date, period, title) => {
+    expect(sessionPeriodTitle(sessionPeriod(date, period), period)).toBe(title);
   });
 });

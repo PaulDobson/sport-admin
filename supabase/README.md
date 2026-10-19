@@ -80,3 +80,111 @@ Payment and notification counts are scoped to the fixture tenant so existing rec
 
 Execute `migrations/0035_student_profile_details.sql` to add optional gender, height, weight, and emergency-contact details to student profiles. Allergies stay in consent-gated health history rather than the basic profile.
 Execute `migrations/0036_student_contact_fields_backfill.sql` to preserve existing primary emergency contacts in the new emergency phone field.
+
+## Commercial SaaS renewals (prepared migrations, not production instructions)
+
+On 2026-10-18 the operator confirmed successful **staging** execution of migrations
+0048–0052, regressions 0043–0048, the integrated 0049 lifecycle regression and the
+scheduler template. This is operator-reported, not independently observed.
+Two-connection concurrency and actual worker/storage/provider smoke remain pending.
+The new [0048 migration](migrations/0048_saas_collections_and_issuer.sql) adds
+collections/detail reads and versioned issuer configuration; it is prepared,
+not applied by the assistant but included in the operator's staging confirmation.
+Do not rerun committed migrations. Use a disposable database for further fixtures
+and complete the runtime/concurrency gate before production automation.
+
+The [0048 regression](tests/0048_saas_collections_and_issuer.sql) covers
+non-admin denial, revoked direct view access, literal name search, tenant/status/
+currency/due filters, stable pagination, partial legacy balances, imported
+settlements, pending attempts, historical refunds, issuer checksum validation,
+immutable versions, stale updates, operation replay/payload mismatch and audit.
+It ends in `rollback`; it has not been executed by the assistant.
+
+If migration `0042` failed with duplicate constraint
+`saas_charges_manual_reference_check`, use the corrected migration: its
+column-length check is explicitly named `saas_charges_manual_reference_length_check`,
+separate from the cross-field payment check. Run `rollback;` if the failed
+transaction is still open, then rerun the complete `0042` script. Do not rerun
+an already committed `0041` or drop payment constraints to bypass the error.
+
+The new [renewal regression](tests/0047_saas_subscription_renewals.sql) rolls back
+synthetic identities and contracts, checking archived-version renewal, trial
+completion, applied/blocked downgrades, owner notification routing, free periods,
+idempotency, permission denial, rollback after invoice conflict, retry exhaustion
+and reviewed recovery. It does not replace a two-connection concurrency test.
+See [the billing runbook](../docs/billing-runbook.md#renewal-processor-prepared-not-yet-enabled)
+for the release gate, protected endpoint, manual recovery and required concurrent
+verification. No remote migration or scheduler deployment is performed by the
+application code.
+
+## Manual payments, private receipts and owner billing (prepared 0049–0052)
+
+The following migrations are included in the operator's successful staging
+execution report. They are listed in dependency order for fresh environments;
+do not rerun them in staging if already committed:
+
+1. [0049](migrations/0049_saas_manual_payments.sql): atomic full-balance payments,
+   audited voids, shared provider overpayment protection and receipt/PDF outbox.
+   Existing provider invoices tagged `legacy` retain their historical document
+   behavior and amounts; new commercial CLP provider invoices share receipt creation.
+2. [0050](migrations/0050_saas_receipt_processing.sql): per-document owner/admin
+   authorization, delivery recipient checks, PDF/email worker leases,
+   uncertain-email reconciliation and heartbeat.
+3. [0051](migrations/0051_saas_owner_billing.sql): named owned-academy selection,
+   total debt per currency, paginated invoices and read-only suspended-owner access.
+4. [0052](migrations/0052_saas_financial_drilldown.sql): exact-period financial
+   ledger, including signed refunds and historical duration-aware MRR.
+
+The integrated [lifecycle regression](tests/0049_saas_billing_lifecycle.sql)
+requires the complete chain through 0052 and rolls back all synthetic fixtures.
+It checks partial/overpayment rejection, operation replay, transactional outbox
+failure, retained debt, private document grants, lease/retry/unknown delivery,
+owner/foreign-role authorization and dashboard reconciliation. The operator
+confirmed it ran successfully in staging. Keep earlier regression scripts and two-connection tests in the
+release gate; this integrated script alone does not certify concurrency.
+
+The [scheduler template](operations/saas_billing_scheduler.sql) is opt-in, not a
+migration; its execution in staging is operator-confirmed, but actual endpoint
+processing is not yet verified. Configure independent worker secrets through Vault, not cron literals.
+Read [the runbook](../docs/billing-runbook.md#payments-documents-and-owner-access-0049–0052)
+before enabling either worker. No storage object, email or cron schedule was
+created remotely by the assistant during that staging preparation. The later
+authorized localhost smoke uploaded one synthetic receipt to the connected
+private bucket, as recorded in the runbook; it did not send email or change cron.
+
+## Document recovery inbox (prepared 0053, not executed)
+
+[0053](migrations/0053_saas_document_job_queue.sql) adds an audited,
+platform-admin-only read RPC for the existing PDF/email outbox. It does not
+change job processing, delivery semantics, receipts, payments or cron schedules.
+Apply it after 0052 when database validation resumes; it has not been executed
+or included in the operator's previous migration confirmation.
+
+The inbox is available from **Finanzas SaaS → Revisar PDF y correo**. It filters
+by academy name, job kind and state, with server-side pagination and counts from
+one SQL snapshot. The default attention view includes failed/uncertain jobs and
+running jobs with expired leases. Queue reads never claim or execute a job.
+No worker lease tokens, storage paths, provider secrets or receipt snapshots are
+returned. Existing table privileges and RLS remain unchanged.
+
+Before 0053 is installed, the application shows an explicit missing-migration
+message for the inbox while retaining the existing processor status console.
+SQL/RLS, runtime and browser checks for this increment are deferred at the
+operator's request; type checking and focused lint are separate static checks.
+
+## Read-only plan version history (prepared 0054, not executed)
+
+[0054](migrations/0054_saas_plan_version_history.sql) exposes the immutable
+plan versions through a paginated, audited, platform-admin-only RPC.
+It does not change existing versions, contracts, prices, limits or table grants.
+The history is reachable from active and archived catalog entries; the current
+offer is identified by `current_version_id`, not the highest version number.
+This matters for imported negotiated legacy versions.
+
+The returned rows preserve original amounts/currencies and omit creator user
+identities. Runtime parsing checks both the requested plan and pagination.
+Missing RPC installation produces an explicit 0054 migration message without
+breaking the existing catalog. Execute migrations in numeric order when SQL
+validation resumes; neither 0053 nor 0054 is covered by the earlier staging
+confirmation. SQL/runtime/browser verification is deferred; static TypeScript
+and focused lint passed.

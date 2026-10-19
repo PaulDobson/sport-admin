@@ -14,6 +14,42 @@ export type Database = {
   };
   public: {
     Tables: {
+      tenant_details: {
+        Row: {
+          tenant_id: string;
+          address: string | null;
+          contact_name: string | null;
+          contact_email: string | null;
+          phone: string | null;
+          city: string | null;
+          region: string | null;
+        };
+        Insert: {
+          tenant_id: string;
+          address?: string | null;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          phone?: string | null;
+          city?: string | null;
+          region?: string | null;
+        };
+        Update: {
+          tenant_id?: string;
+          address?: string | null;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          phone?: string | null;
+          city?: string | null;
+          region?: string | null;
+        };
+        Relationships: [{
+          foreignKeyName: "tenant_details_tenant_id_fkey";
+          columns: ["tenant_id"];
+          isOneToOne: true;
+          referencedRelation: "tenants";
+          referencedColumns: ["id"];
+        }];
+      };
       abandonment_policies: {
         Row: {
           attendance_percentage_threshold: number;
@@ -2748,6 +2784,143 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_saas_financial_ledger: {
+        Args: { target_period: string; target_currency: string; target_metric: string; page_number: number };
+        Returns: Json;
+      };
+      reconcile_saas_receipt_delivery: {
+        Args: { target_delivery: string; confirmed_provider_id: string | null; confirmed_not_sent: boolean; change_reason: string };
+        Returns: Json;
+      };
+      get_my_saas_billing: { Args: { target_tenant: string; page_number: number }; Returns: Json };
+      record_saas_manual_payment: {
+        Args: { target_invoice: string; expected_amount: number; paid_on: string; payment_method: string; payment_reference: string | null; operation_id: string; change_reason: string };
+        Returns: Json;
+      };
+      void_saas_invoice: { Args: { target_invoice: string; operation_id: string; change_reason: string }; Returns: Json };
+      get_saas_receipt: { Args: { target_receipt: string }; Returns: Json };
+      list_saas_invoice_receipts: { Args: { target_invoice: string }; Returns: Json };
+      authorize_saas_receipt_download: { Args: { target_receipt: string }; Returns: Json };
+      request_saas_receipt_delivery: {
+        Args: { target_receipt: string; operation_id: string; recipient: string; recipient_source: string; fallback_approved: boolean };
+        Returns: Json;
+      };
+      retry_saas_receipt_pdf: { Args: { target_receipt: string }; Returns: Json };
+      claim_saas_billing_job: { Args: Record<PropertyKey, never>; Returns: Json };
+      finish_saas_billing_job: {
+        Args: { target_job: string; target_lease: string; outcome: string; document_path: string | null;
+          document_hash: string | null; document_size: number | null; provider_id: string | null; error_code: string | null };
+        Returns: Json;
+      };
+      get_saas_document_processor_status: { Args: Record<PropertyKey, never>; Returns: Json };
+      list_saas_document_jobs: {
+        Args: { tenant_query: string; target_kind: string; target_status: string; page_number: number; page_size: number };
+        Returns: Json;
+      };
+      list_saas_collections: {
+        Args: {
+          target_tenant: string | null; tenant_query: string; target_status: string; target_currency: string | null;
+          due_from: string | null; due_until: string | null; page_number: number; page_size: number;
+        };
+        Returns: Json;
+      };
+      get_saas_collection: { Args: { target_invoice: string }; Returns: Json };
+      get_saas_billing_issuer: { Args: Record<PropertyKey, never>; Returns: Json };
+      save_saas_billing_issuer: {
+        Args: {
+          operation_id: string; expected_version: string | null; legal_name: string;
+          tax_id: string; address: string; email: string; change_reason: string;
+        };
+        Returns: Json;
+      };
+      process_saas_subscription_renewal: {
+        Args: { request_id: string; target_subscription: string | null; expected_period_end: string | null };
+        Returns: Json;
+      };
+      get_saas_renewal_status: {
+        Args: { target_tenant: string | null };
+        Returns: Json;
+      };
+      preview_saas_plan_change: {
+        Args: { target_tenant: string; target_version: string };
+        Returns: Json;
+      };
+      confirm_saas_plan_change: {
+        Args: { target_tenant: string; target_version: string; expected_fingerprint: string; operation_id: string; change_reason: string };
+        Returns: Json;
+      };
+      cancel_saas_scheduled_change: {
+        Args: { target_tenant: string; target_change: string; operation_id: string; change_reason: string };
+        Returns: Json;
+      };
+      get_saas_subscription_management: {
+        Args: { target_tenant: string };
+        Returns: Json;
+      };
+      preview_saas_subscription_assignment: {
+        Args: { target_tenant: string; target_version: string; starts_on: string; use_trial: boolean; due_on: string | null };
+        Returns: Json;
+      };
+      confirm_saas_subscription_assignment: {
+        Args: {
+          target_tenant: string; target_version: string; starts_on: string; use_trial: boolean;
+          due_on: string | null; expected_fingerprint: string; operation_id: string; change_reason: string;
+        };
+        Returns: Json;
+      };
+      list_saas_plan_catalog: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      list_saas_plan_versions: {
+        Args: { target_plan: string; page_number: number; page_size: number };
+        Returns: Json;
+      };
+      publish_saas_plan_version: {
+        Args: {
+          target_plan: string | null;
+          expected_version: string | null;
+          operation_id: string;
+          terms: Json;
+          change_reason: string;
+        };
+        Returns: Json;
+      };
+      archive_saas_plan: {
+        Args: {
+          target_plan: string;
+          expected_version: string;
+          operation_id: string;
+          change_reason: string;
+        };
+        Returns: Json;
+      };
+      get_tenant_details: {
+        Args: { target_tenant: string };
+        Returns: {
+          tenant_id: string;
+          name: string;
+          address: string | null;
+          contact_name: string | null;
+          contact_email: string | null;
+          phone: string | null;
+          city: string | null;
+          region: string | null;
+        }[];
+      };
+      update_tenant_details: {
+        Args: {
+          target_tenant: string;
+          target_name: string;
+          target_address: string;
+          target_contact_name: string;
+          target_contact_email: string;
+          target_phone: string;
+          target_city: string;
+          target_region: string;
+        };
+        Returns: undefined;
+      };
       programming_batch_row_uuid: {
         Args: { value: string };
         Returns: string;
@@ -3233,8 +3406,14 @@ export type Database = {
       list_saas_tenants: {
         Args: never;
         Returns: {
-          billing_contact_email: string;
-          billing_contact_name: string;
+          billing_contact_email: string | null;
+          billing_contact_name: string | null;
+          address: string | null;
+          contact_name: string | null;
+          contact_email: string | null;
+          phone: string | null;
+          city: string | null;
+          region: string | null;
           created_at: string;
           id: string;
           name: string;

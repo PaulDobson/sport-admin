@@ -10,6 +10,7 @@ import {
 } from "@/presentation/components/primary-navigation";
 import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
 import { AssignPlanFromUrl } from "./finance/assign-plan-from-url";
+import { canManageTenantDetails } from "@/domain/tenants/tenant-details";
 
 function roleLabel(role: string) {
   return role === "owner"
@@ -66,6 +67,8 @@ export default async function DashboardLayout({
             profileName: profile?.fullName || "Tu cuenta",
             currentTenantId: membership.tenantId,
             roleLabel: label,
+            canManageGym: canManageTenantDetails(membership.role),
+            canReadBilling: membership.role === "owner",
             tenants: tenantOptions,
           }}
         />

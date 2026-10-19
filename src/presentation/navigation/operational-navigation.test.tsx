@@ -49,8 +49,19 @@ describe("operational navigation", () => {
         "students",
         "finance",
         "reports",
+        ...(["owner", "admin"].includes(role) ? ["gym"] : []),
+        ...(role === "owner" ? ["billing"] : []),
       ]);
     }
+  });
+
+  it("shows academy maintenance only to owners and admins", () => {
+    route.pathname = "/dashboard/gym";
+    const { unmount } = render(<DesktopNavigation role="owner" />);
+    expect(screen.getByRole("link", { name: "Mi gimnasio" }).getAttribute("aria-current")).toBe("page");
+    unmount();
+    render(<DesktopNavigation role="instructor" />);
+    expect(screen.queryByRole("link", { name: "Mi gimnasio" })).toBeNull();
   });
 
   it("shares active state while keeping reports out of mobile navigation", () => {

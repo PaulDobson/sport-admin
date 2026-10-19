@@ -14,6 +14,15 @@ vi.mock("@/application/instructor-operations/use-cases/get-schedule-sessions", (
 vi.mock("@/infrastructure/composition/instructor-operations-composition", () => ({
   createInstructorOperationsDeps: () => createDeps(),
 }));
+vi.mock("./session-calendar", () => ({
+  SessionCalendar: (props: { title: string; sessions: { id: string; state: string }[]; hiddenCount: number; navigation: React.ReactNode }) => (
+    <section aria-label="Calendario de sesiones" data-hidden={props.hiddenCount}>
+      <h3>{props.title}</h3>
+      {props.navigation}
+      {props.sessions.map((session) => <span key={session.id}>{`${session.id}:${session.state}`}</span>)}
+    </section>
+  ),
+}));
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => { throw new Error(`redirect:${path}`); },
 }));
@@ -198,5 +207,22 @@ describe("SchedulePage", () => {
     loadContext.mockResolvedValue({ status });
     await expect(SchedulePage({ searchParams: Promise.resolve({}) })).rejects.toThrow(`redirect:${path}`);
     expect(getSessions).not.toHaveBeenCalled();
+  });
+
+  it("loads the whole period without pagination in calendar view", async () => {
+    render(await SchedulePage({ searchParams: Promise.resolve({ view: "calendar", period: "week", date: "2026-10-07" }) }));
+    expect(getSessions).toHaveBeenCalledWith(expect.objectContaining({
+      from: "2026-10-05",
+      through: "2026-10-11",
+      page: 1,
+      pageSize: 500,
+    }), { scheduleSessions: {} });
+    const calendar = screen.getByRole("region", { name: "Calendario de sesiones" });
+    expect(within(calendar).getByRole("heading", { name: "5 oct – 11 oct 2026" })).toBeTruthy();
+    expect(within(calendar).getByRole("navigation", { name: "Navegación de fechas" })).toBeTruthy();
+    expect(within(calendar).getByText("session-1:current")).toBeTruthy();
+    expect(calendar.getAttribute("data-hidden")).toBe("299");
+    expect(screen.queryByRole("navigation", { name: "Paginación de sesiones" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Calendario" }).getAttribute("aria-current")).toBe("page");
   });
 });

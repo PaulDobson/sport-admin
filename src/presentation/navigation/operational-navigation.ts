@@ -1,7 +1,9 @@
 import {
   CalendarDays,
+  Building2,
   ChartNoAxesCombined,
   CircleDollarSign,
+  CreditCard,
   Dumbbell,
   House,
   Repeat2,
@@ -11,7 +13,7 @@ import {
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 
 export interface NavigationDestination {
-  id: "home" | "schedule" | "students" | "finance" | "reports";
+  id: "home" | "schedule" | "students" | "finance" | "reports" | "gym" | "billing";
   label: string;
   href: string;
   icon: LucideIcon;
@@ -96,6 +98,15 @@ export const operationalDestinations: readonly NavigationDestination[] = [
     icon: ChartNoAxesCombined,
     mobile: false,
   },
+  {
+    id: "gym",
+    label: "Mi gimnasio",
+    href: "/dashboard/gym",
+    icon: Building2,
+    mobile: false,
+    roles: ["owner", "admin"],
+  },
+  { id: "billing",label: "Mi suscripción",href: "/billing",icon: CreditCard,mobile: false,roles: ["owner"] },
 ];
 
 export function destinationsForRole(role: TenantMembershipRole) {

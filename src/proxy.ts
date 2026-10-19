@@ -5,7 +5,7 @@ import {
   getSupabaseUrl,
 } from "@/infrastructure/supabase/env";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/portal"];
+const PROTECTED_PREFIXES = ["/dashboard", "/onboarding", "/portal", "/billing"];
 
 /**
  * Refreshes the Supabase session cookie on every request and redirects
@@ -46,7 +46,8 @@ export async function proxy(request: NextRequest) {
     );
   if (isProtected && !user) {
     const redirectUrl = new URL("/log-in", request.url);
-    redirectUrl.searchParams.set("next", request.nextUrl.pathname);
+    redirectUrl.searchParams.set("next", request.nextUrl.pathname === "/billing"
+      ? `${request.nextUrl.pathname}${request.nextUrl.search}` : request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -54,5 +55,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/onboarding/:path*", "/portal/:path*"],
+  matcher: ["/dashboard/:path*", "/onboarding/:path*", "/portal/:path*", "/billing/:path*"],
 };

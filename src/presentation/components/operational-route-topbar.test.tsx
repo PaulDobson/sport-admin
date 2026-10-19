@@ -12,6 +12,12 @@ vi.mock("./operational-topbar", () => ({
 afterEach(cleanup);
 
 describe("Agenda route headings", () => {
+  it("places gym maintenance under management rather than personal profile", () => {
+    route.pathname = "/dashboard/gym";
+    render(<OperationalRouteTopbar tenantName="Academia" account={{ profileName: "Ana", currentTenantId: "tenant-1", tenants: [], roleLabel: "Dueña", canManageGym: true }} />);
+    expect(screen.getByRole("heading", { name: "Mi gimnasio" })).toBeTruthy();
+    expect(screen.getByText("Gestión")).toBeTruthy();
+  });
   it("recognizes the static creation route before the detail route", () => {
     route.pathname = "/dashboard/students/new";
     render(<OperationalRouteTopbar tenantName="Academia Norte" account={{ profileName: "Ana", currentTenantId: "tenant-1", tenants: [], roleLabel: "Instructor" }} />);

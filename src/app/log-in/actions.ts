@@ -34,12 +34,17 @@ export async function logInAction(
   }
 
   if (portalInviteNext) redirect(portalInviteNext);
+  if (requestedNext === "/billing" || requestedNext.startsWith("/billing?")) redirect(requestedNext);
 
   const userId = await deps.auth.getCurrentUserId();
   const memberships = userId
     ? await deps.memberships.findActiveByUser(userId)
     : [];
-  if (memberships.length > 0) redirect("/dashboard");
+  if (memberships.length > 0) {
+    if (userId && memberships.some((m) => m.role === "owner")
+      && (await deps.memberships.findOperationalByUser(userId)).length === 0) redirect("/billing");
+    redirect("/dashboard");
+  }
 
   if (userId) {
     const portal = await createStudentPortalDeps();
@@ -47,7 +52,7 @@ export async function logInAction(
   }
 
   const { tenantBackoffice } = await createSaasAdministrationDeps();
-  if (await tenantBackoffice.isPlatformAdmin()) redirect("/backoffice/tenants");
+  if (await tenantBackoffice.isPlatformAdmin()) redirect("/backoffice");
 
   redirect("/onboarding");
 }

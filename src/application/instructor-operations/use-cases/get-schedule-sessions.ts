@@ -3,6 +3,10 @@ import { parseWithSchema } from "@/application/shared/validation/parse-with-sche
 import type { ScheduleSessionRepositoryPort } from "../ports/schedule-session-repository-port";
 import { operationalDateRange } from "./operational-date-range";
 
+const defaultPageSize = 25;
+/** Upper bound for views that need a whole period at once (e.g. the calendar). */
+const maxPageSize = 500;
+
 const schema = z.object({
   tenantId: z.string().uuid(),
   locationId: z.string().uuid().optional().catch(undefined),
@@ -12,9 +16,8 @@ const schema = z.object({
   from: z.string().optional(),
   through: z.string().optional(),
   page: z.coerce.number().int().min(1).max(100_000).catch(1).default(1),
+  pageSize: z.number().int().min(1).max(maxPageSize).default(defaultPageSize),
 });
-
-const pageSize = 25;
 
 export async function getScheduleSessions(
   input: z.input<typeof schema>,
@@ -22,6 +25,7 @@ export async function getScheduleSessions(
 ) {
   const parsed = parseWithSchema(schema, input);
   const dateRange = operationalDateRange(parsed.from, parsed.through);
+  const pageSize = parsed.pageSize;
   const filters = {
     tenantId: parsed.tenantId,
     locationId: parsed.locationId,

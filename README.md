@@ -44,6 +44,216 @@ Successful processing and replay of an existing provider event both return HTTP 
 
 ## Operations
 
+### SaaS commercial plans (implementation in progress)
+
+The platform-admin **Planes** section (`/backoffice/plans`) prepares the commercial
+catalog: whole-peso CLP prices, included informational VAT, day/month duration,
+optional trial, resource limits, supported features and descriptive services.
+Publishing creates an immutable version; archiving prevents future assignment
+without cancelling existing contracts. Historical foreign-currency amounts are
+not converted. The editor requires entering a new CLP price for foreign-currency
+plans rather than copying their numeric amount into a different currency.
+
+New schema and RPCs are in the following ordered migrations:
+
+1. `0041_saas_plan_versions.sql`: immutable versions, legacy 1/3/6/12-month
+   backfill, separate contract snapshots, explicit exclusive period ends and
+   a guard against assigning commercial plans through the limits-only path.
+2. `0042_saas_receipt_outbox.sql`: scheduled changes, issuer versions, immutable
+   receipt snapshots, private document metadata, delivery states and leased jobs.
+3. `0043_saas_plan_catalog.sql`: audited catalog queries, idempotent publication
+   and archive, and optimistic checks against stale versions.
+4. `0044_saas_subscription_assignment.sql`: Chile business dates, anchored
+   calendar boundaries, ordered contract events, authoritative subscription/usage
+   reads and idempotent transactional initial assignment.
+5. `0045_saas_flexible_financial_dashboard.sql`: duration-aware historical MRR
+   and per-invoice balances after confirmed charges, preserving imported legacy
+   settlements without a charge ledger.
+6. `0046_saas_contract_plan_changes.sql`: authoritative plan-change previews,
+   immediate prorated upgrades, scheduled downgrade/equivalent changes,
+   cancellation and protection of the legacy limits-only RPC.
+7. `0047_saas_subscription_renewals.sql`: one-period transactional renewal,
+   trial completion, scheduled-change execution with usage revalidation, durable
+   request results/failures and owner-only internal blocked-change notices.
+8. `0048_saas_collections_and_issuer.sql`: audited paginated receivables/detail,
+   exact SQL balances, immutable issuer configuration with RUT checksum,
+   optimistic concurrency and operation replay.
+9. `0049_saas_manual_payments.sql`: full-balance manual settlement and voiding,
+   shared provider settlement guards, aggregate subscription payment state and
+   atomic immutable receipt/PDF outbox creation for the new CLP billing flow.
+10. `0050_saas_receipt_processing.sql`: authorized private downloads, explicit
+    recipient confirmation, recoverable PDF leases, uncertain-email reconciliation
+    and actual worker heartbeat.
+11. `0051_saas_owner_billing.sql`: owner-only paginated billing, named academy
+    selection and total debt per currency, including suspended academies.
+12. `0052_saas_financial_drilldown.sql`: historical month/currency ledger for
+    collected net, pending, overdue and normalized MRR.
+
+On 2026-10-18 the operator confirmed successful **staging** execution of migrations
+`0048`–`0052`, regressions `0043`–`0048`, the integrated `0049` lifecycle regression
+and the scheduler SQL template. This is operator-reported, not independently
+observed. Concurrent two-connection tests and actual worker/storage/email smoke
+remain pending; no production deployment is confirmed. Do not rerun committed
+migrations or use production as a test fixture.
+`supabase/tests/0043_saas_plan_catalog.sql`
+and the numbered `0044` through `0048` scripts provide rollback-only catalog,
+assignment, dashboard, contractual-change, renewal, collection and issuer checks.
+Full legacy backfill and concurrency checks remain pending.
+The integrated `supabase/tests/0049_saas_billing_lifecycle.sql` additionally
+prepares payment/receipt atomicity, outbox-failure rollback, worker recovery,
+recipient priority, suspended-owner/foreign-role denial and ledger reconciliation
+checks through `0052`; its successful staging execution is included in that report.
+
+The **Cobranza** section at `/backoffice/collections` now lists invoices with
+server-side pagination and filters for tenant/name, derived debt status,
+currency and inclusive due-date range. Mobile cards and desktop tables link to
+a detail screen with confirmed payments, pending attempts and legacy refunds.
+List filters/page survive the detail round trip. Imported paid legacy invoices
+without charges remain settled; no synthetic payments or currency conversion
+are introduced. Refunds are displayed separately and do not reopen receivables.
+Detail events are bounded to the latest 100 payments and 100 refunds, with total
+counts and an explicit truncation notice.
+
+Configure the platform issuer at `/backoffice/finance/issuer`, also linked from
+Cobranza and Finanzas. Required fields are legal name, checksum-valid Chilean RUT,
+address, email and change reason. Each save creates an immutable version; retries
+reuse the same operation and stale versions are rejected. This does not configure
+the email provider or certify SII authorization. Manual payment and void forms
+are now implemented; their RPCs require the new migrations. A payment records the
+full current balance only, requires issuer/date/method/reason/confirmation, and
+creates its immutable receipt and PDF work atomically. No mail is automatic.
+
+The tenant panel links to **Gestionar suscripción** at
+`/backoffice/tenants/[tenantId]/subscription`. Its initial-assignment flow reviews
+the selected immutable version, explicit optional trial, first payable period,
+initial debt, included VAT and actual usage before confirmation with a reason.
+The prepared RPC atomically persists the contract, limits, initial invoice and
+audit, or none of them. Trial/free assignment never invents a payment or receipt.
+
+For an existing CLP contract, a separate two-step task previews a plan change.
+An upgrade updates the applied daily rate immediately, leaves the positive
+rounded difference as debt and preserves the current renewal boundary.
+Successive upgrades use the last applied rate, not the original tariff. A
+downgrade or equivalent tariff schedules the new version for renewal, without
+a refund; pending changes can be explicitly cancelled. Stale previews require
+review again, while ambiguous retries retain the draft and operation identity.
+Historical contract prices/currencies are read independently of today's catalog.
+Changes during trial, reconciliation of foreign/fractional legacy contracts and
+legacy limits schedules remain unavailable in this staged flow.
+
+Until the migrations are installed, opening the catalog shows an explicit
+configuration warning instead of disguising an incompatible schema as an empty
+catalog or an editable empty contract. Renewal processing and scheduled-change
+execution are now prepared in code, but **disabled by default**. Keep
+`SAAS_RENEWALS_ENABLED=false` until disposable PostgreSQL tests, two-worker
+concurrency checks and staging smoke pass. The protected endpoint is
+`POST /api/saas/renewals/process`, using an independent bearer secret
+`SAAS_RENEWAL_WORKER_SECRET`; no scheduler has been deployed by this work.
+
+The renewal console at `/backoffice/finance/renewals` separates configuration,
+actual worker history, backlog, retry exhaustion and blocked changes. It is
+linked from Finance and subscription tasks. Opening a page never renews a
+contract. When enabled, the tenant task allows explicit review and renewal of
+one overdue period, sharing the same RPC as the worker.
+
+Each automatic request processes at most ten periods; each RPC advances only
+one. Trials start their first full payable period at the confirmed anchor;
+upgrades start a full new duration at the preserved renewal boundary. Archived
+contracted versions remain renewable. A blocked downgrade renews the previous
+terms once, retains the blocked change for platform-admin review and queues
+an internal owner notification. No external email is sent by that operation.
+Failures roll back contract/invoice/limits mutations before recording a durable
+result and retry state. After three failures, automatic retries stop pending
+review. Legacy currency, anchor or limits ambiguities fail explicitly rather
+than silently converting or overwriting the contract.
+
+Actual PDF generation uses a statically embedded Noto Sans font (SIL OFL 1.1),
+with extractable accented text, multipage services and the prominent
+non-tax disclaimer. Private downloads reauthorize each receipt before privileged
+storage access and verify its hash/size. `/backoffice/receipts/[receiptId]`
+separates payment, PDF and mail states. Resend acceptance is not shown as delivery;
+ambiguous timeouts require explicit provider reconciliation before another send.
+Keep `SAAS_DOCUMENTS_ENABLED=false` until PostgreSQL/storage/staging checks pass.
+The protected `POST /api/saas/documents/process` processes at most five jobs by
+default; `/backoffice/finance/documents` reports configuration and real heartbeat.
+
+Owners have read-only `/billing` access from desktop navigation/account menu.
+An active owner membership can read billing for a suspended academy without
+reactivating operational access. Other operational roles are not owners.
+Finance links to `/backoffice/finance/ledger` with the exact UTC month, currency
+and metric; totals cover all pages and preserve historical currency.
+
+No payments, migrations, provider sends or remote deployments were performed
+against a real environment by this work. An opt-in Vault/pg_cron template is
+available at `supabase/operations/saas_billing_scheduler.sql`; the operator reports
+executing it in staging. Actual endpoint processing still needs verification.
+See the deployment/recovery procedure in
+[the billing runbook](docs/billing-runbook.md#renewal-processor-prepared-not-yet-enabled).
+Track full scope and verification in
+[`manage-saas-plans-and-collections`](openspec/changes/manage-saas-plans-and-collections/tasks.md).
+
+Run the catalog, assignment and plan-change real-page UI checks with synthetic storage:
+
+```sh
+pnpm exec playwright test --config=e2e/saas-plans.playwright.config.ts --workers=1
+```
+
+They check 320/375/390/768/1280/1440 px, card/table switching, 44 px targets,
+16 px aligned icons, failed-draft retention (including feature checkboxes),
+keyboard retry, reload persistence, optional trial, stale assignment review,
+incremental successive upgrades, downgrade cancellation, renewal review,
+applied/blocked downgrades, worker-readiness warnings and explicit archive.
+The focused SaaS regression now includes real PDF text extraction, payment rules,
+private storage integrity, protected workers/downloads and owner authorization.
+The browser suite passes eighteen scenarios, including collections pagination,
+issuer validation, failed payment draft retention, PDF retry, failed/uncertain
+mail, voiding, historical-ledger pagination and suspended-owner read-only access.
+The focused unit/integration suite passes 576 tests in 60 files. Type checking, lint and an
+isolated production build also pass. These checks do not replace
+the separate PostgreSQL regression or the final authenticated staging smoke.
+
+### Academy details
+
+Owners and administrators maintain **Mi gimnasio** from **Gestión** on desktop
+or the account menu on mobile (`/dashboard/gym`). Only the gym name is required.
+Address, main contact name/email, phone, city, and region are optional. City and
+region are free text so existing academies are not restricted to one country.
+These details are separate from SaaS billing contacts and operational locations.
+
+Deploy `supabase/migrations/0039_tenant_details.sql` before using this page.
+Existing academies keep their name and start with empty optional fields.
+The RPC checks active owner/admin membership, updates the name and contact
+details atomically, and writes an audit event without contact data.
+Contact details have their own RLS-protected table; instructors and assistants
+cannot read them. A submitted form must match the server's active tenant.
+The form preserves failed input, shows field-level validation and pending/success
+feedback, and warns before browser reload when there are unsaved changes.
+The standalone SQL regression is `supabase/tests/0039_tenant_details.sql`;
+run it only against a disposable database with migrations applied.
+
+The SaaS **Tenants** backoffice also shows the main contact, phone, address,
+city and region, with billing contacts in a separate section. Desktop rows and
+mobile cards display the main contact; search includes both contact types and
+location fields. Deploy `supabase/migrations/0040_saas_tenant_details.sql` after
+0039 to extend the audited platform-admin listing. No direct table permissions
+are added: tenant owners still cannot list other academies or read their contacts.
+Academies without a details row remain visible with explicit empty-field labels.
+The adapter validates the RPC response at runtime: a legacy listing without the
+new columns raises a migration error instead of displaying saved data as missing.
+Run `supabase/tests/0040_saas_tenant_details.sql` in a disposable database to verify
+the privileged join, audit record, existing-tenant compatibility and denied access.
+
+Run the targeted browser checks with synthetic data and the actual page and shell:
+
+```sh
+pnpm exec playwright test --config=e2e/gym.playwright.config.ts --workers=1
+```
+
+These cover 320, 375, 390, 768, 1280, and 1440 px, minimum 44 px controls,
+mobile account-menu access, keyboard feedback, retry, optional-field clearing,
+and reload persistence in the fixture. Real RPC requests, tenant selection, and
+role enforcement are covered by Vitest and the separate SQL regression.
+
 ### Student administration
 
 **Alumnos** uses cards on mobile and a table on desktop. Search by name or

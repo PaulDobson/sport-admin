@@ -97,4 +97,15 @@ describe("getScheduleSessions", () => {
     );
     expect(result).toMatchObject({ page: 2, total: 26 });
   });
+
+  it("loads a whole period in one page for calendar views and caps the page size", async () => {
+    const listPage = vi.fn(async () => ({ locations: [], disciplines: [], sessions: [], total: 0 }));
+    const deps = { scheduleSessions: { listPage, findById: vi.fn() } };
+
+    const result = await getScheduleSessions({ tenantId, pageSize: 500 }, deps);
+
+    expect(listPage).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 500 }));
+    expect(result).toMatchObject({ pageSize: 500 });
+    await expect(getScheduleSessions({ tenantId, pageSize: 501 }, deps)).rejects.toThrow();
+  });
 });

@@ -1,4 +1,5 @@
 import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
+import { z } from "zod";
 import type { TenantStatus } from "@/domain/tenants/tenant";
 import type {
   TenantBackofficeSummary,
@@ -9,14 +10,20 @@ import type {
 } from "@/domain/saas-administration/tenant-backoffice";
 import type { TenantBackofficePort } from "@/application/saas-administration/ports/tenant-backoffice-port";
 
-interface TenantSummaryRow {
-  id: string;
-  name: string;
-  status: TenantStatus;
-  billing_contact_name: string | null;
-  billing_contact_email: string | null;
-  created_at: string;
-}
+const tenantSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(["pending", "trial", "active", "suspended", "cancelled"]),
+  billing_contact_name: z.string().nullable(),
+  billing_contact_email: z.string().nullable(),
+  address: z.string().nullable(),
+  contact_name: z.string().nullable(),
+  contact_email: z.string().nullable(),
+  phone: z.string().nullable(),
+  city: z.string().nullable(),
+  region: z.string().nullable(),
+  created_at: z.iso.datetime({ offset: true }),
+});
 
 interface TenantHistoryRow {
   id: string;
@@ -57,12 +64,25 @@ export class SupabaseTenantBackoffice implements TenantBackofficePort {
   async listTenants(): Promise<TenantBackofficeSummary[]> {
     const { data, error } = await this.client.rpc("list_saas_tenants");
     if (error) throw error;
-    return ((data ?? []) as TenantSummaryRow[]).map((row) => ({
+    const result = z.array(tenantSummarySchema).safeParse(data);
+    if (!result.success) {
+      throw new Error(
+        "La consulta administrativa de tenants tiene un formato incompatible. Verifica que la migración 0040_saas_tenant_details.sql esté aplicada en la base de datos de este entorno.",
+        { cause: result.error },
+      );
+    }
+    return result.data.map((row) => ({
       id: row.id,
       name: row.name,
       status: row.status,
       billingContactName: row.billing_contact_name,
       billingContactEmail: row.billing_contact_email,
+      address: row.address,
+      contactName: row.contact_name,
+      contactEmail: row.contact_email,
+      phone: row.phone,
+      city: row.city,
+      region: row.region,
       createdAt: new Date(row.created_at),
     }));
   }

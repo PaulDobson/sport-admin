@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { BackofficeShell } from "./backoffice-shell";
 
@@ -14,14 +14,32 @@ describe("BackofficeShell", () => {
 
     expect(screen.getByText("Backoffice")).toBeTruthy();
     expect(screen.getByText("Administración SaaS")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Tenants" })).toBeTruthy();
+
+    const desktopNav = screen.getByRole("navigation", {
+      name: "Secciones de plataforma",
+    });
     expect(
-      screen.getByRole("navigation", { name: "Secciones de plataforma" }),
-    ).toBeTruthy();
-    expect(
-      screen
+      within(desktopNav)
         .getByRole("link", { name: "Tenants" })
         .getAttribute("aria-current"),
     ).toBe("page");
+    expect(
+      within(desktopNav)
+        .getByRole("link", { name: "Resumen" })
+        .getAttribute("aria-current"),
+    ).toBeNull();
+
+    const mobileNav = screen.getByRole("navigation", {
+      name: "Navegación móvil de plataforma",
+    });
+    expect(within(mobileNav).getAllByRole("link")).toHaveLength(6);
+    expect(
+      within(mobileNav)
+        .getByRole("link", { name: "Tenants" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+
     expect(screen.queryByRole("link", { name: "Operación" })).toBeNull();
     expect(
       screen.queryByRole("link", { name: "Volver a operación" }),
