@@ -15,6 +15,7 @@ import { useFullscreen } from "./use-fullscreen";
 import { FullscreenDisplay } from "./fullscreen-display";
 import type { FullscreenTone } from "./fullscreen-display";
 import { usePrepare } from "./use-prepare";
+import { useTimerSound } from "./use-timer-sound";
 import {
   useSidebarCollapsed,
   useSidebarToggle,
@@ -283,6 +284,11 @@ export function SeriesTimer() {
   const endTimeRef = useRef<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pausedRuntimeRef = useRef<RuntimeState | null>(null);
+  // Track last second to fire beep only once per second across 250ms ticks
+  const lastBeepSecondRef = useRef<number>(-1);
+  const newSeriesAlertedRef = useRef(false);
+  // Tracks the current phase so the interval can read it without a state lookup
+  const currentPhaseRef = useRef<Phase>("work");
 
   // ── Fullscreen ─────────────────────────────────────────────────────────────
   const {
@@ -297,9 +303,18 @@ export function SeriesTimer() {
   const sidebarToggle = useSidebarToggle();
   const didCollapseSidebarRef = useRef(false);
 
+  // ── Sound ──────────────────────────────────────────────────────────────────
+  const { playWork, playRest, playDone, preload, playBeep, playNewSeries } =
+    useTimerSound();
+  // Ref so the setInterval closure always reads the latest callbacks
+  const soundRef = useRef({ playWork, playRest, playDone, playNewSeries });
+  useEffect(() => {
+    soundRef.current = { playWork, playRest, playDone, playNewSeries };
+  });
+
   // ── Preparation countdown ──────────────────────────────────────────────────
   const { isPreparing, prepareSecondsLeft, startPrepare, cancelPrepare } =
-    usePrepare();
+    usePrepare({ preload, playBeep });
 
   // ── Tick ───────────────────────────────────────────────────────────────────
 
@@ -328,15 +343,17 @@ export function SeriesTimer() {
     return () => clearTimeout(t);
   }, [status, exitFullscreen, sidebarToggle, config]);
 
-  useEffect(() => {
-    if (status === "idle") {
-      setRuntime(initialRuntime(config));
-    }
-  }, [config, status]);
+  const [prevConfig, setPrevConfig] = useState(config);
+  if (status === "idle" && prevConfig !== config) {
+    setPrevConfig(config);
+    setRuntime(initialRuntime(config));
+  }
   const startTick = useCallback(
     (_fromRuntime: RuntimeState, secondsLeft: number, cfg: SeriesConfig) => {
       clearTick();
       endTimeRef.current = Date.now() + secondsLeft * 1000;
+      lastBeepSecondRef.current = -1;
+      currentPhaseRef.current = _fromRuntime.phase;
 
       intervalRef.current = setInterval(() => {
         if (endTimeRef.current === null) return;
@@ -345,6 +362,17 @@ export function SeriesTimer() {
 
         if (left > 0) {
           setRuntime((prev) => ({ ...prev, remaining: left }));
+
+          // Fire "nueva serie" only during a rest phase, once at 10 seconds
+          if (
+            left === 5 &&
+            currentPhaseRef.current === "rest" &&
+            !newSeriesAlertedRef.current
+          ) {
+            newSeriesAlertedRef.current = true;
+            soundRef.current.playNewSeries();
+          }
+
           return;
         }
 
@@ -354,20 +382,22 @@ export function SeriesTimer() {
           const isLastSeries = prev.currentSeries >= cfg.totalSeries;
 
           if (isWorkPhase) {
-            // The last work phase always ends the timer — no trailing rest.
             if (isLastSeries) {
               clearInterval(intervalRef.current!);
               intervalRef.current = null;
               endTimeRef.current = null;
               setStatus("done");
+              soundRef.current.playDone();
               return { ...prev, remaining: 0 };
             }
 
             const restDuration = phaseDuration(cfg, "rest");
             if (restDuration === 0) {
-              // Zero-length rest: jump straight to next work phase
               const nextWork = phaseDuration(cfg, "work");
               endTimeRef.current = Date.now() + nextWork * 1000;
+              lastBeepSecondRef.current = -1;
+              currentPhaseRef.current = "work";
+              soundRef.current.playWork();
               return {
                 currentSeries: prev.currentSeries + 1,
                 phase: "work",
@@ -375,13 +405,18 @@ export function SeriesTimer() {
               };
             }
 
-            // Transition to rest phase
             endTimeRef.current = Date.now() + restDuration * 1000;
+            lastBeepSecondRef.current = -1;
+            newSeriesAlertedRef.current = false;
+            currentPhaseRef.current = "rest";
+            soundRef.current.playRest();
             return { ...prev, phase: "rest", remaining: restDuration };
           } else {
-            // Rest finished → always start next work phase
             const workDuration = phaseDuration(cfg, "work");
             endTimeRef.current = Date.now() + workDuration * 1000;
+            lastBeepSecondRef.current = -1;
+            currentPhaseRef.current = "work";
+            soundRef.current.playWork();
             return {
               currentSeries: prev.currentSeries + 1,
               phase: "work",
@@ -416,6 +451,7 @@ export function SeriesTimer() {
 
     setStatus("running");
     startTick(fromRuntime, secondsLeft, config);
+    soundRef.current.playWork();
   }, [config, status, startTick]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────

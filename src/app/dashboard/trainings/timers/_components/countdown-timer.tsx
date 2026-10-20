@@ -7,6 +7,7 @@ import { useFullscreen } from "./use-fullscreen";
 import { FullscreenDisplay } from "./fullscreen-display";
 import type { FullscreenTone } from "./fullscreen-display";
 import { usePrepare } from "./use-prepare";
+import { useTimerSound } from "./use-timer-sound";
 import {
   useSidebarCollapsed,
   useSidebarToggle,
@@ -124,9 +125,12 @@ export function CountdownTimer() {
     ref: fsRef,
   } = useFullscreen();
 
+  // ── Sound ──────────────────────────────────────────────────────────────────
+  const { playWork, playDone, preload, playBeep } = useTimerSound();
+
   // ── Preparation countdown ──────────────────────────────────────────────────
   const { isPreparing, prepareSecondsLeft, startPrepare, cancelPrepare } =
-    usePrepare();
+    usePrepare({ preload, playBeep });
 
   // ── Sidebar collapse ───────────────────────────────────────────────────────
   // Collapse the sidebar when projecting to gain screen space.
@@ -154,11 +158,12 @@ export function CountdownTimer() {
         intervalRef.current = null;
         setRemaining(0);
         setStatus("done");
+        playDone();
       } else {
         setRemaining(left);
       }
     }, 250);
-  }, [clearTick]);
+  }, [clearTick, playDone]);
 
   // Cleanup on unmount
   useEffect(() => () => clearTick(), [clearTick]);
@@ -178,11 +183,12 @@ export function CountdownTimer() {
     return () => clearTimeout(t);
   }, [status, exitFullscreen, sidebarToggle, totalSeconds]);
 
-  // Re-sync remaining when config changes while idle
+  // Re-sync remaining when config changes while idle.
+  // Deferred via setTimeout to avoid synchronous setState inside an effect body.
   useEffect(() => {
-    if (status === "idle") {
-      setRemaining(totalSeconds);
-    }
+    if (status !== "idle") return;
+    const t = setTimeout(() => setRemaining(totalSeconds), 0);
+    return () => clearTimeout(t);
   }, [configMinutes, configSeconds, status, totalSeconds]);
 
   // ── Derived: the actual tick launch (called by usePrepare when 5s elapse) ──
@@ -192,19 +198,18 @@ export function CountdownTimer() {
     endTimeRef.current = Date.now() + secondsLeft * 1000;
     setStatus("running");
     startTick();
-  }, [status, remaining, totalSeconds, startTick]);
+    playWork();
+  }, [status, remaining, totalSeconds, startTick, playWork]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleStart = useCallback(() => {
     if (totalSeconds === 0) return;
-    // Enter fullscreen and collapse sidebar immediately on click
     if (!isFullscreen) enterFullscreen();
     if (!sidebarCollapsed) {
       sidebarToggle();
       didCollapseSidebarRef.current = true;
     }
-    // Then run the 5-second preparation, launching the real timer on done
     startPrepare(launchTimer);
   }, [
     totalSeconds,

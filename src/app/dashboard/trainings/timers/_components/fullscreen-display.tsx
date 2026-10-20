@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import {
   Pause,
   Play,
@@ -14,9 +15,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// "preparing" = 5-second get-ready countdown before the real timer starts
 export type FullscreenStatus = "preparing" | "running" | "paused" | "done";
-
 export type FullscreenTone = "primary" | "warning" | "success";
 
 export interface FullscreenSeriesMeta {
@@ -33,7 +32,6 @@ export interface FullscreenDisplayProps {
   tone: FullscreenTone;
   status: FullscreenStatus;
   progressPercent: number;
-  /** Remaining seconds of the preparation countdown */
   prepareSecondsLeft?: number;
   seriesMeta?: FullscreenSeriesMeta;
   onPause: () => void;
@@ -43,22 +41,63 @@ export interface FullscreenDisplayProps {
   onExitFullscreen: () => void;
 }
 
-// ─── Portal ───────────────────────────────────────────────────────────────────
+// ─── Image pools ─────────────────────────────────────────────────────────────
+
+const WORK_IMAGES = [
+  "/timers/entrenamiento_g_1.jpg",
+  "/timers/entrenamiento_g_3.jpg",
+  "/timers/entrenamiento_g_4.jpg",
+  "/timers/entrenamiento_g_5.jpg",
+] as const;
+
+const REST_IMAGES = [
+  "/rest/descanso_1.jpg",
+  "/rest/descanso_2.jpg",
+  "/rest/descanso_3.jpg",
+] as const;
+
+// ─── Background image hook ────────────────────────────────────────────────────
 
 /**
- * Mounts children directly on document.body via a React portal.
- * This guarantees the overlay escapes any stacking context created by
- * ancestor elements (rounded corners, shadows, transforms, will-change, etc.)
- * and truly covers the full viewport.
+ * Returns the image src to display as background.
+ *
+ * - Picks a new image from the correct pool each time `imageKey` changes.
+ * - `imageKey` should change once per phase transition, not on every tick,
+ *   so the image stays stable throughout a phase.
+ * - Uses a counter ref to cycle sequentially through the pool rather than
+ *   Math.random() to guarantee every image is shown before repeating.
  */
+function usePhaseImage(phase: "work" | "rest", imageKey: string): string {
+  const workIndexRef = useRef(0);
+  const restIndexRef = useRef(0);
+  const [src, setSrc] = useState<string>(WORK_IMAGES[0]);
+
+  useEffect(() => {
+    if (phase === "work") {
+      const pool = WORK_IMAGES;
+      const idx = workIndexRef.current % pool.length;
+      workIndexRef.current += 1;
+      setSrc(pool[idx]);
+    } else {
+      const pool = REST_IMAGES;
+      const idx = restIndexRef.current % pool.length;
+      restIndexRef.current += 1;
+      setSrc(pool[idx]);
+    }
+    // imageKey changes once per phase transition — that's the only trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageKey]);
+
+  return src;
+}
+
+// ─── Portal ───────────────────────────────────────────────────────────────────
+
 function BodyPortal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-
-  // Only run on the client — portals require document to exist
   useEffect(() => {
     setMounted(true);
   }, []);
-
   if (!mounted) return null;
   return createPortal(children, document.body);
 }
@@ -77,7 +116,67 @@ const toneBar: Record<FullscreenTone, string> = {
   success: "bg-success",
 };
 
-const PREPARE_TOTAL = 5;
+const PREPARE_TOTAL = 3;
+
+// ─── Background image layer ───────────────────────────────────────────────────
+
+/**
+ * Full-bleed background image that blends with the dark background.
+ *
+ * - `fill` so Next.js never needs to know explicit dimensions.
+ * - `priority` on the active image so it is never lazy-loaded mid-session.
+ * - `mix-blend-mode: luminosity` strips the colour from the photo and lets
+ *   the dark background tint show through.
+ * - Low opacity keeps the digits readable from across the room.
+ * - `transition-opacity` produces a soft crossfade on phase change.
+ */
+function BackgroundImage({
+  src,
+  phase,
+}: {
+  src: string;
+  phase: "work" | "rest";
+}) {
+  // Track the previous src to allow a brief crossfade
+  const [activeSrc, setActiveSrc] = useState(src);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (src === activeSrc) return;
+    // Fade out → swap → fade in
+    setVisible(false);
+    const t = setTimeout(() => {
+      setActiveSrc(src);
+      setVisible(true);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [src, activeSrc]);
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <Image
+        key={activeSrc}
+        src={activeSrc}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className={`object-cover transition-opacity duration-300 ${
+          visible ? "opacity-100" : "opacity-0"
+        } ${
+          phase === "work"
+            ? "mix-blend-luminosity opacity-[0.18]"
+            : "mix-blend-luminosity opacity-[0.12]"
+        }`}
+      />
+      {/* Gradient overlay so digits always contrast against the image */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#181c2a]/80 via-[#181c2a]/40 to-[#181c2a]/60" />
+    </div>
+  );
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -94,7 +193,7 @@ function FullscreenDigits({
     <div
       aria-live="polite"
       aria-atomic="true"
-      className={`metric-number select-none text-center font-bold leading-none tracking-tight transition-colors duration-500 ${toneColors[tone]}`}
+      className={`metric-number relative select-none text-center font-bold leading-none tracking-tight transition-colors duration-500 ${toneColors[tone]}`}
       style={{ fontSize: "clamp(7rem, 28vw, 22rem)" }}
     >
       <span aria-label={`${mm} minutos`}>{mm}</span>
@@ -126,14 +225,14 @@ function PrepareScreen({
           type="button"
           onClick={onExitFullscreen}
           aria-label="Salir de pantalla completa"
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+          className="relative inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white"
         >
           <Minimize2 aria-hidden="true" className="h-4 w-4" />
           Salir
         </button>
       </div>
 
-      <p className="animate-pulse text-center text-2xl font-bold uppercase tracking-[0.18em] text-info sm:text-3xl">
+      <p className="relative animate-pulse text-center text-2xl font-bold uppercase tracking-[0.18em] text-info sm:text-3xl">
         ¡Prepárense!
       </p>
 
@@ -141,7 +240,7 @@ function PrepareScreen({
         aria-live="assertive"
         aria-atomic="true"
         aria-label={`${secondsLeft} segundos para comenzar`}
-        className="metric-number select-none text-center font-bold leading-none tracking-tight text-info"
+        className="metric-number relative select-none text-center font-bold leading-none tracking-tight text-info"
         style={{ fontSize: "clamp(10rem, 40vw, 30rem)" }}
       >
         {secondsLeft}
@@ -153,7 +252,7 @@ function PrepareScreen({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Progreso de la preparación"
-        className="h-2 w-full max-w-3xl overflow-hidden rounded-full bg-white/10"
+        className="relative h-2 w-full max-w-3xl overflow-hidden rounded-full bg-white/10"
       >
         <div
           className="h-full rounded-full bg-info transition-all duration-300"
@@ -165,7 +264,7 @@ function PrepareScreen({
         type="button"
         onClick={onStop}
         aria-label="Cancelar preparación"
-        className="inline-flex items-center gap-2.5 rounded-2xl border border-destructive/50 bg-destructive/15 px-6 py-3.5 text-base font-bold text-destructive transition-colors hover:bg-destructive/25"
+        className="relative inline-flex items-center gap-2.5 rounded-2xl border border-destructive/50 bg-destructive/15 px-6 py-3.5 text-base font-bold text-destructive transition-colors hover:bg-destructive/25"
       >
         <Square aria-hidden="true" className="h-5 w-5 fill-current" />
         Cancelar
@@ -188,7 +287,7 @@ function FullscreenProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label="Progreso de la fase actual"
-      className="h-2 w-full max-w-3xl overflow-hidden rounded-full bg-white/10"
+      className="relative h-2 w-full max-w-3xl overflow-hidden rounded-full bg-white/10"
     >
       <div
         className={`h-full rounded-full transition-all duration-300 ${toneBar[tone]}`}
@@ -207,7 +306,7 @@ function SeriesBadge({ meta }: { meta: FullscreenSeriesMeta }) {
     : "border-warning/40 bg-warning/15 text-warning";
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="relative flex items-center gap-4">
       <span
         className={`inline-flex items-center gap-2 rounded-full border px-5 py-2 text-lg font-bold transition-all duration-500 ${colorClass}`}
       >
@@ -225,7 +324,7 @@ function SeriesProgressDots({ meta }: { meta: FullscreenSeriesMeta }) {
   return (
     <div
       aria-label={`Serie ${meta.currentSeries} de ${meta.totalSeries}`}
-      className="flex items-center gap-2"
+      className="relative flex items-center gap-2"
     >
       {Array.from({ length: meta.totalSeries }, (_, i) => {
         const n = i + 1;
@@ -276,7 +375,7 @@ function ControlButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`inline-flex min-h-14 min-w-14 items-center justify-center gap-2.5 rounded-2xl border px-6 text-base font-bold transition-colors ${variantClasses[variant]}`}
+      className={`relative inline-flex min-h-14 min-w-14 items-center justify-center gap-2.5 rounded-2xl border px-6 text-base font-bold transition-colors ${variantClasses[variant]}`}
     >
       {children}
     </button>
@@ -305,18 +404,29 @@ function OverlayContent({
   const isRunning = status === "running";
   const isPaused = status === "paused";
 
+  // Determine the phase for image selection
+  // Series timer provides seriesMeta.phase; countdown timer always uses "work"
+  const phase: "work" | "rest" = seriesMeta?.phase === "rest" ? "rest" : "work";
+
+  // imageKey changes once per phase transition — drives the image swap.
+  // For series: "work-{series}" or "rest-{series}".
+  // For countdown: always "work" (single phase, single image for the session).
+  const imageKey = seriesMeta
+    ? `${seriesMeta.phase}-${seriesMeta.currentSeries}`
+    : "work";
+
+  const bgSrc = usePhaseImage(phase, imageKey);
+
   return (
     <div
       ref={containerRef}
       role="region"
       aria-label="Temporizador en pantalla completa"
-      /*
-       * Portal ensures this renders on document.body, completely outside
-       * any ancestor stacking context. fixed + inset-0 then correctly
-       * covers 100% of the viewport with no surrounding card or border.
-       */
       className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-8 bg-[#181c2a] px-6 py-8"
     >
+      {/* Background image — sits below all content via absolute positioning */}
+      {!isPreparing && <BackgroundImage src={bgSrc} phase={phase} />}
+
       {isPreparing ? (
         <PrepareScreen
           secondsLeft={prepareSecondsLeft}
@@ -331,7 +441,7 @@ function OverlayContent({
               type="button"
               onClick={onExitFullscreen}
               aria-label="Salir de pantalla completa"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+              className="relative inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Minimize2 aria-hidden="true" className="h-4 w-4" />
               Salir
@@ -341,7 +451,7 @@ function OverlayContent({
           {seriesMeta && !isDone && <SeriesBadge meta={seriesMeta} />}
 
           {isDone && (
-            <span className="rounded-full border border-success/40 bg-success/15 px-8 py-2.5 text-2xl font-bold text-success">
+            <span className="relative rounded-full border border-success/40 bg-success/15 px-8 py-2.5 text-2xl font-bold text-success">
               ¡Completado!
             </span>
           )}
@@ -355,7 +465,7 @@ function OverlayContent({
 
           {seriesMeta && !isDone && <SeriesProgressDots meta={seriesMeta} />}
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="relative flex items-center justify-center gap-4">
             {isRunning && (
               <ControlButton
                 onClick={onPause}
@@ -397,7 +507,7 @@ function OverlayContent({
           {isPaused && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-black/30"
+              className="pointer-events-none absolute inset-0 bg-black/40"
             />
           )}
         </>
