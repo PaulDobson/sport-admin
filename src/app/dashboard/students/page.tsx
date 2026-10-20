@@ -1,434 +1,344 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download, Eye, Pencil, Plus, Search } from "lucide-react";
+import { Download, FilterX, Plus, Search, Users } from "lucide-react";
 import { listStudentsForAdministration } from "@/application/instructor-operations/use-cases/list-students-for-administration";
-import type { StudentAdministrationStatusFilter } from "@/application/instructor-operations/ports/student-repository-port";
-import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
+import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
-import { AccountContextMenu } from "@/presentation/components/account-context-menu";
-import { AppShell, ProductMark } from "@/presentation/components/app-shell";
-import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
 import {
-  DesktopNavigation,
-  MobileNavigation,
-} from "@/presentation/components/primary-navigation";
-import {
-  EmptyState,
-  StatusBadge,
-  Surface,
-} from "@/presentation/components/primitives";
-import { StudentArchiveButton } from "./student-archive-button";
-import { StudentForm } from "./student-form";
+  parseStudentListQuery,
+  studentListHref,
+  studentQueryString,
+  studentTaskHref,
+  studentLinkClass,
+  type StudentListParams,
+} from "@/presentation/navigation/student-navigation";
+import { StudentList } from "./student-list";
+import { StudentWorkspace } from "./student-workspace";
 
-interface StudentsPageProps {
-  searchParams: Promise<{
-    page?: string;
-    pageSize?: string;
-    search?: string;
-    status?: string;
-  }>;
-}
+// Module-level constants — not recreated per request.
+const STATUS_OPTIONS = [
+  ["active", "Activos"],
+  ["archived", "Archivados"],
+  ["all", "Todos"],
+] as const;
 
-function roleLabelFor(role: string) {
-  return role === "owner"
-    ? "Dueño"
-    : role === "assistant"
-      ? "Asistente"
-      : role === "admin"
-        ? "Administrador"
-        : role;
-}
+const BASE_PAGE_SIZES = [10, 25, 50, 100] as const;
 
-function parsePositiveInteger(
-  value: string | undefined,
-  fallback: number,
-  max: number,
-) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
-  return Math.min(parsed, max);
-}
-
-function parseStatus(
-  value: string | undefined,
-): StudentAdministrationStatusFilter {
-  return value === "archived" || value === "all" ? value : "active";
-}
-
-function buildStudentsHref(
-  params: Record<string, string | number | null | undefined>,
-) {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== null && value !== undefined && String(value).length > 0) {
-      query.set(key, String(value));
-    }
-  }
-  const serialized = query.toString();
-  return serialized
-    ? `/dashboard/students?${serialized}`
-    : "/dashboard/students";
-}
-
-function contactLabel(
-  contact: { type: string; label: string | null; value: string } | null,
-) {
-  if (!contact) return "Sin contacto";
-  const typeLabel =
-    contact.type === "email"
-      ? "Email"
-      : contact.type === "emergency"
-        ? "Emergencia"
-        : "Teléfono";
-  return `${contact.label ?? typeLabel}: ${contact.value}`;
-}
+const pagerItem =
+  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 export default async function StudentsPage({
   searchParams,
-}: StudentsPageProps) {
+}: {
+  searchParams: Promise<StudentListParams>;
+}) {
   const membership = await requireOperationalMembership();
-  const params = await searchParams;
-  const page = parsePositiveInteger(params.page, 1, 10_000);
-  const pageSize = parsePositiveInteger(params.pageSize, 10, 50);
-  const search = params.search?.trim() ?? "";
-  const status = parseStatus(params.status);
-
-  const auth = await createAuthDeps();
-  const userId = await auth.auth.getCurrentUserId();
-  if (!userId) redirect("/log-in");
+  const query = parseStudentListQuery(await searchParams);
   const operations = await createInstructorOperationsDeps();
-  const [students, profile, tenants] = await Promise.all([
-    listStudentsForAdministration(
-      {
-        tenantId: membership.tenantId,
-        page,
-        pageSize,
-        search,
-        status,
-      },
-      operations,
-    ),
-    auth.profiles.findByUserId(userId),
-    auth.tenants.findOperationalByUser(userId),
-  ]);
+  const students = await listStudentsForAdministration(
+    { tenantId: membership.tenantId, ...query },
+    operations,
+  );
 
-  const roleLabel = roleLabelFor(membership.role);
-  const academyName =
-    tenants.find((tenant) => tenant.id === membership.tenantId)?.name ??
-    "Academia activa";
-  const canManageStudents = membership.role !== "assistant";
+  if (students.page !== query.page) {
+    redirect(studentListHref({ ...query, page: students.page }));
+  }
+
+  const canManage = membership.role !== "assistant";
+
+  let studentsWithMembership: string[] | undefined;
+  if (canManage && students.rows.length > 0) {
+    try {
+      const finance = await createInstructorFinanceDeps();
+      studentsWithMembership =
+        await finance.memberships.findStudentIdsWithCurrentMembership(
+          membership.tenantId,
+          students.rows.map((row) => row.id),
+        );
+    } catch {
+      studentsWithMembership = undefined;
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(students.total / students.pageSize));
-  const currentPage = Math.min(students.page, totalPages);
-  const exportParams = new URLSearchParams();
-  if (search) exportParams.set("search", search);
-  exportParams.set("status", status);
-  exportParams.set("page", String(currentPage));
-  exportParams.set("pageSize", String(pageSize));
+  const newHref = studentTaskHref("/dashboard/students/new", query);
+  const isFiltered = Boolean(query.search || query.status !== "active");
+  const clearHref = studentListHref({
+    ...query,
+    search: "",
+    status: "active",
+    page: 1,
+  });
+
+  const first =
+    students.total === 0 ? 0 : (students.page - 1) * students.pageSize + 1;
+  const last = students.total === 0 ? 0 : first + students.rows.length - 1;
+
+  // Merge the current pageSize into the base set only if it isn't already there.
+  const pageSizes = BASE_PAGE_SIZES.includes(
+    query.pageSize as (typeof BASE_PAGE_SIZES)[number],
+  )
+    ? BASE_PAGE_SIZES
+    : ([...BASE_PAGE_SIZES, query.pageSize].sort((a, b) => a - b) as number[]);
+
+  const pageNumbers = paginationWindow(students.page, totalPages);
 
   return (
-    <AppShell
-      sidebarHeader={<ProductMark context={roleLabel} />}
-      navigation={<DesktopNavigation role={membership.role} />}
-      mobileNavigation={
-        <MobileNavigation
-          role={membership.role}
-          quickAction={<QuickActionMenu role={membership.role} />}
-        />
-      }
-      topbar={
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">
-              Alumnos
-            </p>
-            <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-              Administración de alumnos
-            </h1>
-          </div>
-          <span className="hidden h-8 items-center rounded-full border border-border bg-surface-raised px-3 text-xs font-semibold text-muted-foreground sm:inline-flex">
-            {academyName} · {roleLabel}
-          </span>
-          <span className="hidden h-8 items-center rounded-full border border-primary/20 bg-primary/10 px-3 text-xs font-semibold text-primary md:inline-flex">
-            {students.total} resultados
-          </span>
-        </div>
-      }
-      topbarActions={
-        <AccountContextMenu
-          profileName={profile?.fullName || "Tu cuenta"}
-          currentTenantId={membership.tenantId}
-          roleLabel={roleLabel}
-          tenants={tenants.map((tenant) => ({
-            id: tenant.id,
-            name: tenant.name,
-          }))}
-        />
-      }
-    >
-      <div className="mx-auto max-w-7xl space-y-6">
-        <Surface className="grid gap-5 overflow-hidden p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+    <StudentWorkspace>
+      <div className="mx-auto max-w-7xl space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-              {academyName} · {roleLabel}
+            <h2 className="text-2xl font-bold tracking-tight">Alumnos</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Organiza sus datos y accede a cada ficha.
             </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              Gestiona alumnos con más espacio de trabajo
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Registros, contactos, estados y acciones quedan en una vista más
-              amplia para operar dentro de la academia activa.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-              <span className="rounded-full border border-border bg-background/45 px-3 py-1 text-muted-foreground">
-                {status === "archived"
-                  ? "Archivados"
-                  : status === "all"
-                    ? "Todos"
-                    : "Activos"}
-              </span>
-              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
-                {students.total} resultados
-              </span>
-            </div>
           </div>
-          <div className="flex flex-wrap items-start gap-2 sm:flex-nowrap lg:justify-end">
-            {canManageStudents ? (
-              <Link
-                href={`/api/students/export?${exportParams.toString()}`}
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface-raised px-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface-overlay"
+        </div>
+
+        <section
+          aria-label="Filtros de alumnos"
+          className="rounded-xl border border-border bg-card p-3"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <form
+              method="get"
+              className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto"
+            >
+              <label className="relative min-w-0 flex-1 basis-56">
+                <span className="sr-only">Buscar por nombre</span>
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  name="search"
+                  defaultValue={query.search}
+                  placeholder="Buscar alumno…"
+                  className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary"
+                />
+              </label>
+              <label className="shrink-0">
+                <span className="sr-only">Por página</span>
+                <select
+                  name="pageSize"
+                  defaultValue={String(query.pageSize)}
+                  className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                >
+                  {pageSizes.map((size) => (
+                    <option key={size} value={size}>
+                      {size} por página
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <input type="hidden" name="status" value={query.status} />
+              <input type="hidden" name="page" value="1" />
+              <button
+                type="submit"
+                aria-label="Buscar"
+                title="Buscar"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
               >
-                <Download className="h-4 w-4" aria-hidden="true" />
-                Exportar Excel
+                <Search className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </form>
+            <nav
+              aria-label="Estado de alumnos"
+              className="flex h-10 items-center gap-0.5 rounded-lg border border-border bg-background p-0.5"
+            >
+              {STATUS_OPTIONS.map(([status, label]) => (
+                <Link
+                  key={status}
+                  href={studentListHref({ ...query, status, page: 1 })}
+                  aria-current={query.status === status ? "page" : undefined}
+                  className={`inline-flex h-full items-center rounded-md px-3 text-sm font-medium transition-colors ${
+                    query.status === status
+                      ? "bg-surface-raised text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            {isFiltered ? (
+              <Link
+                href={clearHref}
+                aria-label="Limpiar filtros"
+                title="Limpiar filtros"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground"
+              >
+                <FilterX className="h-4 w-4" aria-hidden="true" />
               </Link>
             ) : null}
-            {canManageStudents ? (
-              <a
-                href="#new-student-heading"
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                Nuevo alumno
-              </a>
+            {canManage ? (
+              <div className="ml-auto flex items-center gap-2">
+                <Link
+                  href={`/api/students/export?${studentQueryString(query)}`}
+                  aria-label="Exportar página a Excel"
+                  title="Exportar página a Excel"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  href={newHref}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  Nuevo alumno
+                </Link>
+              </div>
             ) : null}
           </div>
-        </Surface>
+        </section>
 
-        <section aria-labelledby="student-list-heading">
-          <Surface className="p-0">
-            <div className="border-b border-border p-4 sm:p-5">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2
-                    id="student-list-heading"
-                    className="text-xl font-semibold"
-                  >
-                    Tabla de alumnos
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages} · {students.total}{" "}
-                    resultados
-                  </p>
-                </div>
-              </div>
-              <form
-                className="grid gap-3 md:grid-cols-[minmax(16rem,1fr)_11rem_8rem_auto]"
-                method="get"
-              >
-                <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Buscar
-                  <span className="relative block">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <input
-                      name="search"
-                      defaultValue={search}
-                      placeholder="Nombre del alumno"
-                      className="h-10 w-full rounded-lg border border-input bg-background/50 pl-9 pr-3 text-sm font-normal normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                  </span>
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Estado
-                  <select
-                    name="status"
-                    defaultValue={status}
-                    className="h-10 rounded-lg border border-input bg-background/50 px-3 text-sm font-normal normal-case tracking-normal text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="active">Activos</option>
-                    <option value="archived">Archivados</option>
-                    <option value="all">Todos</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Filas
-                  <select
-                    name="pageSize"
-                    defaultValue={String(pageSize)}
-                    className="h-10 rounded-lg border border-input bg-background/50 px-3 text-sm font-normal normal-case tracking-normal text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                  </select>
-                </label>
-                <input type="hidden" name="page" value="1" />
-                <button
-                  type="submit"
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface-raised px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-overlay sm:self-end"
-                >
-                  Aplicar
-                </button>
-              </form>
-            </div>
-
-            {students.rows.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-border text-sm">
-                  <thead className="bg-surface-raised/60 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    <tr>
-                      <th scope="col" className="px-4 py-3">
-                        Alumno
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        Contacto
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        Nacimiento
-                      </th>
-                      <th scope="col" className="px-4 py-3">
-                        Estado
-                      </th>
-                      <th scope="col" className="px-4 py-3 text-right">
-                        Acciones
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {students.rows.map((student) => (
-                      <tr key={student.id} className="align-middle">
-                        <td className="px-4 py-4">
-                          <p className="font-semibold text-foreground">
-                            {student.fullName}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Creado {student.createdAt.toLocaleDateString("es")}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 text-muted-foreground">
-                          {contactLabel(student.primaryContact)}
-                        </td>
-                        <td className="px-4 py-4 text-muted-foreground">
-                          {student.birthDate ?? "No registrado"}
-                        </td>
-                        <td className="px-4 py-4">
-                          <StatusBadge
-                            tone={
-                              student.status === "active"
-                                ? "success"
-                                : "neutral"
-                            }
-                          >
-                            {student.status === "active"
-                              ? "Activo"
-                              : "Archivado"}
-                          </StatusBadge>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <Link
-                              href={`/dashboard/students/${student.id}`}
-                              aria-label={`Visualizar ${student.fullName}`}
-                              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-surface-raised"
-                            >
-                              <Eye className="h-4 w-4" aria-hidden="true" />
-                            </Link>
-                            {canManageStudents ? (
-                              <Link
-                                href={`/dashboard/students/${student.id}/edit`}
-                                aria-label={`Editar ${student.fullName}`}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-surface-raised"
-                              >
-                                <Pencil
-                                  className="h-4 w-4"
-                                  aria-hidden="true"
-                                />
-                              </Link>
-                            ) : null}
-                            {canManageStudents &&
-                            student.status === "active" ? (
-                              <StudentArchiveButton
-                                studentId={student.id}
-                                studentName={student.fullName}
-                              />
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                title="Sin alumnos para esta vista"
-                description="Ajusta los filtros o registra un alumno nuevo dentro de la academia activa."
+        <section
+          aria-label="Administración de alumnos"
+          className="overflow-hidden rounded-xl border border-border bg-card"
+        >
+          {students.rows.length ? (
+            <StudentList
+              rows={students.rows}
+              query={query}
+              canManage={canManage}
+              studentsWithMembership={studentsWithMembership}
+            />
+          ) : (
+            <div className="grid justify-items-center gap-3 px-4 py-12 text-center">
+              <Users
+                className="h-9 w-9 text-muted-foreground"
+                aria-hidden="true"
               />
-            )}
+              <h3 className="text-lg font-semibold">
+                {isFiltered
+                  ? "Sin resultados para estos filtros"
+                  : "Aún no hay alumnos activos"}
+              </h3>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                {isFiltered
+                  ? "Prueba otro nombre o consulta los alumnos activos."
+                  : "Registra un alumno o consulta la vista de archivados."}
+              </p>
+              {isFiltered ? (
+                <Link href={clearHref} className={studentLinkClass}>
+                  Limpiar búsqueda y filtros
+                </Link>
+              ) : canManage ? (
+                <Link href={newHref} className={studentLinkClass}>
+                  Registrar alumno
+                </Link>
+              ) : null}
+            </div>
+          )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 text-sm text-muted-foreground">
-              <span>
-                Mostrando {students.rows.length} de {students.total}
-              </span>
-              <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm sm:px-5">
+            <p className="text-muted-foreground">
+              Mostrando {first}–{last} de {students.total}
+            </p>
+            <nav
+              aria-label="Paginación de alumnos"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {students.page > 1 ? (
                 <Link
-                  href={buildStudentsHref({
-                    search,
-                    status,
-                    pageSize,
-                    page: Math.max(1, currentPage - 1),
+                  href={studentListHref({
+                    ...query,
+                    page: students.page - 1,
                   })}
-                  aria-disabled={currentPage <= 1}
-                  className={
-                    currentPage <= 1
-                      ? "pointer-events-none inline-flex h-9 items-center rounded-lg border border-border px-3 opacity-45"
-                      : "inline-flex h-9 items-center rounded-lg border border-border px-3 font-semibold text-foreground hover:bg-surface-raised"
-                  }
+                  className={pagerItem}
                 >
                   Anterior
                 </Link>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  className={`${pagerItem} opacity-45`}
+                >
+                  Anterior
+                </span>
+              )}
+              {pageNumbers.map((pageNumber, index) =>
+                pageNumber === null ? (
+                  <span
+                    key={`gap-${index}`}
+                    aria-hidden="true"
+                    className="px-1 text-muted-foreground"
+                  >
+                    …
+                  </span>
+                ) : pageNumber === students.page ? (
+                  <span
+                    key={pageNumber}
+                    aria-current="page"
+                    className={`${pagerItem} metric-number border-primary bg-primary text-primary-foreground hover:bg-primary`}
+                  >
+                    <span className="sr-only">Página </span>
+                    {pageNumber}
+                    <span className="sr-only"> de {totalPages}</span>
+                  </span>
+                ) : (
+                  <Link
+                    key={pageNumber}
+                    href={studentListHref({ ...query, page: pageNumber })}
+                    aria-label={`Página ${pageNumber}`}
+                    className={`${pagerItem} metric-number`}
+                  >
+                    {pageNumber}
+                  </Link>
+                ),
+              )}
+              {students.page < totalPages ? (
                 <Link
-                  href={buildStudentsHref({
-                    search,
-                    status,
-                    pageSize,
-                    page: Math.min(totalPages, currentPage + 1),
+                  href={studentListHref({
+                    ...query,
+                    page: students.page + 1,
                   })}
-                  aria-disabled={currentPage >= totalPages}
-                  className={
-                    currentPage >= totalPages
-                      ? "pointer-events-none inline-flex h-9 items-center rounded-lg border border-border px-3 opacity-45"
-                      : "inline-flex h-9 items-center rounded-lg border border-border px-3 font-semibold text-foreground hover:bg-surface-raised"
-                  }
+                  className={pagerItem}
                 >
                   Siguiente
                 </Link>
-              </div>
-            </div>
-          </Surface>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  className={`${pagerItem} opacity-45`}
+                >
+                  Siguiente
+                </span>
+              )}
+            </nav>
+          </div>
         </section>
-
-        {canManageStudents ? (
-          <section aria-labelledby="new-student-heading">
-            <h2 id="new-student-heading" className="mb-3 text-xl font-semibold">
-              Nuevo alumno
-            </h2>
-            <StudentForm />
-          </section>
-        ) : null}
       </div>
-    </AppShell>
+    </StudentWorkspace>
   );
+}
+
+/**
+ * Returns a window of page numbers with `null` gaps for ellipsis.
+ * Single-pass implementation — no Set→array conversions.
+ */
+function paginationWindow(
+  current: number,
+  total: number,
+): Array<number | null> {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const include = new Set([
+    1,
+    total,
+    Math.max(1, current - 1),
+    current,
+    Math.min(total, current + 1),
+  ]);
+
+  const sorted = Array.from(include).sort((a, b) => a - b);
+  const result: Array<number | null> = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push(null);
+    result.push(sorted[i]);
+  }
+  return result;
 }

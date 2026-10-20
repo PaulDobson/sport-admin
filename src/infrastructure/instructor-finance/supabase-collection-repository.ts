@@ -1,6 +1,9 @@
 import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
 import type { CollectionAccount } from "@/domain/instructor-finance/collection";
-import type { StudentMembershipStatus } from "@/domain/instructor-finance/membership";
+import type {
+  BillingCycle,
+  StudentMembershipStatus,
+} from "@/domain/instructor-finance/membership";
 import type {
   FinancialAdjustmentKind,
   MembershipPaymentStatus,
@@ -16,6 +19,7 @@ interface MembershipRow {
   next_billing_date: string;
   agreed_price: number | string;
   currency: string;
+  billing_cycle: BillingCycle;
   students: { full_name: string };
   membership_plans: { name: string; expiration_grace_days: number };
 }
@@ -41,7 +45,7 @@ export class SupabaseCollectionRepository implements CollectionRepositoryPort {
         this.client
           .from("student_memberships")
           .select(
-            "id,student_id,status,expires_at,next_billing_date,agreed_price,currency,students!inner(full_name),membership_plans!inner(name,expiration_grace_days)",
+            "id,student_id,status,expires_at,next_billing_date,agreed_price,currency,billing_cycle,students!inner(full_name),membership_plans!inner(name,expiration_grace_days)",
           )
           .eq("tenant_id", tenantId)
           .in("status", ["active", "past_due", "expired"]),
@@ -105,6 +109,7 @@ export class SupabaseCollectionRepository implements CollectionRepositoryPort {
         currency: row.currency,
         contractedAmount: Number(row.agreed_price),
         balance: balance.balance,
+        billingCycle: row.billing_cycle,
       };
     });
   }

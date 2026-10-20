@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { activateMembership } from "@/application/instructor-finance/use-cases/manage-membership";
 import { createHealthRestriction } from "@/application/evolution-health-attendance/use-cases/manage-student-health";
 import {
   correctStudentPersonalData,
@@ -11,7 +10,6 @@ import {
   requestStudentErasure,
 } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
-import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { formatActionError } from "@/app/_lib/format-error";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
 
@@ -21,33 +19,9 @@ export interface StudentDetailFormState {
 }
 
 async function getRequestMembership() {
-  return requireOperationalMembership();
-}
-
-export async function activateMembershipAction(
-  _previousState: StudentDetailFormState,
-  formData: FormData,
-): Promise<StudentDetailFormState> {
-  const actor = await getRequestMembership();
-  const studentId = String(formData.get("studentId") ?? "");
-  try {
-    await activateMembership(
-      {
-        tenantId: actor.tenantId,
-        studentId,
-        planId: String(formData.get("planId") ?? ""),
-        startsOn: String(formData.get("startsOn") ?? ""),
-        actorMembershipId: actor.id,
-        operationId: randomUUID(),
-      },
-      await createInstructorFinanceDeps(),
-    );
-  } catch (error) {
-    return { error: formatActionError(error), saved: false };
-  }
-  revalidatePath(`/dashboard/students/${studentId}`);
-  revalidatePath("/dashboard/finance");
-  return { error: null, saved: true };
+  const membership = await requireOperationalMembership();
+  if (membership.role === "assistant") redirect("/dashboard/students");
+  return membership;
 }
 
 export async function createRestrictionAction(

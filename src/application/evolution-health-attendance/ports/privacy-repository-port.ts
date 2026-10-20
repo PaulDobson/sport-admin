@@ -3,9 +3,11 @@ import type {
   ErasureReason,
   StudentPersonalDataExport,
   StudentPrivacyState,
+  TenantHealthPolicy,
 } from "@/domain/evolution-health-attendance/privacy";
 
 export interface PrivacyRepositoryPort {
+  getTenantHealthPolicy(tenantId: string): Promise<TenantHealthPolicy>;
   getStudentState(
     tenantId: string,
     studentId: string,

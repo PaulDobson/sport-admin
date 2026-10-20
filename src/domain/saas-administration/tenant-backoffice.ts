@@ -1,9 +1,10 @@
 import type { TenantStatus } from "@/domain/tenants/tenant";
 import type { SaasFeature } from "./plan-entitlement";
+import type { TenantDetails } from "@/domain/tenants/tenant-details";
 
 export type TenantTransitionStatus = Exclude<TenantStatus, "pending">;
 
-export interface TenantBackofficeSummary {
+export interface TenantBackofficeSummary extends Pick<TenantDetails, "address" | "contactName" | "contactEmail" | "phone" | "city" | "region"> {
   id: string;
   name: string;
   status: TenantStatus;

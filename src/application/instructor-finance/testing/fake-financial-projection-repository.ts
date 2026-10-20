@@ -9,8 +9,12 @@ export class FakeFinancialProjectionRepository implements FinancialProjectionRep
     payments: [],
     adjustments: [],
   };
+  /** Optional per-period data; periods without an entry fall back to `data`. */
+  dataByPeriod: Record<string, FinancialProjectionData> = {};
+  readonly requests: Array<{ tenantId: string; period: string }> = [];
 
-  async loadMonth() {
-    return this.data;
+  async loadMonth(tenantId: string, period: string) {
+    this.requests.push({ tenantId, period });
+    return this.dataByPeriod[period] ?? this.data;
   }
 }

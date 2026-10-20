@@ -15,13 +15,15 @@ export class SupabaseAuthAdapter implements AuthPort {
     email: string;
     password: string;
     fullName: string;
+    emailRedirectTo?: string;
   }): Promise<{ userId: string }> {
     const { data, error } = await this.client.auth.signUp({
       email: input.email,
       password: input.password,
       options: {
         data: { full_name: input.fullName },
-        emailRedirectTo: `${this.siteUrl}/auth/callback`,
+        emailRedirectTo:
+          input.emailRedirectTo ?? `${this.siteUrl}/auth/callback`,
       },
     });
     if (error || !data.user)
@@ -57,7 +59,12 @@ export class SupabaseAuthAdapter implements AuthPort {
   }
 
   async getCurrentUserId(): Promise<string | null> {
-    const { data } = await this.client.auth.getUser();
-    return data.user?.id ?? null;
+    try {
+      const { data } = await this.client.auth.getUser();
+      return data.user?.id ?? null;
+    } catch {
+      // Stale/invalid refresh token cookie; treat as signed out instead of surfacing an error.
+      return null;
+    }
   }
 }

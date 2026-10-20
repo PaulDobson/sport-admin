@@ -3,18 +3,29 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import {
+  assignMembership,
   cancelMembership,
   createMembershipPlan,
   expireMembership,
+  listMembershipPlans,
   pauseMembership,
   renewMembership,
   setMembershipPlanStatus,
   updateMembershipPlan,
 } from "@/application/instructor-finance/use-cases/manage-membership";
-import { recordMembershipPayment } from "@/application/instructor-finance/use-cases/manage-payment";
+import {
+  getMembershipBalance,
+  recordMembershipPayment,
+} from "@/application/instructor-finance/use-cases/manage-payment";
+import { listStudentsForAdministration } from "@/application/instructor-operations/use-cases/list-students-for-administration";
 import type { BillingCycle } from "@/domain/instructor-finance/membership";
+import {
+  BusinessRuleViolationError,
+  ConflictError,
+} from "@/domain/shared/errors";
 import type { PaymentMethod } from "@/domain/instructor-finance/payment";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
+import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { formatActionError } from "@/app/_lib/format-error";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { collectionOperationId } from "./operation-id";
@@ -235,4 +246,176 @@ export async function transitionMembershipAction(
   }
   revalidateFinance();
   return { error: null, saved: true };
+}
+
+export interface AssignableStudent {
+  id: string;
+  fullName: string;
+  photoUrl: string | null;
+  hasCurrentMembership: boolean;
+}
+
+export interface AssignablePlan {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  expirationGraceDays: number;
+  benefits: string[];
+}
+
+export interface AssignMembershipState {
+  status: "idle" | "error" | "assigned" | "payment_failed";
+  error: string | null;
+  result?: {
+    membershipId: string;
+    studentId: string;
+    expiresOn: string;
+    agreedPrice: number;
+    currency: string;
+    paidAmount: number;
+    balance: number;
+  };
+}
+
+const assignmentForbidden =
+  "Tu rol no permite asignar planes. Pide ayuda al instructor a cargo.";
+
+function assignmentErrorMessage(error: unknown) {
+  if (error instanceof ConflictError) {
+    return "El alumno ya tiene una membresía vigente. Revisa su ficha para renovarla o cambiarla.";
+  }
+  if (error instanceof BusinessRuleViolationError) {
+    return "El plan está archivado. Elige un plan activo.";
+  }
+  return formatActionError(error);
+}
+
+/** Active students matching the query, flagging those that already hold a current membership. */
+export async function searchAssignableStudentsAction(
+  query: string,
+): Promise<AssignableStudent[]> {
+  const actor = await requireOperationalMembership();
+  if (actor.role === "assistant") return [];
+  const [operations, finance] = await Promise.all([
+    createInstructorOperationsDeps(),
+    createInstructorFinanceDeps(),
+  ]);
+  const { rows } = await listStudentsForAdministration(
+    {
+      tenantId: actor.tenantId,
+      page: 1,
+      pageSize: 8,
+      search: query.slice(0, 80),
+      status: "active",
+    },
+    operations,
+  );
+  const withMembership = new Set(
+    await finance.memberships.findStudentIdsWithCurrentMembership(
+      actor.tenantId,
+      rows.map((row) => row.id),
+    ),
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    fullName: row.fullName,
+    photoUrl: row.photoUrl,
+    hasCurrentMembership: withMembership.has(row.id),
+  }));
+}
+
+export async function listAssignablePlansAction(): Promise<AssignablePlan[]> {
+  const actor = await requireOperationalMembership();
+  if (actor.role === "assistant") return [];
+  const plans = await listMembershipPlans(
+    { tenantId: actor.tenantId, status: "active" },
+    await createInstructorFinanceDeps(),
+  );
+  return plans.map((plan) => ({
+    id: plan.id,
+    name: plan.name,
+    price: plan.price,
+    currency: plan.currency,
+    billingCycle: plan.billingCycle,
+    expirationGraceDays: plan.expirationGraceDays,
+    benefits: plan.benefits,
+  }));
+}
+
+export async function assignMembershipAction(
+  _previousState: AssignMembershipState,
+  formData: FormData,
+): Promise<AssignMembershipState> {
+  const actor = await requireOperationalMembership();
+  if (actor.role === "assistant") {
+    return { status: "error", error: assignmentForbidden };
+  }
+  const studentId = String(formData.get("studentId") ?? "");
+  const assignmentToken = String(formData.get("assignmentToken") ?? "");
+  const withPayment = formData.get("withPayment") === "on";
+  const paidOn = String(formData.get("paidOn") ?? "");
+  const reference = String(formData.get("reference") ?? "").trim();
+  const finance = await createInstructorFinanceDeps();
+
+  let result: Awaited<ReturnType<typeof assignMembership>>;
+  try {
+    result = await assignMembership(
+      {
+        tenantId: actor.tenantId,
+        studentId,
+        planId: String(formData.get("planId") ?? ""),
+        startsOn: String(formData.get("startsOn") ?? ""),
+        actorMembershipId: actor.id,
+        assignmentToken,
+        initialPayment: withPayment
+          ? {
+              amount: Number(formData.get("amount")),
+              method: readPaymentMethod(formData),
+              paidAt: paidOn ? new Date(`${paidOn}T12:00:00Z`) : new Date(),
+              reference: reference || undefined,
+              operationId: collectionOperationId([
+                actor.tenantId,
+                assignmentToken,
+                "initial-payment",
+              ]),
+            }
+          : undefined,
+      },
+      finance,
+    );
+  } catch (error) {
+    return { status: "error", error: assignmentErrorMessage(error) };
+  }
+
+  revalidateFinance();
+  revalidatePath(`/dashboard/students/${studentId}`);
+  revalidatePath("/dashboard");
+
+  const balance = await getMembershipBalance(
+    { tenantId: actor.tenantId, membershipId: result.membership.id },
+    finance,
+  ).catch(() => null);
+  const summary = {
+    membershipId: result.membership.id,
+    studentId: result.membership.studentId,
+    expiresOn: result.membership.expiresOn,
+    agreedPrice: result.membership.agreedPrice,
+    currency: result.membership.currency,
+    paidAmount: balance?.paidAmount ?? result.payment?.amount ?? 0,
+    balance:
+      balance?.balance ??
+      result.membership.agreedPrice - (result.payment?.amount ?? 0),
+  };
+  if (result.paymentError) {
+    console.error("Initial membership payment failed", result.paymentError);
+    return {
+      status: "payment_failed",
+      error:
+        "La membresía quedó creada, pero el pago inicial no se registró. El saldo quedó pendiente en cobros.",
+      result: summary,
+    };
+  }
+  return { status: "assigned", error: null, result: summary };
 }

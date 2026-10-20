@@ -3,6 +3,8 @@ import type { FinancialAdjustment, MembershipPayment } from "./payment";
 
 export interface ProjectionMembership {
   id: string;
+  planId: string;
+  planName: string;
   startsOn: string;
   expiresOn: string;
   agreedPrice: number;
@@ -20,7 +22,7 @@ export interface MonthlyFinancialProjection {
   collectedAmount: number;
 }
 
-const cycleMonths: Record<BillingCycle, number> = {
+export const cycleMonths: Record<BillingCycle, number> = {
   monthly: 1,
   quarterly: 3,
   semiannual: 6,
@@ -35,14 +37,14 @@ function roundCurrency(amount: number) {
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 }
 
-function monthBounds(period: string) {
+export function monthBounds(period: string) {
   const [year, month] = period.split("-").map(Number);
   const start = `${period}-01`;
   const end = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
   return { start, end };
 }
 
-function isCurrentDuringPeriod(
+export function isCurrentDuringPeriod(
   membership: ProjectionMembership,
   start: string,
   end: string,

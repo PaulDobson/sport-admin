@@ -1,4 +1,5 @@
 import type {
+  BillingCycle,
   MembershipPlanStatus,
   StudentMembershipStatus,
 } from "./membership";
@@ -15,6 +16,8 @@ export interface CollectionAccount {
   currency: string;
   contractedAmount: number;
   balance: number;
+  /** Read-only, used to preview renewals; absent in older fixtures. */
+  billingCycle?: BillingCycle;
 }
 
 export interface CollectionItem extends CollectionAccount {

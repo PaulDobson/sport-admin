@@ -1,95 +1,132 @@
-import type { ReactNode } from "react";
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useId,
+  useState,
+  type ReactNode,
+} from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+
+const SidebarContext = createContext<{
+  collapsed: boolean;
+  toggle: () => void;
+}>({ collapsed: false, toggle: () => {} });
+
+export function useSidebarCollapsed() {
+  return useContext(SidebarContext).collapsed;
+}
+
+export function useSidebarToggle() {
+  return useContext(SidebarContext).toggle;
+}
 
 export function AppShell({
   sidebarHeader,
   navigation,
   mobileNavigation,
   topbar,
-  topbarActions,
-  context,
   children,
 }: {
   sidebarHeader: ReactNode;
   navigation: ReactNode;
   mobileNavigation: ReactNode;
   topbar: ReactNode;
-  topbarActions?: ReactNode;
-  context?: ReactNode;
   children: ReactNode;
 }) {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <a
-        href="#main-content"
-        className="fixed left-3 top-3 z-[100] -translate-y-20 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-transform focus:translate-y-0"
-      >
-        Saltar al contenido
-      </a>
-      <aside
-        aria-label="Navegación principal"
-        className="fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-width)] flex-col border-r border-border/80 bg-navigation/98 shadow-[18px_0_40px_rgba(0,0,0,0.18)] lg:flex"
-      >
-        <div className="flex h-[var(--topbar-height)] shrink-0 items-center border-b border-border/70 px-4">
-          {sidebarHeader}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
-          {navigation}
-        </div>
-      </aside>
+  const [collapsed, setCollapsed] = useState(false);
+  const sidebarId = useId();
+  const toggle = useCallback(() => setCollapsed((v) => !v), []);
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
+  const toggleLabel = collapsed ? "Expandir navegación" : "Colapsar navegación";
 
-      <div className="min-h-screen lg:pl-[var(--sidebar-width)]">
-        <header className="sticky top-0 z-30 flex min-h-[calc(var(--topbar-height)+var(--safe-area-top))] items-end border-b border-border/80 bg-background/92 px-4 pb-3 pt-[calc(var(--safe-area-top)+0.75rem)] shadow-sm shadow-black/10 backdrop-blur sm:px-6 lg:items-center lg:pb-0 lg:pt-[var(--safe-area-top)]">
-          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0 flex-1">{topbar}</div>
-            {topbarActions ? (
-              <div className="flex shrink-0 items-center justify-end gap-2">
-                {topbarActions}
-              </div>
-            ) : null}
+  return (
+    <SidebarContext.Provider value={{ collapsed, toggle }}>
+      <div
+        data-sidebar-collapsed={collapsed}
+        className="group/sidebar min-h-screen bg-background text-foreground"
+      >
+        <a
+          href="#main-content"
+          className="fixed left-3 top-3 z-100 -translate-y-20 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-transform focus:translate-y-0"
+        >
+          Saltar al contenido
+        </a>
+        <aside
+          id={sidebarId}
+          aria-label="Navegación principal"
+          className={`fixed inset-y-0 left-0 z-40 hidden flex-col bg-navigation transition-[width] duration-200 motion-reduce:transition-none lg:flex ${
+            collapsed ? "w-20" : "w-(--sidebar-width)"
+          }`}
+        >
+          <div className="flex h-(--topbar-height) shrink-0 items-center px-4">
+            {sidebarHeader}
           </div>
-        </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-2.5 py-4">
+            {navigation}
+          </div>
+          <div className="shrink-0 border-t border-white/5 px-2.5 py-3">
+            <button
+              type="button"
+              aria-label={toggleLabel}
+              aria-controls={sidebarId}
+              aria-expanded={!collapsed}
+              title={toggleLabel}
+              onClick={toggle}
+              className={`hidden min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-white/4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary lg:flex ${
+                collapsed ? "justify-center" : ""
+              }`}
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center">
+                <ToggleIcon size={18} aria-hidden="true" />
+              </span>
+              <span className={collapsed ? "sr-only" : undefined}>
+                {collapsed ? "Expandir menú" : "Colapsar menú"}
+              </span>
+            </button>
+          </div>
+        </aside>
 
         <div
-          className={
-            context
-              ? "lg:grid lg:min-h-[calc(100vh-var(--topbar-height))] lg:grid-cols-[minmax(0,1fr)_var(--context-rail-width)]"
-              : undefined
-          }
+          className={`min-h-screen transition-[padding] duration-200 motion-reduce:transition-none ${
+            collapsed ? "lg:pl-20" : "lg:pl-(--sidebar-width)"
+          }`}
         >
+          <header className="sticky top-0 z-30 flex min-h-[calc(var(--topbar-height)+var(--safe-area-top))] items-end border-b border-white/5 bg-background/92 px-4 pb-3 pt-[calc(var(--safe-area-top)+0.75rem)] backdrop-blur sm:px-6 lg:items-center lg:pb-0 lg:pt-[var(--safe-area-top)]">
+            <div className="w-full min-w-0">{topbar}</div>
+          </header>
+
           <main
             id="main-content"
             className="min-w-0 px-4 pb-[calc(var(--bottom-nav-height)+var(--safe-area-bottom)+1.5rem)] pt-5 sm:px-6 lg:pb-10 lg:pt-7"
           >
             {children}
           </main>
-          {context ? (
-            <aside
-              aria-label="Contexto operativo"
-              className="hidden border-l border-border/80 bg-card/45 p-5 lg:sticky lg:top-[var(--topbar-height)] lg:block lg:h-[calc(100vh-var(--topbar-height))] lg:overflow-y-auto"
-            >
-              {context}
-            </aside>
-          ) : null}
         </div>
-      </div>
 
-      <nav
-        aria-label="Navegación móvil"
-        className="fixed inset-x-0 bottom-0 z-50 min-h-[calc(var(--bottom-nav-height)+var(--safe-area-bottom))] border-t border-border/80 bg-navigation/98 px-[max(0.5rem,var(--safe-area-right))] pb-[var(--safe-area-bottom)] shadow-[0_-12px_28px_rgba(0,0,0,0.24)] backdrop-blur lg:hidden"
-      >
-        {mobileNavigation}
-      </nav>
-    </div>
+        <nav
+          aria-label="Navegación móvil"
+          className="fixed inset-x-0 bottom-0 z-50 min-h-[calc(var(--bottom-nav-height)+var(--safe-area-bottom))] border-t border-border/80 bg-navigation/98 px-[max(0.5rem,var(--safe-area-right))] pb-(--safe-area-bottom) shadow-[0_-12px_28px_rgba(0,0,0,0.24)] backdrop-blur lg:hidden"
+        >
+          {mobileNavigation}
+        </nav>
+      </div>
+    </SidebarContext.Provider>
   );
 }
 
 export function ProductMark({ context }: { context?: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary font-bold text-primary-foreground shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_12px_24px_rgba(49,209,159,0.16)]">
+    <div className="flex min-w-0 items-center gap-2.5 group-data-[sidebar-collapsed=true]/sidebar:mx-auto">
+      <span
+        aria-hidden="true"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary font-bold text-primary-foreground"
+      >
         SA
       </span>
-      <span className="min-w-0">
+      <span className="min-w-0 group-data-[sidebar-collapsed=true]/sidebar:sr-only">
         <span className="block truncate text-sm font-bold tracking-tight">
           Sport Admin
         </span>

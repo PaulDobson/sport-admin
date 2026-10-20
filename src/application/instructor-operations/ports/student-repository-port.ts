@@ -2,6 +2,7 @@ import type {
   Student,
   StudentContact,
   StudentContactType,
+  StudentGender,
   StudentStatus,
 } from "@/domain/instructor-operations/student";
 
@@ -10,6 +11,12 @@ export interface CreateStudentInput {
   fullName: string;
   photoUrl: string | null;
   birthDate: string | null;
+  gender: StudentGender | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  emergencyContactName: string | null;
+  emergencyContactEmail: string | null;
+  emergencyContactPhone: string | null;
   contacts: Array<{
     type: StudentContactType;
     label: string | null;
@@ -33,13 +40,18 @@ export interface StudentAdministrationRow {
   tenantId: string;
   fullName: string;
   birthDate: string | null;
+  photoUrl: string | null;
+  gender: StudentGender | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  emergencyContactName: string | null;
+  emergencyContactEmail: string | null;
+  emergencyContactPhone: string | null;
   status: StudentStatus;
   createdAt: Date;
   archivedAt: Date | null;
-  primaryContact: Pick<
-    StudentContact,
-    "type" | "label" | "value" | "isPrimary"
-  > | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 }
 
 export interface StudentAdministrationResult {
@@ -54,11 +66,15 @@ export interface UpdateStudentInput {
   studentId: string;
   fullName: string;
   birthDate: string | null;
-  primaryContact: {
-    type: StudentContactType;
-    label: string | null;
-    value: string;
-  } | null;
+  photoUrl: string | null;
+  gender: StudentGender | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  emergencyContactName: string | null;
+  emergencyContactEmail: string | null;
+  emergencyContactPhone: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 }
 
 export interface StudentRepositoryPort {

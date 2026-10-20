@@ -1,4 +1,5 @@
 import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
+import { ConflictError } from "@/domain/shared/errors";
 import type {
   BillingCycle,
   MembershipPlan,
@@ -6,13 +7,14 @@ import type {
   StudentMembership,
   StudentMembershipStatus,
 } from "@/domain/instructor-finance/membership";
-import type {
-  CreateMembershipInput,
-  CreateMembershipPlanInput,
-  MembershipRepositoryPort,
-  SetMembershipPlanStatusInput,
-  TransitionMembershipInput,
-  UpdateMembershipPlanInput,
+import {
+  CURRENT_MEMBERSHIP_STATUSES,
+  type CreateMembershipInput,
+  type CreateMembershipPlanInput,
+  type MembershipRepositoryPort,
+  type SetMembershipPlanStatusInput,
+  type TransitionMembershipInput,
+  type UpdateMembershipPlanInput,
 } from "@/application/instructor-finance/ports/membership-repository-port";
 
 const planColumns =
@@ -200,6 +202,11 @@ export class SupabaseMembershipRepository implements MembershipRepositoryPort {
         target_operation_id: input.operationId,
       },
     );
+    if (error?.code === "23505") {
+      throw new ConflictError(
+        "El alumno ya tiene una membresía vigente o la operación ya se registró.",
+      );
+    }
     if (error) throw error;
     const membership = await this.findById(input.tenantId, data as string);
     if (!membership) throw new Error("Failed to load activated membership");
@@ -244,5 +251,40 @@ export class SupabaseMembershipRepository implements MembershipRepositoryPort {
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data as unknown as MembershipRow[]).map(toMembership);
+  }
+
+  async findStudentIdsWithCurrentMembership(
+    tenantId: string,
+    studentIds?: string[],
+  ) {
+    if (studentIds && studentIds.length === 0) return [];
+    const query = this.client
+      .from("student_memberships")
+      .select("student_id")
+      .eq("tenant_id", tenantId)
+      .in("status", [...CURRENT_MEMBERSHIP_STATUSES]);
+    const { data, error } = await (studentIds
+      ? query.in("student_id", studentIds)
+      : query);
+    if (error) throw error;
+    return [
+      ...new Set(
+        (data as Array<{ student_id: string }>).map((row) => row.student_id),
+      ),
+    ];
+  }
+
+  async findByActivationOperation(tenantId: string, operationId: string) {
+    const { data, error } = await this.client
+      .from("instructor_financial_events")
+      .select("entity_id")
+      .eq("tenant_id", tenantId)
+      .eq("operation_id", operationId)
+      .eq("entity_type", "membership")
+      .eq("event_type", "membership_activated")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return this.findById(tenantId, (data as { entity_id: string }).entity_id);
   }
 }

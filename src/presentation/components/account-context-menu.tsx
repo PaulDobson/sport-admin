@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, MapPin, UserRound } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  MapPin,
+  Swords,
+  UserRound,
+} from "lucide-react";
 import { selectTenantAction } from "@/app/select-tenant/actions";
 import { signOutAction } from "@/app/dashboard/profile/sign-out-action";
 
@@ -20,6 +27,8 @@ export function AccountContextMenu({
   currentTenantId,
   tenants,
   roleLabel,
+  canManageGym = false,
+  canReadBilling = false,
   locations = [],
   currentLocationId = "",
 }: {
@@ -27,6 +36,8 @@ export function AccountContextMenu({
   currentTenantId: string;
   tenants: TenantContextOption[];
   roleLabel: string;
+  canManageGym?: boolean;
+  canReadBilling?: boolean;
   locations?: LocationContextOption[];
   currentLocationId?: string;
 }) {
@@ -130,6 +141,40 @@ export function AccountContextMenu({
             ) : null}
           </div>
           <div className="pt-2">
+            {canManageGym ? (
+              <a
+                href="/dashboard/gym"
+                role="menuitem"
+                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <Building2
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                Mi gimnasio
+              </a>
+            ) : null}
+            {canReadBilling ? (
+              <a
+                href={`/billing?tenant=${currentTenantId}`}
+                role="menuitem"
+                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised"
+              >
+                <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Mi suscripción
+              </a>
+            ) : null}
+            <a
+              href="/dashboard/trainings"
+              role="menuitem"
+              className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <Swords
+                className="h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              Entrenamientos
+            </a>
             <a
               href="/dashboard/profile"
               role="menuitem"

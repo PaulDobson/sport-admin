@@ -3,6 +3,8 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import type { CollectionItem } from "@/domain/instructor-finance/collection";
+import { renewalExpiresOn } from "@/domain/instructor-finance/dashboard";
+import { formatShortDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import {
   Button,
@@ -136,7 +138,48 @@ function PaymentForm({ item, today }: { item: CollectionItem; today: string }) {
   );
 }
 
-function LifecycleForm({ item }: { item: CollectionItem }) {
+function addDays(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Mirrors `transition_student_membership` so the instructor sees the outcome before applying it. */
+export function describeTransitionEffect(
+  item: CollectionItem,
+  transition: string,
+  effectiveOn: string,
+) {
+  const from = formatShortDate(effectiveOn);
+  if (transition === "renew") {
+    const charge = formatMoney(item.contractedAmount, item.currency);
+    if (!item.billingCycle) {
+      return `Queda activa por un nuevo ciclo y se genera un cobro de ${charge}.`;
+    }
+    const expiresOn = renewalExpiresOn({
+      nextBillingDate: item.nextBillingDate,
+      effectiveOn,
+      cycle: item.billingCycle,
+    });
+    return `Queda activa hasta el ${formatShortDate(expiresOn)} y se genera un cobro de ${charge}.`;
+  }
+  if (transition === "pause") {
+    return `Se pausa desde el ${from}. Mientras esté pausada no genera cobros nuevos.`;
+  }
+  if (transition === "expire") {
+    const graceEnd = addDays(item.expiresOn, item.expirationGraceDays);
+    if (item.expirationGraceDays > 0 && effectiveOn <= graceEnd) {
+      return `Pasa a En mora desde el ${from}; la tolerancia termina el ${formatShortDate(graceEnd)}.`;
+    }
+    return `Queda vencida desde el ${from} y deja de generar cobros.`;
+  }
+  if (transition === "cancel") {
+    return `Se cancela desde el ${from}. El saldo pendiente de ${formatMoney(item.balance, item.currency)} queda en el historial.`;
+  }
+  return null;
+}
+
+function LifecycleForm({ item, today }: { item: CollectionItem; today: string }) {
   const [state, formAction, pending] = useActionState(
     transitionMembershipAction,
     initialState,
@@ -159,7 +202,9 @@ function LifecycleForm({ item }: { item: CollectionItem }) {
       {
         value: "expire",
         label: "Marcar vencida",
-        allowed: item.status === "active" || item.status === "past_due",
+        allowed:
+          (item.status === "active" || item.status === "past_due") &&
+          today > item.expiresOn,
       },
       {
         value: "cancel",
@@ -168,10 +213,12 @@ function LifecycleForm({ item }: { item: CollectionItem }) {
       },
     ] as const
   ).filter((option) => option.allowed);
+  const effect = describeTransitionEffect(item, transition, today);
 
   return (
     <form action={formAction} className="grid gap-3">
       <input type="hidden" name="membershipId" value={item.membershipId} />
+      <input type="hidden" name="effectiveOn" value={today} />
       <label className={labelClass}>
         Acción
         <select
@@ -190,6 +237,17 @@ function LifecycleForm({ item }: { item: CollectionItem }) {
           ))}
         </select>
       </label>
+      {effect ? (
+        <div
+          aria-live="polite"
+          className="rounded-lg border border-border bg-surface-raised p-3 text-sm"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Qué pasará
+          </p>
+          <p className="mt-1 text-foreground">{effect}</p>
+        </div>
+      ) : null}
       {destructive ? (
         <label className="flex items-start gap-2 text-sm text-muted-foreground">
           <input
@@ -287,7 +345,7 @@ export function CollectionList({
                   trigger="Membresía"
                   triggerClassName="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-border bg-surface-raised px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface-overlay"
                 >
-                  <LifecycleForm item={item} />
+                  <LifecycleForm item={item} today={today} />
                 </BottomSheet>
               </div>
             ) : null}

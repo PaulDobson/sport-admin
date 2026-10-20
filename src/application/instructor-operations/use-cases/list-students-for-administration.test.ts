@@ -8,13 +8,20 @@ const tenantId = "10000000-0000-4000-8000-000000000001";
 const otherTenantId = "10000000-0000-4000-8000-000000000002";
 
 describe("listStudentsForAdministration", () => {
-  it("returns tenant-scoped paginated active students with primary contact data", async () => {
+  it("returns tenant-scoped paginated active students with separate contact data", async () => {
     const students = new FakeStudentRepository();
     await createStudent(
       {
         tenantId,
         fullName: "Bea Bravo",
-        contacts: [{ type: "phone", value: "+56 9 1111", isPrimary: true }],
+        contacts: [
+          { type: "phone", value: "+56 9 1111", isPrimary: true },
+          {
+            type: "email",
+            value: "bea@example.com",
+            isPrimary: true,
+          },
+        ],
       },
       { students },
     );
@@ -35,7 +42,8 @@ describe("listStudentsForAdministration", () => {
       expect.objectContaining({
         fullName: "Bea Bravo",
         tenantId,
-        primaryContact: expect.objectContaining({ value: "+56 9 1111" }),
+        contactPhone: "+56 9 1111",
+        contactEmail: "bea@example.com",
       }),
     ]);
   });
@@ -60,5 +68,16 @@ describe("listStudentsForAdministration", () => {
       total: 1,
       rows: [expect.objectContaining({ status: "archived" })],
     });
+
+  });
+
+  it("normalizes an out-of-range page, including after archiving the last row", async () => {
+      const students = new FakeStudentRepository();
+      await createStudent({ tenantId, fullName: "Ana" }, { students });
+      const { student } = await createStudent({ tenantId, fullName: "Bea" }, { students });
+      expect(await listStudentsForAdministration({ tenantId, page: 9, pageSize: 1 }, { students })).toMatchObject({ page: 2, total: 2, rows: [expect.objectContaining({ fullName: "Bea" })] });
+      await archiveStudent({ tenantId, studentId: student.id }, { students });
+      expect(await listStudentsForAdministration({ tenantId, page: 2, pageSize: 1 }, { students })).toMatchObject({ page: 1, total: 1, rows: [expect.objectContaining({ fullName: "Ana" })] });
+      expect(await listStudentsForAdministration({ tenantId, page: 9, search: "missing" }, { students })).toMatchObject({ page: 1, total: 0, rows: [] });
   });
 });

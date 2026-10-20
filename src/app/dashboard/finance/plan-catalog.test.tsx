@@ -12,6 +12,9 @@ vi.mock("./actions", () => ({
   createPlanAction: vi.fn(),
   updatePlanAction: vi.fn(),
   setPlanStatusAction: vi.fn(),
+  assignMembershipAction: vi.fn(),
+  listAssignablePlansAction: vi.fn(async () => []),
+  searchAssignableStudentsAction: vi.fn(async () => []),
 }));
 
 function plan(overrides: Partial<MembershipPlan> = {}): MembershipPlan {
@@ -106,6 +109,44 @@ describe("plan catalog", () => {
 
     expect(screen.queryByRole("button", { name: "Editar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Nuevo plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Asignar/ })).toBeNull();
+  });
+
+  it("offers assignment from active plans with the plan preselected", () => {
+    render(<PlanCatalog plans={[plan()]} showArchived={false} canManage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Asignar Mensual Adulto" }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Asignar plan" });
+    expect(dialog.textContent).toContain("Mensual Adulto");
+    expect(screen.getByLabelText("Buscar alumno")).toBeTruthy();
+  });
+
+  it("does not offer assignment for archived plans", () => {
+    render(
+      <PlanCatalog
+        plans={[plan({ status: "archived" })]}
+        showArchived
+        canManage
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Asignar/ })).toBeNull();
+  });
+
+  it("shows the monthly revenue from agreed prices when provided", () => {
+    render(
+      <PlanCatalog
+        plans={[plan()]}
+        showArchived={false}
+        canManage
+        monthlyRevenueByPlan={{ [plan().id]: 510000 }}
+      />,
+    );
+
+    expect(screen.getByText("$510.000")).toBeTruthy();
   });
 
   it("shows an empty state when there are no plans", () => {

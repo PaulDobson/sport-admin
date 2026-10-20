@@ -7,6 +7,7 @@ test("protects authenticated shell routes without leaking tenant context", async
     "/dashboard",
     "/dashboard/profile",
     "/dashboard/schedule",
+    "/backoffice",
     "/backoffice/tenants",
   ]) {
     await page.goto(path);

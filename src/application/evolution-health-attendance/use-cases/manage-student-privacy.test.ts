@@ -4,6 +4,7 @@ import type { PrivacyRepositoryPort } from "../ports/privacy-repository-port";
 import {
   correctStudentPersonalData,
   exportStudentPersonalData,
+  getTenantHealthPolicy,
   getStudentPrivacyState,
   registerStudentHealthConsent,
   requestStudentErasure,
@@ -16,6 +17,10 @@ const ids = {
 
 function createPrivacyRepository(): PrivacyRepositoryPort {
   return {
+    getTenantHealthPolicy: vi.fn().mockResolvedValue({
+      healthEnabled: true,
+      policyVersion: "2026-01",
+    }),
     getStudentState: vi.fn().mockResolvedValue({
       policyApproved: true,
       healthEnabled: true,
@@ -32,6 +37,15 @@ function createPrivacyRepository(): PrivacyRepositoryPort {
 }
 
 describe("student privacy governance", () => {
+  it("reads the tenant health policy before collecting health data", async () => {
+    const privacy = createPrivacyRepository();
+
+    await expect(
+      getTenantHealthPolicy({ tenantId: ids.tenantId }, { privacy }),
+    ).resolves.toEqual({ healthEnabled: true, policyVersion: "2026-01" });
+    expect(privacy.getTenantHealthPolicy).toHaveBeenCalledWith(ids.tenantId);
+  });
+
   it("delegates status, consent, export and erasure through the privacy port", async () => {
     const privacy = createPrivacyRepository();
     const operationId = "30000000-0000-4000-8000-000000000003";

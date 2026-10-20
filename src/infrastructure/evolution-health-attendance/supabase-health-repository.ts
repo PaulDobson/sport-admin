@@ -1,4 +1,5 @@
 import type { SupabaseDatabaseClient } from "@/infrastructure/supabase/database-client";
+import { SupabaseAttendanceRepository } from "./supabase-attendance-repository";
 import type {
   HealthCondition,
   HealthRestriction,
@@ -282,20 +283,10 @@ export class SupabaseHealthRepository implements HealthRepositoryPort {
     sessionId: string,
     onDate: string,
   ) {
-    const { data: enrollmentData, error: enrollmentError } = await this.client
-      .from("session_enrollments")
-      .select("student_id, students!inner(full_name)")
-      .eq("tenant_id", tenantId)
-      .eq("session_id", sessionId)
-      .eq("status", "confirmed");
-    if (enrollmentError) throw enrollmentError;
-
-    const enrollments = enrollmentData as unknown as Array<{
-      student_id: string;
-      students: { full_name: string };
-    }>;
-    if (enrollments.length === 0) return [];
-    const studentIds = enrollments.map((enrollment) => enrollment.student_id);
+    const participants = await new SupabaseAttendanceRepository(this.client)
+      .listExpectedParticipants(tenantId, sessionId);
+    if (participants.length === 0) return [];
+    const studentIds = participants.map((participant) => participant.studentId);
     const { data: restrictionData, error: restrictionError } = await this.client
       .from("health_restrictions")
       .select()
@@ -309,11 +300,11 @@ export class SupabaseHealthRepository implements HealthRepositoryPort {
       restrictionFromRow,
     );
 
-    return enrollments.map((enrollment) => ({
-      studentId: enrollment.student_id,
-      studentName: enrollment.students.full_name,
+    return participants.map((participant) => ({
+      studentId: participant.studentId,
+      studentName: participant.studentName,
       restrictions: restrictions.filter(
-        (restriction) => restriction.studentId === enrollment.student_id,
+        (restriction) => restriction.studentId === participant.studentId,
       ),
     }));
   }

@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { listStudentsForAdministration } from "@/application/instructor-operations/use-cases/list-students-for-administration";
+import { parseStudentListQuery, studentListParamsFromUrl } from "@/presentation/navigation/student-navigation";
 import type { StudentAdministrationStatusFilter } from "@/application/instructor-operations/ports/student-repository-port";
 import { DomainError } from "@/domain/shared/errors";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
@@ -8,20 +9,6 @@ import { resolveOperationalContextForUser } from "@/app/_lib/operational-context
 
 const contentType =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-function parsePositiveInteger(
-  value: string | null,
-  fallback: number,
-  max: number,
-) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
-  return Math.min(parsed, max);
-}
-
-function parseStatus(value: string | null): StudentAdministrationStatusFilter {
-  return value === "archived" || value === "all" ? value : "active";
-}
 
 function roleLabelFor(role: string) {
   return role === "owner"
@@ -39,19 +26,6 @@ function statusLabel(status: StudentAdministrationStatusFilter) {
     : status === "all"
       ? "Todos"
       : "Activos";
-}
-
-function contactValue(
-  contact: { type: string; label: string | null; value: string } | null,
-) {
-  if (!contact) return "";
-  const typeLabel =
-    contact.type === "email"
-      ? "Email"
-      : contact.type === "emergency"
-        ? "Emergencia"
-        : "Telefono";
-  return `${contact.label ?? typeLabel}: ${contact.value}`;
 }
 
 export async function GET(request: Request) {
@@ -78,14 +52,9 @@ export async function GET(request: Request) {
     }
 
     const url = new URL(request.url);
-    const page = parsePositiveInteger(url.searchParams.get("page"), 1, 10_000);
-    const pageSize = parsePositiveInteger(
-      url.searchParams.get("pageSize"),
-      10,
-      100,
+    const { page, pageSize, search, status } = parseStudentListQuery(
+      studentListParamsFromUrl(url.searchParams),
     );
-    const search = url.searchParams.get("search")?.trim() ?? "";
-    const status = parseStatus(url.searchParams.get("status"));
     const tenantId = context.membership.tenantId;
     const operations = await createInstructorOperationsDeps();
     const [students, tenants] = await Promise.all([
@@ -107,7 +76,8 @@ export async function GET(request: Request) {
       { header: "Campo", key: "field", width: 24 },
       { header: "Valor", key: "value", width: 36 },
       { header: "Nombre", key: "name", width: 32 },
-      { header: "Contacto", key: "contact", width: 34 },
+      { header: "Telefono", key: "phone", width: 20 },
+      { header: "Correo", key: "email", width: 32 },
       { header: "Nacimiento", key: "birthDate", width: 16 },
       { header: "Estado", key: "status", width: 16 },
       { header: "Creado", key: "createdAt", width: 16 },
@@ -124,7 +94,8 @@ export async function GET(request: Request) {
     worksheet.getRow(7).values = ["Filas por pagina", `${students.pageSize}`];
     worksheet.getRow(9).values = [
       "Nombre",
-      "Contacto principal",
+      "Telefono",
+      "Correo",
       "Fecha de nacimiento",
       "Estado",
       "Creado",
@@ -133,7 +104,8 @@ export async function GET(request: Request) {
     students.rows.forEach((student, index) => {
       worksheet.getRow(10 + index).values = [
         student.fullName,
-        contactValue(student.primaryContact),
+        student.contactPhone ?? "",
+        student.contactEmail ?? "",
         student.birthDate ?? "",
         student.status === "active" ? "Activo" : "Archivado",
         student.createdAt.toISOString().slice(0, 10),

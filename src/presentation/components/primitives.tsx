@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { useId } from "react";
 import type {
   ButtonHTMLAttributes,
+  ComponentProps,
+  ComponentType,
   HTMLAttributes,
-  InputHTMLAttributes,
   ReactNode,
 } from "react";
 import { Spinner } from "./spinner";
@@ -24,7 +26,7 @@ const buttonVariants: Record<ButtonVariant, string> = {
     "border-destructive/35 bg-destructive/10 text-destructive hover:bg-destructive/15",
 };
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ComponentProps<"button"> {
   variant?: ButtonVariant;
   isLoading?: boolean;
 }
@@ -73,7 +75,7 @@ export function Surface({
   return (
     <section
       className={classes(
-        "rounded-xl border p-4",
+        "rounded-md border p-4",
         surfaceTones[tone],
         className,
       )}
@@ -84,10 +86,7 @@ export function Surface({
   );
 }
 
-export function FieldControl({
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
+export function FieldControl({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={classes(
@@ -225,6 +224,237 @@ export function SyncStatusBadge({
   children: ReactNode;
 }) {
   return <StatusBadge tone={syncStatusTone[status]}>{children}</StatusBadge>;
+}
+
+export type ToneBadgeTone = StatusTone;
+
+const toneBadgeClasses: Record<ToneBadgeTone, string> = {
+  neutral: "bg-white/6 text-muted-foreground",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  destructive: "bg-destructive/15 text-destructive",
+  info: "bg-info/15 text-info",
+};
+
+/** Compact semantic label: always text plus tone, never colour alone. */
+export function ToneBadge({
+  children,
+  tone = "neutral",
+  className,
+}: {
+  children: ReactNode;
+  tone?: ToneBadgeTone;
+  className?: string;
+}) {
+  return (
+    <span
+      className={classes(
+        "metric-number inline-flex min-h-6 shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-semibold",
+        toneBadgeClasses[tone],
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+export type StatAccent = "primary" | "info" | "warning" | "success" | "destructive";
+
+const statAccentClasses: Record<StatAccent, { icon: string; glow: string }> = {
+  primary: { icon: "bg-primary/12 text-primary ring-primary/20", glow: "from-primary/12" },
+  info: { icon: "bg-info/12 text-info ring-info/20", glow: "from-info/12" },
+  warning: { icon: "bg-warning/12 text-warning ring-warning/20", glow: "from-warning/12" },
+  success: { icon: "bg-success/12 text-success ring-success/20", glow: "from-success/12" },
+  destructive: {
+    icon: "bg-destructive/12 text-destructive ring-destructive/20",
+    glow: "from-destructive/12",
+  },
+};
+
+interface StatCardProps {
+  label: string;
+  value: ReactNode;
+  note?: ReactNode;
+  accent?: StatAccent;
+  icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  badge?: { label: ReactNode; tone: ToneBadgeTone };
+  href?: string;
+  children?: ReactNode;
+}
+
+export function StatCard({
+  label,
+  value,
+  note,
+  accent = "primary",
+  icon: Icon,
+  badge,
+  href,
+  children,
+}: StatCardProps) {
+  const tone = statAccentClasses[accent];
+  const body = (
+    <>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${tone.glow} via-transparent to-transparent`}
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <h3 className="text-xs font-medium text-muted-foreground sm:text-sm">
+          {label}
+        </h3>
+        {badge ? (
+          <ToneBadge tone={badge.tone}>{badge.label}</ToneBadge>
+        ) : Icon ? (
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 ${tone.icon}`}
+          >
+            <Icon aria-hidden className="h-4 w-4" />
+          </span>
+        ) : null}
+      </div>
+      <p className="metric-number relative mt-2 truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        {value}
+      </p>
+      {note ? (
+        <p className="relative mt-1 truncate text-xs text-muted-foreground">
+          {note}
+        </p>
+      ) : null}
+      {children ? <div className="relative mt-3">{children}</div> : null}
+    </>
+  );
+  const cardClass =
+    "relative block min-h-11 min-w-0 overflow-hidden rounded-2xl border border-white/6 bg-card p-4 sm:p-5";
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={classes(
+          cardClass,
+          "transition-colors hover:border-primary/25 hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        )}
+      >
+        {body}
+      </Link>
+    );
+  }
+  return <article className={cardClass}>{body}</article>;
+}
+
+export function Panel({
+  title,
+  description,
+  action,
+  children,
+  className,
+  labelledBy,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  labelledBy: string;
+}) {
+  return (
+    <section
+      aria-labelledby={labelledBy}
+      className={classes(
+        "min-w-0 rounded-2xl border border-white/6 bg-card p-4 sm:p-5",
+        className,
+      )}
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id={labelledBy} className="text-base font-semibold text-foreground">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export interface ResponsiveTableColumn<Row> {
+  key: string;
+  header: string;
+  cell: (row: Row) => ReactNode;
+  align?: "start" | "end";
+}
+
+/** Table on desktop, card list on mobile; both expose the same data and actions. */
+export function ResponsiveTable<Row>({
+  caption,
+  columns,
+  rows,
+  rowKey,
+  renderCard,
+}: {
+  caption: string;
+  columns: ResponsiveTableColumn<Row>[];
+  rows: Row[];
+  rowKey: (row: Row) => string;
+  renderCard: (row: Row) => ReactNode;
+}) {
+  return (
+    <>
+      <ul aria-label={caption} className="grid gap-2 lg:hidden">
+        {rows.map((row) => (
+          <li
+            key={rowKey(row)}
+            className="rounded-xl border border-white/6 bg-surface-raised/60 p-3"
+          >
+            {renderCard(row)}
+          </li>
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full border-collapse text-sm">
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr className="border-b border-white/6">
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  scope="col"
+                  className={classes(
+                    "px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+                    column.align === "end" ? "text-right" : "text-left",
+                  )}
+                >
+                  {column.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={rowKey(row)} className="border-b border-white/6 last:border-b-0">
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={classes(
+                      "px-3 py-3.5 align-middle",
+                      column.align === "end" ? "text-right" : "text-left",
+                    )}
+                  >
+                    {column.cell(row)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
 }
 
 export function EmptyState({

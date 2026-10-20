@@ -10,7 +10,7 @@ const schema = z
     instructorMembershipId: z.string().uuid().optional(),
     startsAt: z.coerce.date().optional(),
     endsAt: z.coerce.date().optional(),
-    capacity: z.number().int().positive().optional(),
+    capacity: z.number().int().positive().max(500).optional(),
     waitlistEnabled: z.boolean().optional(),
     status: z.enum(["scheduled", "cancelled", "completed"]).optional(),
   })

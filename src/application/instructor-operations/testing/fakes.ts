@@ -23,6 +23,12 @@ export class FakeStudentRepository implements StudentRepositoryPort {
       fullName: input.fullName,
       photoUrl: input.photoUrl,
       birthDate: input.birthDate,
+      gender: input.gender,
+      heightCm: input.heightCm,
+      weightKg: input.weightKg,
+      emergencyContactName: input.emergencyContactName,
+      emergencyContactEmail: input.emergencyContactEmail,
+      emergencyContactPhone: input.emergencyContactPhone,
       status: "active",
       archivedAt: null,
       createdAt: now,
@@ -60,19 +66,35 @@ export class FakeStudentRepository implements StudentRepositoryPort {
     if (!student) throw new NotFoundError("Student", input.studentId);
     student.fullName = input.fullName;
     student.birthDate = input.birthDate;
+    student.photoUrl = input.photoUrl;
+    student.gender = input.gender;
+    student.heightCm = input.heightCm;
+    student.weightKg = input.weightKg;
+    student.emergencyContactName = input.emergencyContactName;
+    student.emergencyContactEmail = input.emergencyContactEmail;
+    student.emergencyContactPhone = input.emergencyContactPhone;
 
     this.contacts.forEach((contact) => {
       if (
         contact.tenantId === input.tenantId &&
         contact.studentId === input.studentId &&
-        contact.isPrimary
+        contact.isPrimary &&
+        (contact.type === "email" || contact.type === "phone")
       ) {
         contact.status = "archived";
         contact.isPrimary = false;
       }
     });
 
-    if (input.primaryContact) {
+    const contactsToCreate = [
+      ...(input.contactEmail
+        ? [{ type: "email" as const, value: input.contactEmail }]
+        : []),
+      ...(input.contactPhone
+        ? [{ type: "phone" as const, value: input.contactPhone }]
+        : []),
+    ];
+    for (const contact of contactsToCreate) {
       this.contacts.push({
         id: `contact-${this.contacts.length + 1}`,
         tenantId: input.tenantId,
@@ -80,7 +102,8 @@ export class FakeStudentRepository implements StudentRepositoryPort {
         status: "active",
         createdAt: new Date(),
         isPrimary: true,
-        ...input.primaryContact,
+        label: null,
+        ...contact,
       });
     }
 
@@ -131,14 +154,15 @@ export class FakeStudentRepository implements StudentRepositoryPort {
       )
       .filter((student) => {
         if (!search) return true;
-        const primaryContact = this.contacts.find(
+        const studentContacts = this.contacts.filter(
           (contact) =>
             contact.tenantId === query.tenantId &&
             contact.studentId === student.id &&
             contact.status === "active" &&
-            contact.isPrimary,
+            contact.isPrimary &&
+            (contact.type === "email" || contact.type === "phone"),
         );
-        return [student.fullName, primaryContact?.value ?? ""]
+        return [student.fullName, ...studentContacts.map((contact) => contact.value)]
           .join(" ")
           .toLocaleLowerCase("es")
           .includes(search);
@@ -150,29 +174,36 @@ export class FakeStudentRepository implements StudentRepositoryPort {
       page: query.page,
       pageSize: query.pageSize,
       rows: filtered.slice(offset, offset + query.pageSize).map((student) => {
-        const primaryContact = this.contacts.find(
+        const studentContacts = this.contacts.filter(
           (contact) =>
             contact.tenantId === query.tenantId &&
             contact.studentId === student.id &&
             contact.status === "active" &&
             contact.isPrimary,
         );
+        const emailContact = studentContacts.find(
+          (contact) => contact.type === "email",
+        );
+        const phoneContact = studentContacts.find(
+          (contact) => contact.type === "phone",
+        );
         return {
           id: student.id,
           tenantId: student.tenantId,
           fullName: student.fullName,
           birthDate: student.birthDate,
+          photoUrl: student.photoUrl,
+          gender: student.gender,
+          heightCm: student.heightCm,
+          weightKg: student.weightKg,
+          emergencyContactName: student.emergencyContactName,
+          emergencyContactEmail: student.emergencyContactEmail,
+          emergencyContactPhone: student.emergencyContactPhone,
           status: student.status,
           createdAt: student.createdAt,
           archivedAt: student.archivedAt,
-          primaryContact: primaryContact
-            ? {
-                type: primaryContact.type,
-                label: primaryContact.label,
-                value: primaryContact.value,
-                isPrimary: primaryContact.isPrimary,
-              }
-            : null,
+          contactEmail: emailContact?.value ?? null,
+          contactPhone: phoneContact?.value ?? null,
         };
       }),
     };

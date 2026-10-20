@@ -9,12 +9,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ConsentForm,
   ErasureRequestForm,
-  MembershipForm,
   PersonalDataCorrectionForm,
   RestrictionForm,
 } from "./student-detail-forms";
 import {
-  activateMembershipAction,
   correctPersonalDataAction,
   createRestrictionAction,
   registerConsentAction,
@@ -22,7 +20,6 @@ import {
 } from "./actions";
 
 vi.mock("./actions", () => ({
-  activateMembershipAction: vi.fn(),
   createRestrictionAction: vi.fn(),
   correctPersonalDataAction: vi.fn(),
   registerConsentAction: vi.fn(),
@@ -32,7 +29,6 @@ vi.mock("./actions", () => ({
 const studentId = "905fd6fc-9f10-4cf7-8aee-b9f187f2f3d1";
 
 beforeEach(() => {
-  vi.mocked(activateMembershipAction).mockReset();
   vi.mocked(createRestrictionAction).mockReset();
   vi.mocked(correctPersonalDataAction).mockReset();
   vi.mocked(registerConsentAction).mockReset();
@@ -41,7 +37,7 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-describe("mobile student health and finance flow", () => {
+describe("mobile student health and privacy flow", () => {
   it("registers an operational health alert from the student view", async () => {
     vi.mocked(createRestrictionAction).mockResolvedValue({
       error: null,
@@ -72,54 +68,6 @@ describe("mobile student health and finance flow", () => {
       severity: "red",
       description: "Dolor de rodilla",
       operationalAction: "Evitar saltos",
-      startsOn: "2026-08-23",
-    });
-    expect((await form.findByRole("status")).textContent).toContain(
-      "Guardado.",
-    );
-  });
-
-  it("assigns a financial membership from the same student view", async () => {
-    vi.mocked(activateMembershipAction).mockResolvedValue({
-      error: null,
-      saved: true,
-    });
-    const planId = "da96aa28-c34d-4fc6-a972-f47ec3effb50";
-    const { container } = render(
-      <MembershipForm
-        studentId={studentId}
-        startsOn="2026-08-23"
-        plans={[
-          {
-            id: planId,
-            tenantId: "c84d5db9-bc46-4f45-aa31-d16e77327c01",
-            name: "Mensual",
-            price: 80,
-            currency: "USD",
-            billingCycle: "monthly",
-            expirationGraceDays: 5,
-            benefits: [],
-            status: "active" as const,
-          },
-        ]}
-      />,
-    );
-    const form = within(container);
-
-    fireEvent.change(form.getByLabelText("Plan"), {
-      target: { value: planId },
-    });
-    fireEvent.submit(
-      form.getByRole("button", { name: "Asignar membresía" }).closest("form")!,
-    );
-
-    await waitFor(() =>
-      expect(activateMembershipAction).toHaveBeenCalledOnce(),
-    );
-    const submitted = vi.mocked(activateMembershipAction).mock.calls[0][1];
-    expect(Object.fromEntries(submitted.entries())).toMatchObject({
-      studentId,
-      planId,
       startsOn: "2026-08-23",
     });
     expect((await form.findByRole("status")).textContent).toContain(

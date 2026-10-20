@@ -29,7 +29,7 @@ test.describe("finance collections", () => {
     const planSheet = page.getByRole("dialog");
     await planSheet.getByLabel("Nombre").fill(planName);
     await planSheet.getByLabel("Precio").fill("30000");
-    await planSheet.getByLabel("Gracia (días)").fill("0");
+    await planSheet.getByLabel("Días de tolerancia").fill("0");
     await planSheet.getByRole("button", { name: "Crear plan" }).click();
     await expect(planSheet.getByText("Plan creado.")).toBeVisible();
     await planSheet.getByRole("button", { name: "Cerrar" }).click();

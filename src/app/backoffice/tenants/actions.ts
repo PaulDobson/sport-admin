@@ -37,7 +37,7 @@ export async function transitionTenantStatusAction(
     return { error: formatActionError(error), saved: false };
   }
 
-  revalidatePath("/backoffice/tenants");
+  revalidatePath("/backoffice", "layout");
   return { error: null, saved: true };
 }
 
@@ -64,6 +64,6 @@ export async function scheduleTenantPlanLimitsAction(
     return { error: formatActionError(error), saved: false };
   }
 
-  revalidatePath("/backoffice/tenants");
+  revalidatePath("/backoffice", "layout");
   return { error: null, saved: true };
 }

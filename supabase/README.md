@@ -58,5 +58,133 @@ Run these files from the Supabase Dashboard SQL Editor:
 54. Open `tests/0025_quality_rls_matrix.sql`, set its owner and assistant auth user UUIDs, and execute it as one script. It verifies RLS on every exposed table plus tenant and recipient isolation across notification preferences, events, activity-center rows, deliveries, and immutable attempts.
 55. Execute `migrations/0027_health_privacy_governance.sql` to keep health disabled until legal approval and add versioned consent, audited export/correction, and 30-day erasure requests with a default retention hold.
 56. Open `tests/0026_health_privacy_governance.sql`, set its two auth user UUIDs, and execute it as one script. It verifies fail-closed health access, consent replay and revocation, immutable history, tenant isolation, audited data rights, and blocked erasure during retention.
+57. Execute `migrations/0031_student_portal.sql` to add one-time, email-bound student portal invitations, account-to-student links, isolated session discovery, and authorized self-service enrollment/cancellation RPCs. Reapply `enroll_student_in_session` and `cancel_session_enrollment` from this migration after `0007_instructor_sessions_enrollments.sql` and `0008_instructor_role_permissions.sql`.
+58. Open `tests/0027_student_portal.sql`, set the owner, invited guardian, and unrelated user UUIDs from Authentication > Users, and execute it as one script. It verifies email matching, one-time redemption, onboarding protection, linked-student isolation, future-session enrollment/cancellation, and denial of unlinked records. The script rolls back all fixtures.
+59. Execute `migrations/0032_instructor_session_publishing.sql` to add atomic one-off session publishing and timezone-aware weekly occurrence generation, bounded to eight weeks.
+60. Open `tests/0028_instructor_session_publishing.sql`, set distinct existing owner and unrelated Auth user UUIDs, and run it as one script. It verifies archived one-off sources, weekly occurrence counts, idempotent publication, the range limit, and authorization. All fixtures roll back.
+61. Before deploying class editing/deletion, execute `migrations/0033_class_template_administration.sql`. It replaces cascading class-to-schedule deletion with a restrictive foreign key, adds indexed usage counts, and exposes an authorized catalog RPC to owners, admins, and instructors. Counts include historical records and other instructors' references without exposing their session or schedule details.
+62. Open `tests/0029_class_template_administration.sql`, set two distinct existing Auth user UUIDs, and execute it as one script. It verifies restricted deletion, hidden historical usage, tenant/role authorization, persistent editing, and preserved published capacity. Fixtures roll back.
+## Student portal
+
+An owner, admin, or instructor opens a student record and generates a seven-day invitation for its active primary email contact. Share the one-time URL directly with the student or guardian. The invitee creates an account, confirms the same email, accepts the invitation, and can then see upcoming sessions and reserve/cancel for the linked student only. Confirmed enrollment and waitlist status are assigned atomically by the database. Assistants cannot issue invitations. Email delivery is not configured in this repository, so the app displays a copyable invitation link instead of claiming to send email.
 
 The verification scripts run inside a transaction and roll back their fixture tenants, memberships, and other rows. They do not require Docker, the Supabase CLI, or a local database.
+
+## Membership payment method verification
+
+After applying `migrations/0029_membership_payment_method.sql` and `migrations/0030_membership_collection_notices.sql` with their prerequisites, open `tests/0029_membership_payment_method.sql` in the Supabase SQL Editor. Set `test.user_a` to an existing Auth user UUID and execute the complete script. It verifies payment idempotency, stored payment methods, invalid-method rejection, and collection-notice resolution after full payment.
+
+Payment and notification counts are scoped to the fixture tenant so existing records accessible to the selected user do not affect the assertions. The script ends with `rollback` and does not persist its fixtures. If execution fails in a session that keeps the transaction open, run `rollback;` before retrying the complete script.
+
+## Student profile details
+
+Execute `migrations/0035_student_profile_details.sql` to add optional gender, height, weight, and emergency-contact details to student profiles. Allergies stay in consent-gated health history rather than the basic profile.
+Execute `migrations/0036_student_contact_fields_backfill.sql` to preserve existing primary emergency contacts in the new emergency phone field.
+
+## Commercial SaaS renewals (prepared migrations, not production instructions)
+
+On 2026-10-18 the operator confirmed successful **staging** execution of migrations
+0048–0052, regressions 0043–0048, the integrated 0049 lifecycle regression and the
+scheduler template. This is operator-reported, not independently observed.
+Two-connection concurrency and actual worker/storage/provider smoke remain pending.
+The new [0048 migration](migrations/0048_saas_collections_and_issuer.sql) adds
+collections/detail reads and versioned issuer configuration; it is prepared,
+not applied by the assistant but included in the operator's staging confirmation.
+Do not rerun committed migrations. Use a disposable database for further fixtures
+and complete the runtime/concurrency gate before production automation.
+
+The [0048 regression](tests/0048_saas_collections_and_issuer.sql) covers
+non-admin denial, revoked direct view access, literal name search, tenant/status/
+currency/due filters, stable pagination, partial legacy balances, imported
+settlements, pending attempts, historical refunds, issuer checksum validation,
+immutable versions, stale updates, operation replay/payload mismatch and audit.
+It ends in `rollback`; it has not been executed by the assistant.
+
+If migration `0042` failed with duplicate constraint
+`saas_charges_manual_reference_check`, use the corrected migration: its
+column-length check is explicitly named `saas_charges_manual_reference_length_check`,
+separate from the cross-field payment check. Run `rollback;` if the failed
+transaction is still open, then rerun the complete `0042` script. Do not rerun
+an already committed `0041` or drop payment constraints to bypass the error.
+
+The new [renewal regression](tests/0047_saas_subscription_renewals.sql) rolls back
+synthetic identities and contracts, checking archived-version renewal, trial
+completion, applied/blocked downgrades, owner notification routing, free periods,
+idempotency, permission denial, rollback after invoice conflict, retry exhaustion
+and reviewed recovery. It does not replace a two-connection concurrency test.
+See [the billing runbook](../docs/billing-runbook.md#renewal-processor-prepared-not-yet-enabled)
+for the release gate, protected endpoint, manual recovery and required concurrent
+verification. No remote migration or scheduler deployment is performed by the
+application code.
+
+## Manual payments, private receipts and owner billing (prepared 0049–0052)
+
+The following migrations are included in the operator's successful staging
+execution report. They are listed in dependency order for fresh environments;
+do not rerun them in staging if already committed:
+
+1. [0049](migrations/0049_saas_manual_payments.sql): atomic full-balance payments,
+   audited voids, shared provider overpayment protection and receipt/PDF outbox.
+   Existing provider invoices tagged `legacy` retain their historical document
+   behavior and amounts; new commercial CLP provider invoices share receipt creation.
+2. [0050](migrations/0050_saas_receipt_processing.sql): per-document owner/admin
+   authorization, delivery recipient checks, PDF/email worker leases,
+   uncertain-email reconciliation and heartbeat.
+3. [0051](migrations/0051_saas_owner_billing.sql): named owned-academy selection,
+   total debt per currency, paginated invoices and read-only suspended-owner access.
+4. [0052](migrations/0052_saas_financial_drilldown.sql): exact-period financial
+   ledger, including signed refunds and historical duration-aware MRR.
+
+The integrated [lifecycle regression](tests/0049_saas_billing_lifecycle.sql)
+requires the complete chain through 0052 and rolls back all synthetic fixtures.
+It checks partial/overpayment rejection, operation replay, transactional outbox
+failure, retained debt, private document grants, lease/retry/unknown delivery,
+owner/foreign-role authorization and dashboard reconciliation. The operator
+confirmed it ran successfully in staging. Keep earlier regression scripts and two-connection tests in the
+release gate; this integrated script alone does not certify concurrency.
+
+The [scheduler template](operations/saas_billing_scheduler.sql) is opt-in, not a
+migration; its execution in staging is operator-confirmed, but actual endpoint
+processing is not yet verified. Configure independent worker secrets through Vault, not cron literals.
+Read [the runbook](../docs/billing-runbook.md#payments-documents-and-owner-access-0049–0052)
+before enabling either worker. No storage object, email or cron schedule was
+created remotely by the assistant during that staging preparation. The later
+authorized localhost smoke uploaded one synthetic receipt to the connected
+private bucket, as recorded in the runbook; it did not send email or change cron.
+
+## Document recovery inbox (prepared 0053, not executed)
+
+[0053](migrations/0053_saas_document_job_queue.sql) adds an audited,
+platform-admin-only read RPC for the existing PDF/email outbox. It does not
+change job processing, delivery semantics, receipts, payments or cron schedules.
+Apply it after 0052 when database validation resumes; it has not been executed
+or included in the operator's previous migration confirmation.
+
+The inbox is available from **Finanzas SaaS → Revisar PDF y correo**. It filters
+by academy name, job kind and state, with server-side pagination and counts from
+one SQL snapshot. The default attention view includes failed/uncertain jobs and
+running jobs with expired leases. Queue reads never claim or execute a job.
+No worker lease tokens, storage paths, provider secrets or receipt snapshots are
+returned. Existing table privileges and RLS remain unchanged.
+
+Before 0053 is installed, the application shows an explicit missing-migration
+message for the inbox while retaining the existing processor status console.
+SQL/RLS, runtime and browser checks for this increment are deferred at the
+operator's request; type checking and focused lint are separate static checks.
+
+## Read-only plan version history (prepared 0054, not executed)
+
+[0054](migrations/0054_saas_plan_version_history.sql) exposes the immutable
+plan versions through a paginated, audited, platform-admin-only RPC.
+It does not change existing versions, contracts, prices, limits or table grants.
+The history is reachable from active and archived catalog entries; the current
+offer is identified by `current_version_id`, not the highest version number.
+This matters for imported negotiated legacy versions.
+
+The returned rows preserve original amounts/currencies and omit creator user
+identities. Runtime parsing checks both the requested plan and pagination.
+Missing RPC installation produces an explicit 0054 migration message without
+breaking the existing catalog. Execute migrations in numeric order when SQL
+validation resumes; neither 0053 nor 0054 is covered by the earlier staging
+confirmation. SQL/runtime/browser verification is deferred; static TypeScript
+and focused lint passed.

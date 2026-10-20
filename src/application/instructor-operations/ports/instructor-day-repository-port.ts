@@ -9,6 +9,7 @@ export interface InstructorDayRepositoryPort {
   listOpenSessions(input: {
     tenantId: string;
     now: Date;
+    startsBefore?: Date;
     locationId?: string;
   }): Promise<DaySession[]>;
 }

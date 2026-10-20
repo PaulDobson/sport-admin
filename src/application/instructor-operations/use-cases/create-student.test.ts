@@ -37,4 +37,42 @@ describe("createStudent", () => {
       }),
     ]);
   });
+
+  it("accepts optional athlete profile and emergency contact details", async () => {
+    const students = new FakeStudentRepository();
+    const result = await createStudent(
+      {
+        tenantId,
+        fullName: "  Maya Torres  ",
+        gender: "female",
+        heightCm: "164.5",
+        weightKg: "58.2",
+        emergencyContactName: "  Alex Torres  ",
+        emergencyContactEmail: "alex@example.com",
+        emergencyContactPhone: "+56 9 1234 5678",
+      },
+      { students },
+    );
+
+    expect(result.student).toMatchObject({
+      fullName: "Maya Torres",
+      gender: "female",
+      heightCm: 164.5,
+      weightKg: 58.2,
+      emergencyContactName: "Alex Torres",
+      emergencyContactEmail: "alex@example.com",
+      emergencyContactPhone: "+56 9 1234 5678",
+    });
+  });
+
+  it("rejects out-of-range athlete measurements", async () => {
+    const students = new FakeStudentRepository();
+
+    await expect(
+      createStudent(
+        { tenantId, fullName: "Maya Torres", heightCm: "-1" },
+        { students },
+      ),
+    ).rejects.toThrow();
+  });
 });

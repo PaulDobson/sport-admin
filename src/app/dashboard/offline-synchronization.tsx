@@ -14,6 +14,26 @@ export type SynchronizationStatus =
   | "pending"
   | "conflict";
 
+// Module-level constants — not recreated on every render.
+const STATUS_LABEL: Record<SynchronizationStatus, string> = {
+  online: "Sincronizado",
+  offline: "Sin conexión",
+  syncing: "Sincronizando",
+  pending: "Cambios pendientes",
+  conflict: "Conflicto por resolver",
+};
+
+const BADGE_STATUS: Record<
+  SynchronizationStatus,
+  Parameters<typeof SyncStatusBadge>[0]["status"]
+> = {
+  online: "synced",
+  offline: "offline",
+  syncing: "syncing",
+  pending: "pending",
+  conflict: "conflict",
+};
+
 export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
   const [conflicts, setConflicts] = useState<OfflineCommand[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -22,17 +42,23 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
       ? "offline"
       : "online",
   );
+
   useEffect(() => {
     let running = false;
     let disposed = false;
-    const readQueue = async () => {
+
+    // Reads the current queue state using a single deps instance and closes it
+    // when done, returning the derived counts for the caller to apply.
+    const readQueue = async (): Promise<{
+      nextConflicts: OfflineCommand[];
+      nextPendingCount: number;
+    }> => {
       const deps = createOfflineSynchronizationDeps();
       try {
         const queue = await deps.offlineStore.list<OfflineCommand>(
           "queue",
           tenantId,
         );
-        if (disposed) return;
         const commands = queue.map((record) => record.payload);
         const nextConflicts = commands.filter(
           (command) => command.status === "conflict",
@@ -40,26 +66,41 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
         const nextPendingCount = commands.filter((command) =>
           ["pending", "failed", "syncing"].includes(command.status),
         ).length;
-        setConflicts(nextConflicts);
-        setPendingCount(nextPendingCount);
-        setStatus((current) =>
-          nextConflicts.length > 0
-            ? "conflict"
-            : nextPendingCount > 0
-              ? "pending"
-              : navigator.onLine
-                ? "online"
-                : "offline",
-        );
+        return { nextConflicts, nextPendingCount };
       } finally {
         await deps.offlineStore.close();
       }
     };
+
+    // Applies queue state to React state — always called after readQueue.
+    const applyQueueState = ({
+      nextConflicts,
+      nextPendingCount,
+    }: {
+      nextConflicts: OfflineCommand[];
+      nextPendingCount: number;
+    }) => {
+      if (disposed) return;
+      setConflicts(nextConflicts);
+      setPendingCount(nextPendingCount);
+      setStatus(
+        nextConflicts.length > 0
+          ? "conflict"
+          : nextPendingCount > 0
+            ? "pending"
+            : navigator.onLine
+              ? "online"
+              : "offline",
+      );
+    };
+
     const synchronize = async () => {
       if (!navigator.onLine || running || disposed) return;
       running = true;
       setStatus("syncing");
       const startedAt = performance.now();
+      // Single deps instance shared between synchronize and readQueue calls
+      // within this flow, preventing double-open of the IndexedDB connection.
       const deps = createOfflineSynchronizationDeps();
       const observability = createObservability();
       try {
@@ -72,7 +113,10 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
           itemCount: result.confirmed + result.failed,
           errorCode: result.failed === 0 ? undefined : "COMMANDS_REJECTED",
         });
-        await readQueue();
+        // Close before re-reading to avoid two open connections.
+        await deps.offlineStore.close();
+        const queueState = await readQueue();
+        applyQueueState(queueState);
       } catch {
         observability.record({
           area: "offline_sync",
@@ -81,17 +125,24 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
           durationMs: performance.now() - startedAt,
           errorCode: "NETWORK_FAILURE",
         });
+        try {
+          await deps.offlineStore.close();
+        } catch {
+          // Ignore close errors on failure path.
+        }
         if (!disposed) setStatus("offline");
       } finally {
-        await deps.offlineStore.close();
         running = false;
       }
     };
+
     const handleOffline = () => setStatus("offline");
     const handleOnline = () => void synchronize();
+
     void synchronize();
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+
     return () => {
       disposed = true;
       window.removeEventListener("online", handleOnline);
@@ -99,29 +150,10 @@ export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
     };
   }, [tenantId]);
 
-  const statusLabel: Record<SynchronizationStatus, string> = {
-    online: "Sincronizado",
-    offline: "Sin conexión",
-    syncing: "Sincronizando",
-    pending: "Cambios pendientes",
-    conflict: "Conflicto por resolver",
-  };
-
-  const badgeStatus: Record<
-    SynchronizationStatus,
-    Parameters<typeof SyncStatusBadge>[0]["status"]
-  > = {
-    online: "synced",
-    offline: "offline",
-    syncing: "syncing",
-    pending: "pending",
-    conflict: "conflict",
-  };
-
   return (
     <div className="mb-5 space-y-3" aria-live="polite">
-      <SyncStatusBadge status={badgeStatus[status]}>
-        {statusLabel[status]}
+      <SyncStatusBadge status={BADGE_STATUS[status]}>
+        {STATUS_LABEL[status]}
         {pendingCount > 0 ? ` · ${pendingCount} pendientes` : ""}
       </SyncStatusBadge>
       {conflicts.length > 0 ? (

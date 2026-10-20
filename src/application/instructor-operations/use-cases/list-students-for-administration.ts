@@ -24,5 +24,10 @@ export async function listStudentsForAdministration(
   deps: { students: StudentRepositoryPort },
 ) {
   const parsed = parseWithSchema(listStudentsForAdministrationSchema, input);
-  return deps.students.listForAdministration(parsed);
+  const result = await deps.students.listForAdministration(parsed);
+  const lastPage = Math.max(1, Math.ceil(result.total / parsed.pageSize));
+  if (parsed.page > lastPage) {
+    return deps.students.listForAdministration({ ...parsed, page: lastPage });
+  }
+  return result;
 }

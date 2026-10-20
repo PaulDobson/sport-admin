@@ -15,6 +15,7 @@ function createRepository(): InstructorDayRepositoryPort {
     },
     async listOpenSessions(input) {
       expect(input.locationId).toBe(locationId);
+      expect(input.startsBefore).toEqual(new Date("2026-08-23T04:00:00.000Z"));
       return [
         {
           id: "upcoming",

@@ -17,6 +17,9 @@ export class FakePaymentRepository implements PaymentRepositoryPort {
     tenantId: string;
     agreedPrice: number;
     currency: string;
+    studentId?: string;
+    studentName?: string;
+    planName?: string;
   }> = [];
   payments: MembershipPayment[] = [];
   adjustments: FinancialAdjustment[] = [];
@@ -119,5 +122,34 @@ export class FakePaymentRepository implements PaymentRepositoryPort {
         payment.paidAt?.toISOString().slice(0, 7) === period &&
         (!method || payment.method === method),
     );
+  }
+
+  async listRecentMovements(tenantId: string, limit: number) {
+    return this.payments
+      .filter(
+        (payment) =>
+          payment.tenantId === tenantId &&
+          payment.status === "paid" &&
+          payment.paidAt,
+      )
+      .sort((left, right) => right.paidAt!.getTime() - left.paidAt!.getTime())
+      .slice(0, limit)
+      .map((payment) => {
+        const membership = this.memberships.find(
+          (item) =>
+            item.tenantId === tenantId && item.id === payment.membershipId,
+        );
+        return {
+          id: payment.id,
+          membershipId: payment.membershipId,
+          studentId: membership?.studentId ?? "",
+          studentName: membership?.studentName ?? "",
+          planName: membership?.planName ?? "",
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          paidAt: payment.paidAt,
+        };
+      });
   }
 }

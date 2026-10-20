@@ -36,6 +36,17 @@ function toAttendance(row: AttendanceRow): AttendanceRecord {
 export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
   constructor(private readonly client: SupabaseDatabaseClient) {}
 
+  async searchStudents(tenantId: string, search: string, page: number) {
+    const { data, error } = await this.client.rpc("search_attendance_students", {
+      target_tenant: tenantId, search_text: search, page_number: page,
+    });
+    if (error) throw error;
+    return {
+      students: (data ?? []).map((row) => ({ studentId: row.student_id, studentName: row.student_name })),
+      total: data?.[0]?.total_count ?? 0,
+    };
+  }
+
   async listExpectedParticipants(tenantId: string, sessionId: string) {
     const [enrollments, attendance] = await Promise.all([
       this.client
@@ -47,7 +58,7 @@ export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
         .order("created_at"),
       this.client
         .from("class_session_attendance")
-        .select("student_id, status, note")
+        .select("student_id, status, note, students!inner(full_name)")
         .eq("tenant_id", tenantId)
         .eq("session_id", sessionId),
     ]);
@@ -56,16 +67,30 @@ export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
     const currentByStudent = new Map(
       (attendance.data ?? []).map((row) => [row.student_id as string, row]),
     );
-    return (enrollments.data ?? []).map((row) => {
-      const student = row.students as unknown as { full_name: string };
+    const expected = (enrollments.data ?? []).map((row) => {
+      const student = row.students;
       const current = currentByStudent.get(row.student_id as string);
       return {
         studentId: row.student_id as string,
         studentName: student.full_name,
         currentStatus: current?.status as AttendanceStatus | undefined,
         note: (current?.note as string | null) ?? undefined,
+        withoutReservation: false,
       };
     });
+    const expectedIds = new Set(expected.map((item) => item.studentId));
+    return [
+      ...expected,
+      ...(attendance.data ?? [])
+        .filter((row) => !expectedIds.has(row.student_id as string))
+        .map((row) => ({
+          studentId: row.student_id as string,
+          studentName: row.students.full_name,
+          currentStatus: row.status as AttendanceStatus,
+          note: (row.note as string | null) ?? undefined,
+          withoutReservation: true,
+        })),
+    ];
   }
 
   async saveBatch(input: Parameters<AttendanceRepositoryPort["saveBatch"]>[0]) {

@@ -8,6 +8,19 @@ import type {
 export class SupabasePrivacyRepository implements PrivacyRepositoryPort {
   constructor(private readonly client: SupabaseDatabaseClient) {}
 
+  async getTenantHealthPolicy(tenantId: string) {
+    const { data, error } = await this.client
+      .from("tenant_privacy_policies")
+      .select("policy_version,status,health_enabled")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (error) throw error;
+    return {
+      healthEnabled: data?.status === "approved" && data.health_enabled,
+      policyVersion: data?.policy_version ?? undefined,
+    };
+  }
+
   async getStudentState(tenantId: string, studentId: string) {
     const [policy, consent, erasure] = await Promise.all([
       this.client
