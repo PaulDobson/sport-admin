@@ -3,7 +3,7 @@ import { TimersPanel } from "./_components/timers-panel";
 
 export default function TimersPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-8 pb-12">
+    <div className="mx-auto max-w-7xl space-y-8 pb-12">
       {/* ── Page header ──────────────────────────────────────────────────── */}
       <header className="space-y-1 px-1">
         <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
