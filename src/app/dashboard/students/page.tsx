@@ -16,11 +16,17 @@ import {
 import { StudentList } from "./student-list";
 import { StudentWorkspace } from "./student-workspace";
 
-const statusOptions = [
+// Module-level constants — not recreated per request.
+const STATUS_OPTIONS = [
   ["active", "Activos"],
   ["archived", "Archivados"],
   ["all", "Todos"],
 ] as const;
+
+const BASE_PAGE_SIZES = [10, 25, 50, 100] as const;
+
+const pagerItem =
+  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 export default async function StudentsPage({
   searchParams,
@@ -34,15 +40,27 @@ export default async function StudentsPage({
     { tenantId: membership.tenantId, ...query },
     operations,
   );
+
   if (students.page !== query.page) {
     redirect(studentListHref({ ...query, page: students.page }));
   }
+
   const canManage = membership.role !== "assistant";
-  const studentsWithMembership = canManage && students.rows.length > 0
-    ? await createInstructorFinanceDeps()
-      .then(finance => finance.memberships.findStudentIdsWithCurrentMembership(membership.tenantId, students.rows.map(row => row.id)))
-      .catch(() => undefined)
-    : undefined;
+
+  let studentsWithMembership: string[] | undefined;
+  if (canManage && students.rows.length > 0) {
+    try {
+      const finance = await createInstructorFinanceDeps();
+      studentsWithMembership =
+        await finance.memberships.findStudentIdsWithCurrentMembership(
+          membership.tenantId,
+          students.rows.map((row) => row.id),
+        );
+    } catch {
+      studentsWithMembership = undefined;
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(students.total / students.pageSize));
   const newHref = studentTaskHref("/dashboard/students/new", query);
   const isFiltered = Boolean(query.search || query.status !== "active");
@@ -52,15 +70,19 @@ export default async function StudentsPage({
     status: "active",
     page: 1,
   });
-  const first = students.total === 0
-    ? 0
-    : (students.page - 1) * students.pageSize + 1;
+
+  const first =
+    students.total === 0 ? 0 : (students.page - 1) * students.pageSize + 1;
   const last = students.total === 0 ? 0 : first + students.rows.length - 1;
-  const pageSizes = [...new Set([10, 25, 50, 100, query.pageSize])]
-    .sort((a, b) => a - b);
+
+  // Merge the current pageSize into the base set only if it isn't already there.
+  const pageSizes = BASE_PAGE_SIZES.includes(
+    query.pageSize as (typeof BASE_PAGE_SIZES)[number],
+  )
+    ? BASE_PAGE_SIZES
+    : ([...BASE_PAGE_SIZES, query.pageSize].sort((a, b) => a - b) as number[]);
 
   const pageNumbers = paginationWindow(students.page, totalPages);
-  const pagerItem = "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border px-3 text-sm font-medium transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
   return (
     <StudentWorkspace>
@@ -74,9 +96,15 @@ export default async function StudentsPage({
           </div>
         </div>
 
-        <section aria-label="Filtros de alumnos" className="rounded-xl border border-border bg-card p-3">
+        <section
+          aria-label="Filtros de alumnos"
+          className="rounded-xl border border-border bg-card p-3"
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <form method="get" className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto">
+            <form
+              method="get"
+              className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto"
+            >
               <label className="relative min-w-0 flex-1 basis-56">
                 <span className="sr-only">Buscar por nombre</span>
                 <Search
@@ -98,8 +126,10 @@ export default async function StudentsPage({
                   defaultValue={String(query.pageSize)}
                   className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
                 >
-                  {pageSizes.map(size => (
-                    <option key={size} value={size}>{size} por página</option>
+                  {pageSizes.map((size) => (
+                    <option key={size} value={size}>
+                      {size} por página
+                    </option>
                   ))}
                 </select>
               </label>
@@ -118,7 +148,7 @@ export default async function StudentsPage({
               aria-label="Estado de alumnos"
               className="flex h-10 items-center gap-0.5 rounded-lg border border-border bg-background p-0.5"
             >
-              {statusOptions.map(([status, label]) => (
+              {STATUS_OPTIONS.map(([status, label]) => (
                 <Link
                   key={status}
                   href={studentListHref({ ...query, status, page: 1 })}
@@ -165,14 +195,27 @@ export default async function StudentsPage({
           </div>
         </section>
 
-        <section aria-label="Administración de alumnos" className="overflow-hidden rounded-xl border border-border bg-card">
+        <section
+          aria-label="Administración de alumnos"
+          className="overflow-hidden rounded-xl border border-border bg-card"
+        >
           {students.rows.length ? (
-            <StudentList rows={students.rows} query={query} canManage={canManage} studentsWithMembership={studentsWithMembership} />
+            <StudentList
+              rows={students.rows}
+              query={query}
+              canManage={canManage}
+              studentsWithMembership={studentsWithMembership}
+            />
           ) : (
             <div className="grid justify-items-center gap-3 px-4 py-12 text-center">
-              <Users className="h-9 w-9 text-muted-foreground" aria-hidden="true" />
+              <Users
+                className="h-9 w-9 text-muted-foreground"
+                aria-hidden="true"
+              />
               <h3 className="text-lg font-semibold">
-                {isFiltered ? "Sin resultados para estos filtros" : "Aún no hay alumnos activos"}
+                {isFiltered
+                  ? "Sin resultados para estos filtros"
+                  : "Aún no hay alumnos activos"}
               </h3>
               <p className="max-w-sm text-sm text-muted-foreground">
                 {isFiltered
@@ -184,7 +227,9 @@ export default async function StudentsPage({
                   Limpiar búsqueda y filtros
                 </Link>
               ) : canManage ? (
-                <Link href={newHref} className={studentLinkClass}>Registrar alumno</Link>
+                <Link href={newHref} className={studentLinkClass}>
+                  Registrar alumno
+                </Link>
               ) : null}
             </div>
           )}
@@ -193,24 +238,46 @@ export default async function StudentsPage({
             <p className="text-muted-foreground">
               Mostrando {first}–{last} de {students.total}
             </p>
-            <nav aria-label="Paginación de alumnos" className="flex flex-wrap items-center gap-1.5">
+            <nav
+              aria-label="Paginación de alumnos"
+              className="flex flex-wrap items-center gap-1.5"
+            >
               {students.page > 1 ? (
-                <Link href={studentListHref({ ...query, page: students.page - 1 })} className={pagerItem}>
+                <Link
+                  href={studentListHref({
+                    ...query,
+                    page: students.page - 1,
+                  })}
+                  className={pagerItem}
+                >
                   Anterior
                 </Link>
               ) : (
-                <span aria-disabled="true" className={`${pagerItem} opacity-45`}>Anterior</span>
+                <span
+                  aria-disabled="true"
+                  className={`${pagerItem} opacity-45`}
+                >
+                  Anterior
+                </span>
               )}
               {pageNumbers.map((pageNumber, index) =>
                 pageNumber === null ? (
-                  <span key={`gap-${index}`} aria-hidden="true" className="px-1 text-muted-foreground">…</span>
+                  <span
+                    key={`gap-${index}`}
+                    aria-hidden="true"
+                    className="px-1 text-muted-foreground"
+                  >
+                    …
+                  </span>
                 ) : pageNumber === students.page ? (
                   <span
                     key={pageNumber}
                     aria-current="page"
                     className={`${pagerItem} metric-number border-primary bg-primary text-primary-foreground hover:bg-primary`}
                   >
-                    <span className="sr-only">Página </span>{pageNumber}<span className="sr-only"> de {totalPages}</span>
+                    <span className="sr-only">Página </span>
+                    {pageNumber}
+                    <span className="sr-only"> de {totalPages}</span>
                   </span>
                 ) : (
                   <Link
@@ -224,11 +291,22 @@ export default async function StudentsPage({
                 ),
               )}
               {students.page < totalPages ? (
-                <Link href={studentListHref({ ...query, page: students.page + 1 })} className={pagerItem}>
+                <Link
+                  href={studentListHref({
+                    ...query,
+                    page: students.page + 1,
+                  })}
+                  className={pagerItem}
+                >
                   Siguiente
                 </Link>
               ) : (
-                <span aria-disabled="true" className={`${pagerItem} opacity-45`}>Siguiente</span>
+                <span
+                  aria-disabled="true"
+                  className={`${pagerItem} opacity-45`}
+                >
+                  Siguiente
+                </span>
               )}
             </nav>
           </div>
@@ -238,11 +316,29 @@ export default async function StudentsPage({
   );
 }
 
-function paginationWindow(current: number, total: number): Array<number | null> {
-  if (total <= 5) return Array.from({ length: total }, (_, index) => index + 1);
-  const pages = new Set([1, total, current - 1, current, current + 1]);
-  const sorted = [...pages].filter(page => page >= 1 && page <= total).sort((a, b) => a - b);
-  return sorted.flatMap((page, index) =>
-    index > 0 && page - sorted[index - 1] > 1 ? [null, page] : [page],
-  );
+/**
+ * Returns a window of page numbers with `null` gaps for ellipsis.
+ * Single-pass implementation — no Set→array conversions.
+ */
+function paginationWindow(
+  current: number,
+  total: number,
+): Array<number | null> {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const include = new Set([
+    1,
+    total,
+    Math.max(1, current - 1),
+    current,
+    Math.min(total, current + 1),
+  ]);
+
+  const sorted = Array.from(include).sort((a, b) => a - b);
+  const result: Array<number | null> = [];
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push(null);
+    result.push(sorted[i]);
+  }
+  return result;
 }

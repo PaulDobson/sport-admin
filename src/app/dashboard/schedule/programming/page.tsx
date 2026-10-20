@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Dumbbell, MapPin, Repeat2 } from "lucide-react";
+import { Dumbbell, MapPin, Repeat2, CalendarDays } from "lucide-react";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { createInstructorSchedulingDeps } from "@/infrastructure/composition/instructor-scheduling-composition";
 import { Surface } from "@/presentation/components/primitives";
@@ -46,16 +46,20 @@ export default async function ScheduleProgrammingPage() {
         activeSection="programming"
         compact
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <Surface className="border-primary/30 bg-linear-to-br from-primary/20 via-primary/5 to-card p-5 sm:p-7">
         <div className="max-w-2xl">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
+            <CalendarDays aria-hidden="true" className="h-4 w-4" />
+            Agenda · Programación
+          </p>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
             Programa tus clases
           </h1>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Una clase puntual o tu rutina semanal, en un solo recorrido.
           </p>
         </div>
-      </div>
+      </Surface>
 
       <section
         aria-label="Resumen de programación"
@@ -83,9 +87,9 @@ export default async function ScheduleProgrammingPage() {
         ].map(({ label, value, detail, icon: Icon }) => (
           <Surface
             key={label}
-            className="flex min-w-0 items-center gap-2 p-2.5 sm:p-3"
+            className="flex min-w-0 items-center gap-2 border-border/80 bg-surface-raised p-2.5 sm:p-3"
           >
-            <span className="hidden shrink-0 text-primary sm:block">
+            <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25 sm:flex">
               <Icon aria-hidden="true" className="h-5 w-5" />
             </span>
             <div className="flex min-w-0 flex-1 items-center justify-between gap-1 sm:block">
@@ -110,7 +114,9 @@ export default async function ScheduleProgrammingPage() {
         today={today}
         throughDate={addCalendarDays(today, 56)}
         instructorMembershipId={membership.id}
-        canManageOtherInstructors={membership.role === "owner" || membership.role === "admin"}
+        canManageOtherInstructors={
+          membership.role === "owner" || membership.role === "admin"
+        }
       />
     </div>
   );

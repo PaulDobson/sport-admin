@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import { Check, Copy, Link2, Mail } from "lucide-react";
 import { Button } from "@/presentation/components/primitives";
 import { StudentActionForm } from "../student-workspace";
@@ -28,16 +28,19 @@ export function StudentPortalInviteButton({
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
 
-  async function copyInvite() {
+  // Stable closure — only recreated when the invite URL actually changes.
+  const copyInvite = useCallback(async () => {
     if (!state.inviteUrl) return;
     try {
       await navigator.clipboard.writeText(state.inviteUrl);
       setCopied(true);
       setCopyError(null);
     } catch {
-      setCopyError("No se pudo copiar el enlace. Selecciónalo y cópialo manualmente.");
+      setCopyError(
+        "No se pudo copiar el enlace. Selecciónalo y cópialo manualmente.",
+      );
     }
-  }
+  }, [state.inviteUrl]);
 
   return (
     <section className="mb-6 rounded-xl bg-card/65 p-4 sm:p-5">
@@ -85,9 +88,21 @@ export function StudentPortalInviteButton({
             Comparte este enlace directamente con la persona invitada. Sólo se
             puede usar una vez.
           </p>
-          {copyError ? <p role="alert" className="text-sm text-destructive">{copyError}</p> : null}
-          {state.error ? <p role="alert" className="text-sm text-destructive">{state.error}</p> : null}
-          <StudentActionForm action={formAction} pending={pending} feedback={state}>
+          {copyError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {copyError}
+            </p>
+          ) : null}
+          {state.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {state.error}
+            </p>
+          ) : null}
+          <StudentActionForm
+            action={formAction}
+            pending={pending}
+            feedback={state}
+          >
             <input type="hidden" name="studentId" value={studentId} />
             <Button
               type="submit"
@@ -99,7 +114,12 @@ export function StudentPortalInviteButton({
           </StudentActionForm>
         </div>
       ) : (
-        <StudentActionForm action={formAction} pending={pending} feedback={state} className="mt-4">
+        <StudentActionForm
+          action={formAction}
+          pending={pending}
+          feedback={state}
+          className="mt-4"
+        >
           <input type="hidden" name="studentId" value={studentId} />
           {state.error ? (
             <p role="alert" className="mb-3 text-sm text-destructive">

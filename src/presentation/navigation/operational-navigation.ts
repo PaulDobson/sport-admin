@@ -8,12 +8,24 @@ import {
   House,
   Repeat2,
   UsersRound,
+  Brain,
+  Layers,
+  Timer,
+  Swords,
   type LucideIcon,
 } from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 
 export interface NavigationDestination {
-  id: "home" | "schedule" | "students" | "finance" | "reports" | "gym" | "billing";
+  id:
+    | "home"
+    | "schedule"
+    | "students"
+    | "trainings"
+    | "finance"
+    | "reports"
+    | "gym"
+    | "billing";
   label: string;
   href: string;
   icon: LucideIcon;
@@ -23,6 +35,11 @@ export interface NavigationDestination {
 
 export type ScheduleSection = "sessions" | "programming" | "disciplines";
 
+export type TrainingSection = "cognitive" | "combinations" | "timers";
+
+// Pre-compiled at module load — never re-created on hot paths.
+const SESSION_ATTENDANCE_RE = /^\/dashboard\/sessions\/[^/]+\/attendance\/?$/;
+
 const scheduleSections: ReadonlyArray<{
   id: ScheduleSection;
   label: string;
@@ -30,7 +47,12 @@ const scheduleSections: ReadonlyArray<{
   icon: LucideIcon;
   roles?: readonly TenantMembershipRole[];
 }> = [
-  { id: "sessions", label: "Sesiones", href: "/dashboard/schedule", icon: CalendarDays },
+  {
+    id: "sessions",
+    label: "Sesiones",
+    href: "/dashboard/schedule",
+    icon: CalendarDays,
+  },
   {
     id: "programming",
     label: "Programación",
@@ -52,13 +74,59 @@ export function scheduleSectionsForRole(role: TenantMembershipRole) {
   );
 }
 
-export function activeScheduleSection(pathname: string): ScheduleSection | null {
+export function activeScheduleSection(
+  pathname: string,
+): ScheduleSection | null {
   if (pathname === "/dashboard/disciplines") return "disciplines";
   if (pathname === "/dashboard/schedule/programming") return "programming";
   if (
     pathname === "/dashboard/schedule" ||
-    /^\/dashboard\/sessions\/[^/]+\/attendance\/?$/.test(pathname)
-  ) return "sessions";
+    SESSION_ATTENDANCE_RE.test(pathname)
+  )
+    return "sessions";
+  return null;
+}
+
+const trainingSections: ReadonlyArray<{
+  id: TrainingSection;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  roles?: readonly TenantMembershipRole[];
+}> = [
+  {
+    id: "cognitive",
+    label: "Cognitivos",
+    href: "/dashboard/trainings/cognitive",
+    icon: Brain,
+  },
+  {
+    id: "combinations",
+    label: "Combinaciones",
+    href: "/dashboard/trainings/combinations",
+    icon: Layers,
+  },
+  {
+    id: "timers",
+    label: "Temporizadores",
+    href: "/dashboard/trainings/timers",
+    icon: Timer,
+  },
+];
+
+export function trainingSectionsForRole(role: TenantMembershipRole) {
+  return trainingSections.filter(
+    (section) => !section.roles || section.roles.includes(role),
+  );
+}
+
+export function activeTrainingSection(
+  pathname: string,
+): TrainingSection | null {
+  if (pathname.startsWith("/dashboard/trainings/cognitive")) return "cognitive";
+  if (pathname.startsWith("/dashboard/trainings/combinations"))
+    return "combinations";
+  if (pathname.startsWith("/dashboard/trainings/timers")) return "timers";
   return null;
 }
 
@@ -85,6 +153,13 @@ export const operationalDestinations: readonly NavigationDestination[] = [
     mobile: true,
   },
   {
+    id: "trainings",
+    label: "Entrenamientos",
+    href: "/dashboard/trainings",
+    icon: Swords,
+    mobile: false,
+  },
+  {
     id: "finance",
     label: "Finanzas",
     href: "/dashboard/finance",
@@ -106,7 +181,14 @@ export const operationalDestinations: readonly NavigationDestination[] = [
     mobile: false,
     roles: ["owner", "admin"],
   },
-  { id: "billing",label: "Mi suscripción",href: "/billing",icon: CreditCard,mobile: false,roles: ["owner"] },
+  {
+    id: "billing",
+    label: "Mi suscripción",
+    href: "/billing",
+    icon: CreditCard,
+    mobile: false,
+    roles: ["owner"],
+  },
 ];
 
 export function destinationsForRole(role: TenantMembershipRole) {
@@ -120,7 +202,10 @@ export function isDestinationActive(
   pathname: string,
 ) {
   if (destination.id === "home") return pathname === destination.href;
-  if (destination.id === "schedule" && activeScheduleSection(pathname)) return true;
+  if (destination.id === "schedule" && activeScheduleSection(pathname))
+    return true;
+  if (destination.id === "trainings" && activeTrainingSection(pathname))
+    return true;
   return (
     pathname === destination.href || pathname.startsWith(`${destination.href}/`)
   );

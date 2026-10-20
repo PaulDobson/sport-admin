@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Tabs } from "@base-ui/react/tabs";
 import Link from "next/link";
 import { CalendarPlus, Dumbbell, MapPin, Repeat2, Tags } from "lucide-react";
@@ -46,11 +46,12 @@ const sections = [
 ] as const;
 
 function subscribeToHash(onChange: () => void) {
+  // Listen only to hashchange — popstate fires on all history changes
+  // (including push/replace) which would cause spurious re-renders when the
+  // hash hasn't actually changed.
   window.addEventListener("hashchange", onChange);
-  window.addEventListener("popstate", onChange);
   return () => {
     window.removeEventListener("hashchange", onChange);
-    window.removeEventListener("popstate", onChange);
   };
 }
 
@@ -62,12 +63,11 @@ function sectionForHash(hash: string) {
 }
 
 function mergeCreated<T extends { id: string }>(catalog: T[], created: T[]) {
-  return [
-    ...catalog,
-    ...created.filter(
-      (item) => !catalog.some((existing) => existing.id === item.id),
-    ),
-  ];
+  if (created.length === 0) return catalog;
+  // O(n) lookup via Set instead of O(n×m) with .some() inside .filter().
+  const existingIds = new Set(catalog.map((item) => item.id));
+  const novel = created.filter((item) => !existingIds.has(item.id));
+  return novel.length === 0 ? catalog : [...catalog, ...novel];
 }
 
 export function groupProgrammingSchedules(schedules: ClassScheduleOption[]) {
@@ -112,7 +112,7 @@ function WeeklyRoutineCard({
   }));
   const activeDays = days.filter((day) => day.items.length > 0);
   return (
-    <Surface className="flex h-full min-w-0 flex-col gap-4 p-4 sm:p-5">
+    <Surface className="flex h-full min-w-0 flex-col gap-4 border-border/80 bg-surface-raised p-4 sm:p-5">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <h3 className="text-lg font-bold leading-tight wrap-anywhere">
@@ -123,7 +123,7 @@ function WeeklyRoutineCard({
             <span className="wrap-anywhere">{first.locationName}</span>
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+        <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary ring-1 ring-primary/25">
           {activeDays.length} {activeDays.length === 1 ? "día" : "días"} ·{" "}
           {group.length} {group.length === 1 ? "horario" : "horarios"}
         </span>
@@ -133,7 +133,7 @@ function WeeklyRoutineCard({
         {activeDays.map((day) => (
           <li
             key={day.value}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-raised px-3 py-2.5 text-sm"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted px-3 py-2.5 text-sm"
           >
             <span className="font-semibold">{day.name}</span>
             <span className="flex flex-wrap justify-end gap-1.5 tabular-nums">
@@ -152,7 +152,7 @@ function WeeklyRoutineCard({
         {days.map((day) => (
           <li
             key={day.value}
-            className={`flex min-h-24 min-w-0 flex-col items-center gap-1.5 rounded-lg border px-1 py-2 text-center ${day.items.length ? "border-primary/30 bg-primary/5" : "border-dashed border-border"}`}
+            className={`flex min-h-24 min-w-0 flex-col items-center gap-1.5 rounded-lg border px-1 py-2 text-center ${day.items.length ? "border-primary/40 bg-primary/10" : "border-dashed border-border"}`}
           >
             <span className="sr-only">
               {day.items.length
@@ -196,7 +196,7 @@ function WeeklyRoutineCard({
         Zona horaria: {first.timezone.replaceAll("_", " ")}
       </p>
 
-      <footer className="mt-auto flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <footer className="mt-auto flex flex-col gap-2 border-t border-white/8 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         {canProgram ? (
           <Button variant="primary" onClick={onProgram}>
             Revisar y publicar esta rutina
@@ -268,12 +268,21 @@ export function ProgrammingWorkspace({
       sessionCount: 0,
     })),
   );
-  const onDisciplineCreated = (value: DisciplineOption) =>
-    setCreatedDisciplines((current) => mergeCreated(current, [value]));
-  const onClassCreated = (value: ClassTemplateOption) =>
-    setCreatedClasses((current) => mergeCreated(current, [value]));
-  const onLocationCreated = (value: DayLocation) =>
-    setCreatedLocations((current) => mergeCreated(current, [value]));
+  const onDisciplineCreated = useCallback(
+    (value: DisciplineOption) =>
+      setCreatedDisciplines((current) => mergeCreated(current, [value])),
+    [],
+  );
+  const onClassCreated = useCallback(
+    (value: ClassTemplateOption) =>
+      setCreatedClasses((current) => mergeCreated(current, [value])),
+    [],
+  );
+  const onLocationCreated = useCallback(
+    (value: DayLocation) =>
+      setCreatedLocations((current) => mergeCreated(current, [value])),
+    [],
+  );
   const classCreationExpanded =
     creationOpen || hash === "#class-template-setup" || hash === "#class-setup";
 
@@ -325,13 +334,13 @@ export function ProgrammingWorkspace({
       <Tabs.List
         id="programming-actions"
         aria-label="Acciones de programación"
-        className="grid scroll-mt-28 grid-cols-4 gap-1 rounded-xl border border-border bg-card p-1.5"
+        className="grid scroll-mt-28 grid-cols-4 gap-1 rounded-xl border border-border bg-muted p-1.5"
       >
         {sections.map(({ value, label, icon: Icon }) => (
           <Tabs.Tab
             key={value}
             value={value}
-            className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-primary data-active:bg-primary/10 data-active:text-primary sm:min-h-12 sm:flex-row sm:gap-2 sm:text-sm"
+            className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary data-active:bg-primary/15 data-active:text-primary data-active:ring-1 data-active:ring-primary/25 sm:min-h-12 sm:flex-row sm:gap-2 sm:text-sm"
           >
             <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
             {label}
@@ -359,7 +368,7 @@ export function ProgrammingWorkspace({
         keepMounted
         className="space-y-5 data-hidden:hidden"
       >
-        <Surface className="space-y-4 p-4 sm:p-6">
+        <Surface className="space-y-4 border-border/80 bg-surface-raised p-4 sm:p-6">
           <h2 id="class-setup-heading" className="text-lg font-bold">
             Crear clase
           </h2>
@@ -399,7 +408,7 @@ export function ProgrammingWorkspace({
       </Tabs.Panel>
       <Tabs.Panel value="locations" keepMounted className="data-hidden:hidden">
         <Surface
-          className="space-y-5 p-4 sm:p-6"
+          className="space-y-5 border-border/80 bg-surface-raised p-4 sm:p-6"
           aria-labelledby="location-setup-heading"
         >
           <h2 id="location-setup-heading" className="text-lg font-bold">
@@ -413,13 +422,13 @@ export function ProgrammingWorkspace({
               {allLocations.map((location) => (
                 <li
                   key={location.id}
-                  className="flex min-w-0 items-start gap-2 rounded-xl border border-border p-3 text-sm"
+                  className="flex min-w-0 items-start gap-2 rounded-xl border border-border/60 bg-muted p-3 text-sm"
                 >
                   <MapPin
                     aria-hidden="true"
                     className="h-4 w-4 shrink-0 text-primary"
                   />
-                  <div className="min-w-0 [overflow-wrap:anywhere]">
+                  <div className="min-w-0 wrap-anywhere">
                     <p className="font-semibold">{location.name}</p>
                     {location.address ? (
                       <p className="mt-1 text-muted-foreground">
@@ -440,7 +449,7 @@ export function ProgrammingWorkspace({
         keepMounted
         className="space-y-5 data-hidden:hidden"
       >
-        <Surface className="space-y-4 p-4 sm:p-6">
+        <Surface className="space-y-4 border-border/80 bg-surface-raised p-4 sm:p-6">
           <h2 id="recurring-heading" className="text-lg font-bold">
             Tus horarios semanales
           </h2>

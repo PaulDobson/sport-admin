@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Clock3, MapPin, UsersRound } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Clock3,
+  MapPin,
+  UsersRound,
+} from "lucide-react";
 import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import { StatusBadge } from "@/presentation/components/primitives";
 import { SessionMaintenance } from "./session-maintenance";
@@ -9,7 +15,6 @@ import {
   operationalDateKey,
   sessionCapacity,
   sessionDateFormatter,
-  sessionOccupiedCount,
   sessionTimeFormatter,
 } from "./session-presentation";
 
@@ -34,7 +39,8 @@ export function SessionList({
               {sessionDateFormatter.format(group.sessions[0].startsAt)}
             </h3>
             <span className="text-xs text-muted-foreground">
-              {group.sessions.length} {group.sessions.length === 1 ? "sesión" : "sesiones"}
+              {group.sessions.length}{" "}
+              {group.sessions.length === 1 ? "sesión" : "sesiones"}
             </span>
           </div>
           <div className="grid gap-3 xl:grid-cols-2">
@@ -53,10 +59,17 @@ export function SessionList({
                       : session.endsAt <= now
                         ? "Finalizada"
                         : "Próxima";
-              const { available, percent } = sessionCapacity(session);
-              const occupied = sessionOccupiedCount(session);
+
+              // Compute capacity once — sessionCapacity now returns `occupied`
+              // so we avoid a second call to sessionOccupiedCount.
+              const { occupied, available, percent } = sessionCapacity(session);
               const walkIns = session.walkInCount ?? 0;
               const attended = session.attendedCount ?? 0;
+
+              // Compute date key once per session instead of calling
+              // operationalDateKey(session.endsAt) twice in the template.
+              const endsDateKey = operationalDateKey(session.endsAt);
+
               return (
                 <article
                   key={session.id}
@@ -81,27 +94,40 @@ export function SessionList({
                         >
                           {statusLabel}
                         </StatusBadge>
-                        {available === 0 ? <StatusBadge tone="warning">Cupo completo</StatusBadge> : null}
+                        {available === 0 ? (
+                          <StatusBadge tone="warning">
+                            Cupo completo
+                          </StatusBadge>
+                        ) : null}
                       </div>
-                      <h4 id={`session-${session.id}`} className="wrap-break-word text-xl font-bold">
+                      <h4
+                        id={`session-${session.id}`}
+                        className="wrap-break-word text-xl font-bold"
+                      >
                         {session.name}
                       </h4>
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                         <p className="flex items-center gap-2">
-                          <Clock3 aria-hidden="true" className="h-4 w-4 shrink-0" />
+                          <Clock3
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0"
+                          />
                           <time dateTime={session.startsAt.toISOString()}>
                             {sessionTimeFormatter.format(session.startsAt)}
                           </time>
                           <span aria-hidden="true">–</span>
                           <time dateTime={session.endsAt.toISOString()}>
-                            {operationalDateKey(session.endsAt) !== group.date
+                            {endsDateKey !== group.date
                               ? `${sessionDateFormatter.format(session.endsAt)} · `
                               : ""}
                             {sessionTimeFormatter.format(session.endsAt)}
                           </time>
                         </p>
                         <p className="flex min-w-0 items-center gap-2 wrap-break-word">
-                          <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
+                          <MapPin
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0"
+                          />
                           {session.locationName}
                         </p>
                       </div>
@@ -112,7 +138,11 @@ export function SessionList({
                         Participantes
                       </p>
                       <p className="metric-number mt-1 text-2xl font-bold">
-                        {occupied}<span className="text-base font-normal text-muted-foreground"> / {session.capacity}</span>
+                        {occupied}
+                        <span className="text-base font-normal text-muted-foreground">
+                          {" "}
+                          / {session.capacity}
+                        </span>
                       </p>
                       <div
                         role="meter"
@@ -129,21 +159,26 @@ export function SessionList({
                         />
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        {session.confirmedCount} con reserva{walkIns > 0 ? ` · ${walkIns} sin reserva` : ""}
+                        {session.confirmedCount} con reserva
+                        {walkIns > 0 ? ` · ${walkIns} sin reserva` : ""}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {available} cupos disponibles · {session.waitlistedCount} en espera
+                        {available} cupos disponibles ·{" "}
+                        {session.waitlistedCount} en espera
                       </p>
                       {attended > 0 ? (
                         <p className="mt-2 text-xs font-semibold text-primary">
-                          {attended} {attended === 1 ? "presente" : "presentes"} registrados
+                          {attended} {attended === 1 ? "presente" : "presentes"}{" "}
+                          registrados
                         </p>
                       ) : null}
                     </div>
                   </div>
                   <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
                     <p className="text-xs text-muted-foreground">
-                      {current ? "Registra la asistencia de este entrenamiento." : "Revisa participantes y prepara la asistencia."}
+                      {current
+                        ? "Registra la asistencia de este entrenamiento."
+                        : "Revisa participantes y prepara la asistencia."}
                     </p>
                     {session.status !== "cancelled" ? (
                       <Link

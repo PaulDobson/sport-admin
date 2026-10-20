@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemo } from "react";
 import type {
   LocationContextOption,
   TenantContextOption,
 } from "./account-context-menu";
 import { OperationalTopbar } from "./operational-topbar";
+
+// Pre-compiled regex — compiled once at module load, not on every render.
+const SESSION_DETAIL_RE = /^\/dashboard\/students\/[^/]+\/edit$/;
+const STUDENT_DETAIL_RE = /^\/dashboard\/students\/[^/]+$/;
 
 function routeHeading(pathname: string) {
   if (pathname === "/dashboard") {
@@ -21,17 +26,29 @@ function routeHeading(pathname: string) {
   if (pathname === "/dashboard/schedule") {
     return { section: "Agenda", title: "Sesiones" };
   }
-  if (/^\/dashboard\/students\/[^/]+\/edit$/.test(pathname)) {
+  if (SESSION_DETAIL_RE.test(pathname)) {
     return { section: "Alumnos", title: "Editar alumno" };
   }
   if (pathname === "/dashboard/students/new") {
     return { section: "Alumnos", title: "Nuevo alumno" };
   }
-  if (/^\/dashboard\/students\/[^/]+$/.test(pathname)) {
+  if (STUDENT_DETAIL_RE.test(pathname)) {
     return { section: "Alumno", title: "Detalle del alumno" };
   }
   if (pathname === "/dashboard/students") {
     return { section: "Alumnos", title: "Administración de alumnos" };
+  }
+  if (pathname === "/dashboard/trainings/cognitive") {
+    return { section: "Entrenamientos", title: "Cognitivos" };
+  }
+  if (pathname === "/dashboard/trainings/combinations") {
+    return { section: "Entrenamientos", title: "Combinaciones" };
+  }
+  if (pathname === "/dashboard/trainings/timers") {
+    return { section: "Entrenamientos", title: "Temporizadores" };
+  }
+  if (pathname === "/dashboard/trainings") {
+    return { section: "Entrenamientos", title: "Entrenamientos" };
   }
   if (pathname.startsWith("/dashboard/sessions/")) {
     return { section: "Agenda · Sesiones", title: "Tomar asistencia" };
@@ -68,19 +85,29 @@ export function OperationalRouteTopbar({
   };
 }) {
   const pathname = usePathname();
-  const heading = routeHeading(pathname);
-  const backLink = pathname.startsWith("/dashboard/sessions/") ? (
-    <Link
-      href="/dashboard/schedule"
-      className="hidden text-sm font-semibold text-primary md:block"
-    >
-      Volver a sesiones
-    </Link>
-  ) : undefined;
+
+  // Memoize heading — only recomputes when pathname actually changes.
+  const heading = useMemo(() => routeHeading(pathname), [pathname]);
+
+  // Memoize the back-link node — only recreated when the pathname condition flips.
+  const isSessionRoute = pathname.startsWith("/dashboard/sessions/");
+  const backLink = useMemo(
+    () =>
+      isSessionRoute ? (
+        <Link
+          href="/dashboard/schedule"
+          className="hidden text-sm font-semibold text-primary md:block"
+        >
+          Volver a sesiones
+        </Link>
+      ) : undefined,
+    [isSessionRoute],
+  );
 
   return (
+    // key removed — let React reconcile props normally instead of destroying
+    // and recreating the component tree on every route change.
     <OperationalTopbar
-      key={pathname}
       section={heading.section}
       title={heading.title}
       tenantName={tenantName}

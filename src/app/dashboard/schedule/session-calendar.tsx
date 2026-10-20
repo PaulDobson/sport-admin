@@ -108,12 +108,6 @@ const timeFormatter = new Intl.DateTimeFormat("es-CL", {
   hourCycle: "h23",
 });
 
-const hourFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: operationalTimezone,
-  hour: "2-digit",
-  hourCycle: "h23",
-});
-
 const selectedDayFormatter = new Intl.DateTimeFormat("es-CL", {
   timeZone: "UTC",
   weekday: "long",
@@ -137,16 +131,38 @@ function initialSelectedDate(
   return date >= range.from && date <= range.through ? date : range.from;
 }
 
+/**
+ * Extracts the UTC hour from an ISO 8601 string without constructing a Date
+ * object. FullCalendar passes UTC-coerced ISO strings when a named timezone
+ * is configured, so the UTC hour is the operational hour.
+ * "2024-03-15T14:30:00.000Z" → 14
+ */
+function isoHour(iso: string): number {
+  return Number(iso.slice(11, 13));
+}
+
+/**
+ * Extracts the UTC minutes from an ISO 8601 string without constructing a Date.
+ * "2024-03-15T14:30:00.000Z" → 30
+ */
+function isoMinutes(iso: string): number {
+  return Number(iso.slice(14, 16));
+}
+
 function visibleHours(sessions: CalendarSession[]) {
   let first = 7;
   let last = 22;
   for (const session of sessions) {
-    first = Math.min(first, Number(hourFormatter.format(new Date(session.startsAt))));
-    const end = new Date(session.endsAt);
-    const endHour = Number(hourFormatter.format(end));
-    last = Math.max(last, end.getUTCMinutes() > 0 ? endHour + 1 : endHour);
+    // Avoid constructing Date objects just to read the hour — parse the ISO
+    // string directly. FullCalendar emits UTC-coerced strings.
+    const startHour = isoHour(session.startsAt);
+    first = Math.min(first, startHour);
+    const endHour = isoHour(session.endsAt);
+    const endMin = isoMinutes(session.endsAt);
+    last = Math.max(last, endMin > 0 ? endHour + 1 : endHour);
   }
-  const pad = (hour: number) => `${String(Math.min(24, Math.max(0, hour))).padStart(2, "0")}:00:00`;
+  const pad = (hour: number) =>
+    `${String(Math.min(24, Math.max(0, hour))).padStart(2, "0")}:00:00`;
   return { min: pad(first - 1), max: pad(last + 1), scroll: pad(first) };
 }
 
@@ -173,7 +189,9 @@ function renderEventContent(info: EventDisplayInfo) {
     <div
       className={cn(
         "flex h-full min-w-0 overflow-hidden text-foreground",
-        info.isShort ? "flex-row items-center gap-1.5 px-1.5" : "flex-col gap-0.5 px-2 py-1",
+        info.isShort
+          ? "flex-row items-center gap-1.5 px-1.5"
+          : "flex-col gap-0.5 px-2 py-1",
       )}
     >
       <span className="shrink-0 font-mono text-[0.6875rem] font-semibold tabular-nums text-(--fc-event-color)">
@@ -238,13 +256,15 @@ export function SessionCalendar({
 
   const hours = useMemo(() => visibleHours(sessions), [sessions]);
 
-  const daySessions = useMemo(
-    () =>
-      sessions
-        .filter((session) => session.dateKey === selectedDate)
-        .toSorted((first, second) => first.startsAt.localeCompare(second.startsAt)),
-    [sessions, selectedDate],
-  );
+  // Single-pass filter + sort: collect matching sessions and sort by ISO string
+  // comparison (lexicographic ordering of ISO dates is identical to time order).
+  const daySessions = useMemo(() => {
+    const result: CalendarSession[] = [];
+    for (const session of sessions) {
+      if (session.dateKey === selectedDate) result.push(session);
+    }
+    return result.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  }, [sessions, selectedDate]);
 
   const selectDate = useCallback(
     (dateKey: string) => {
@@ -280,7 +300,9 @@ export function SessionCalendar({
     [hrefFor, router],
   );
 
-  const selectedLabel = selectedDayFormatter.format(new Date(`${selectedDate}T12:00:00Z`));
+  const selectedLabel = selectedDayFormatter.format(
+    new Date(`${selectedDate}T12:00:00Z`),
+  );
 
   return (
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -302,8 +324,8 @@ export function SessionCalendar({
             role="status"
             className="mb-3 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning"
           >
-            Hay {hiddenCount} sesiones más en este período que no se muestran. Usa los
-            filtros o cambia a la vista de semana o día.
+            Hay {hiddenCount} sesiones más en este período que no se muestran.
+            Usa los filtros o cambia a la vista de semana o día.
           </p>
         ) : null}
         <div>
@@ -330,11 +352,21 @@ export function SessionCalendar({
             slotMaxTime={hours.max}
             scrollTime={hours.scroll}
             slotDuration="00:30:00"
-            eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-            slotHeaderFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            eventTimeFormat={{
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }}
+            slotHeaderFormat={{
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }}
             selectedDate={period === "day" ? undefined : selectedDate}
             eventContent={renderEventContent}
-            popoverCloseContent={() => <X aria-hidden="true" className="size-4" />}
+            popoverCloseContent={() => (
+              <X aria-hidden="true" className="size-4" />
+            )}
           />
         </div>
         <ul
@@ -374,10 +406,16 @@ export function SessionCalendar({
               const meta = sessionStateMeta[session.state];
               const percent =
                 session.capacity > 0
-                  ? Math.min(100, Math.round((session.occupied / session.capacity) * 100))
+                  ? Math.min(
+                      100,
+                      Math.round((session.occupied / session.capacity) * 100),
+                    )
                   : 0;
-              const start = new Date(session.startsAt);
-              const end = new Date(session.endsAt);
+              // Parse ISO strings once per session. timeFormatter.format()
+              // requires a Date, so we construct them here rather than
+              // duplicating the parse in every format() call.
+              const startDate = new Date(session.startsAt);
+              const endDate = new Date(session.endsAt);
               return (
                 <li
                   key={session.id}
@@ -397,21 +435,29 @@ export function SessionCalendar({
                         meta.badgeClass,
                       )}
                     >
-                      <time dateTime={session.startsAt}>{timeFormatter.format(start)}</time>
+                      <time dateTime={session.startsAt}>
+                        {timeFormatter.format(startDate)}
+                      </time>
                     </span>
                     <div className="min-w-0 flex-1">
                       <p
                         className={cn(
                           "truncate font-semibold",
-                          session.state === "cancelled" && "line-through opacity-70",
+                          session.state === "cancelled" &&
+                            "line-through opacity-70",
                         )}
                       >
                         {session.name}
                       </p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                         <span className="inline-flex min-w-0 items-center gap-1">
-                          <MapPin aria-hidden="true" className="size-3 shrink-0" />
-                          <span className="truncate">{session.locationName}</span>
+                          <MapPin
+                            aria-hidden="true"
+                            className="size-3 shrink-0"
+                          />
+                          <span className="truncate">
+                            {session.locationName}
+                          </span>
                         </span>
                         <span aria-hidden="true">•</span>
                         <span className={meta.textClass}>{meta.label}</span>
@@ -421,12 +467,15 @@ export function SessionCalendar({
                   <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 tabular-nums">
                       <Clock3 aria-hidden="true" className="size-3.5" />
-                      {timeFormatter.format(start)}–{timeFormatter.format(end)}
+                      {timeFormatter.format(startDate)}–
+                      {timeFormatter.format(endDate)}
                     </span>
                     <span className="inline-flex items-center gap-1 tabular-nums">
                       <UsersRound aria-hidden="true" className="size-3.5" />
                       {session.occupied}/{session.capacity}
-                      {session.waitlisted > 0 ? ` · ${session.waitlisted} en espera` : ""}
+                      {session.waitlisted > 0
+                        ? ` · ${session.waitlisted} en espera`
+                        : ""}
                     </span>
                   </div>
                   <div
@@ -439,7 +488,10 @@ export function SessionCalendar({
                   >
                     <div
                       className="h-full rounded-full"
-                      style={{ width: `${percent}%`, backgroundColor: meta.color }}
+                      style={{
+                        width: `${percent}%`,
+                        backgroundColor: meta.color,
+                      }}
                     />
                   </div>
                   {session.state !== "cancelled" ? (
@@ -458,7 +510,10 @@ export function SessionCalendar({
           </ol>
         ) : (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-center">
-            <CalendarX2 aria-hidden="true" className="size-6 text-muted-foreground" />
+            <CalendarX2
+              aria-hidden="true"
+              className="size-6 text-muted-foreground"
+            />
             <p className="text-sm font-semibold">Sin sesiones este día</p>
             <p className="text-xs text-muted-foreground">
               Selecciona otro día en el calendario para ver sus sesiones.

@@ -48,31 +48,48 @@ export function sessionCalendarState(
   now: Date,
 ): SessionCalendarState {
   if (session.status === "cancelled") return "cancelled";
-  if (session.status === "completed" || session.endsAt <= now) return "completed";
+  if (session.status === "completed" || session.endsAt <= now)
+    return "completed";
   if (isSessionCurrent(session, now)) return "current";
-  if (session.capacity > 0 && sessionOccupiedCount(session) >= session.capacity) return "full";
+  if (session.capacity > 0 && sessionOccupiedCount(session) >= session.capacity)
+    return "full";
   return "upcoming";
 }
 
 export function sessionCapacity(session: DaySession) {
   const occupied = sessionOccupiedCount(session);
   return {
+    occupied,
     available: Math.max(0, session.capacity - occupied),
-    percent: session.capacity > 0
-      ? Math.min(100, Math.max(0, Math.round(occupied / session.capacity * 100)))
-      : 0,
+    percent:
+      session.capacity > 0
+        ? Math.min(
+            100,
+            Math.max(0, Math.round((occupied / session.capacity) * 100)),
+          )
+        : 0,
   };
 }
 
+/**
+ * Groups sessions by their operational date key, sorted ascending within each
+ * group. Builds groups in a single pass without pre-sorting the full array.
+ */
 export function groupSessionsByDate(sessions: DaySession[]) {
   const groups = new Map<string, DaySession[]>();
-  for (const session of sessions.toSorted(
-    (first, second) => first.startsAt.getTime() - second.startsAt.getTime(),
-  )) {
+  for (const session of sessions) {
     const key = operationalDateKey(session.startsAt);
     const group = groups.get(key);
     if (group) group.push(session);
     else groups.set(key, [session]);
   }
-  return [...groups].map(([date, items]) => ({ date, sessions: items }));
+  // Sort date keys and each group's sessions in one final pass.
+  return [...groups]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([date, items]) => ({
+      date,
+      sessions: items.sort(
+        (a, b) => a.startsAt.getTime() - b.startsAt.getTime(),
+      ),
+    }));
 }

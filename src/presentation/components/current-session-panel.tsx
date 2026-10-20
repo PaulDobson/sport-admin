@@ -4,6 +4,24 @@ import type { DaySession } from "@/domain/instructor-operations/instructor-day";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 import { StatusBadge } from "@/presentation/components/primitives";
 
+// Module-level constants — computed once, never again.
+const CIRCLE_RADIUS = 42;
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+
+// Reuse a single Intl instance across all renders instead of relying on
+// toLocaleTimeString() which constructs a new DateTimeFormat under the hood.
+const timeFormatter = new Intl.DateTimeFormat("es", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const ATTENDANCE_ROLES: readonly TenantMembershipRole[] = [
+  "owner",
+  "admin",
+  "instructor",
+  "assistant",
+];
+
 export function CurrentSessionPanel({
   currentSession,
   nextSession,
@@ -15,23 +33,17 @@ export function CurrentSessionPanel({
 }) {
   const session = currentSession ?? nextSession;
   if (!session) return null;
+
   const isCurrent = currentSession !== null;
-  const canTakeAttendance = [
-    "owner",
-    "admin",
-    "instructor",
-    "assistant",
-  ].includes(role);
+  const canTakeAttendance = ATTENDANCE_ROLES.includes(role);
 
   const participants = session.confirmedCount + (session.walkInCount ?? 0);
   const percent =
     session.capacity > 0
       ? Math.min(100, Math.round((participants / session.capacity) * 100))
       : 0;
-  const radius = 42;
-  const circumference = 2 * Math.PI * radius;
-  const time = (date: Date) =>
-    date.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+
+  const dashOffset = CIRCLE_CIRCUMFERENCE * (1 - percent / 100);
 
   return (
     <section
@@ -40,7 +52,7 @@ export function CurrentSessionPanel({
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/18 via-primary/5 to-transparent"
+        className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/18 via-primary/5 to-transparent"
       />
       <span
         aria-hidden="true"
@@ -61,14 +73,17 @@ export function CurrentSessionPanel({
           </h2>
           <div className="mt-4 flex flex-wrap gap-2 text-sm text-muted-foreground">
             <p className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-2.5 py-1.5">
-              <CalendarClock className="h-4 w-4 text-primary" aria-hidden="true" />
+              <CalendarClock
+                className="h-4 w-4 text-primary"
+                aria-hidden="true"
+              />
               <span className="metric-number text-foreground">
                 <time dateTime={session.startsAt.toISOString()}>
-                  {time(session.startsAt)}
+                  {timeFormatter.format(session.startsAt)}
                 </time>
                 <span aria-hidden="true"> – </span>
                 <time dateTime={session.endsAt.toISOString()}>
-                  {time(session.endsAt)}
+                  {timeFormatter.format(session.endsAt)}
                 </time>
               </span>
             </p>
@@ -111,17 +126,28 @@ export function CurrentSessionPanel({
         </div>
         <div className="flex shrink-0 items-center gap-4 sm:flex-col sm:gap-2">
           <div className="relative h-28 w-28">
-            <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
-              <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="9" className="stroke-white/8" />
+            <svg
+              viewBox="0 0 100 100"
+              className="h-full w-full -rotate-90"
+              aria-hidden="true"
+            >
               <circle
                 cx="50"
                 cy="50"
-                r={radius}
+                r={CIRCLE_RADIUS}
+                fill="none"
+                strokeWidth="9"
+                className="stroke-white/8"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r={CIRCLE_RADIUS}
                 fill="none"
                 strokeWidth="9"
                 strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference * (1 - percent / 100)}
+                strokeDasharray={CIRCLE_CIRCUMFERENCE}
+                strokeDashoffset={dashOffset}
                 className={percent >= 100 ? "stroke-warning" : "stroke-primary"}
               />
             </svg>

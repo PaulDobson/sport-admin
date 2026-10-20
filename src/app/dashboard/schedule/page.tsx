@@ -36,6 +36,19 @@ import {
 
 const calendarPageSize = 500;
 
+// Module-level constants — not recreated per request.
+const actionClass =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+const pagerClass =
+  "inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-muted/50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+const PERIOD_OPTIONS = [
+  ["day", "Día"],
+  ["week", "Semana"],
+  ["month", "Mes"],
+] as const;
+
 interface SchedulePageProps {
   searchParams: Promise<{
     location?: string;
@@ -48,9 +61,6 @@ interface SchedulePageProps {
   }>;
 }
 
-const actionClass =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-
 function normalizedStatus(
   value?: string,
 ): "all" | "scheduled" | "cancelled" | "completed" {
@@ -62,6 +72,21 @@ function normalizedStatus(
     default:
       return "scheduled";
   }
+}
+
+/**
+ * Build a query string from a base params object and zero or more overrides.
+ * Avoids cloning URLSearchParams objects repeatedly.
+ */
+function scheduleHref(
+  base: Record<string, string>,
+  overrides: Record<string, string>,
+) {
+  const merged = { ...base, ...overrides };
+  const parts = Object.entries(merged)
+    .filter(([, v]) => v !== "")
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+  return `/dashboard/schedule?${parts.join("&")}`;
 }
 
 export default async function SchedulePage({
@@ -91,6 +116,7 @@ export default async function SchedulePage({
   const isCalendar = view === "calendar";
   const range = sessionPeriod(date, period);
   const periodTitle = sessionPeriodTitle(range, period);
+
   const operations = await createInstructorOperationsDeps();
   const schedule = await getScheduleSessions(
     {
@@ -107,57 +133,122 @@ export default async function SchedulePage({
     operations,
   );
   const sessions = schedule.sessions;
-  const currentCount = sessions.filter(
-    (session) =>
+
+  // Single pass over sessions — computes all three aggregates at once.
+  let currentCount = 0;
+  let confirmedCount = 0;
+  let waitingCount = 0;
+  for (const session of sessions) {
+    confirmedCount += session.confirmedCount;
+    waitingCount += session.waitlistedCount;
+    if (
       session.status !== "cancelled" &&
       session.status !== "completed" &&
-      isSessionCurrent(session, now),
-  ).length;
+      isSessionCurrent(session, now)
+    ) {
+      currentCount++;
+    }
+  }
+
   const selectedLocation = schedule.locations.find(
     (item) => item.id === location,
   );
-  const confirmedCount = sessions.reduce(
-    (total, session) => total + session.confirmedCount,
-    0,
-  );
-  const waitingCount = sessions.reduce(
-    (total, session) => total + session.waitlistedCount,
-    0,
-  );
+
   const pageCount = Math.max(1, Math.ceil(schedule.total / schedule.pageSize));
-  const filterParams = new URLSearchParams();
-  if (location) filterParams.set("location", location);
-  if (params.discipline) filterParams.set("discipline", params.discipline);
-  if (selectedStatus !== "scheduled")
-    filterParams.set("status", selectedStatus);
-  filterParams.set("date", date);
-  filterParams.set("period", period);
-  filterParams.set("view", view);
-  const displayHref = (nextPeriod: string, nextDate = date) => {
-    const next = new URLSearchParams(filterParams);
-    next.set("period", nextPeriod);
-    next.set("date", nextDate);
-    return `/dashboard/schedule?${next.toString()}`;
-  };
+
+  // Build a stable base params object (plain record) for href construction.
+  // Avoids repeated URLSearchParams clone + toString on every link.
+  const baseParams: Record<string, string> = {};
+  if (location) baseParams.location = location;
+  if (params.discipline) baseParams.discipline = params.discipline;
+  if (selectedStatus !== "scheduled") baseParams.status = selectedStatus;
+  baseParams.date = date;
+  baseParams.period = period;
+  baseParams.view = view;
+
   const previousDate = new Date(`${range.from}T12:00:00Z`);
   previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+  const prevDateKey = previousDate.toISOString().slice(0, 10);
+
   const nextDate = new Date(`${range.through}T12:00:00Z`);
   nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-  const clearParams = new URLSearchParams({ date, period, view });
-  const clearHref = `/dashboard/schedule?${clearParams.toString()}`;
-  const viewHref = (nextView: string) => {
-    const next = new URLSearchParams(filterParams);
-    next.set("view", nextView);
-    next.set("page", String(schedule.page));
-    return `/dashboard/schedule?${next.toString()}`;
-  };
-  const pageHref = (page: number) => {
-    const next = new URLSearchParams(filterParams);
-    next.set("page", String(page));
-    return `/dashboard/schedule?${next.toString()}`;
-  };
-  const pagerClass =
-    "inline-flex h-9 w-9 items-center justify-center rounded-md border border-border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  const nextDateKey = nextDate.toISOString().slice(0, 10);
+
+  const todayKey = operationalDateKey(now);
+  const clearHref = `/dashboard/schedule?date=${date}&period=${period}&view=${view}`;
+
+  const calendarBaseParams: Record<string, string> = { ...baseParams };
+  delete calendarBaseParams.date;
+  delete calendarBaseParams.period;
+  const calendarBaseQuery = Object.entries(calendarBaseParams)
+    .filter(([, v]) => v !== "")
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join("&");
+
+  const calendarSessions: CalendarSession[] = isCalendar
+    ? sessions.map((session) => ({
+        id: session.id,
+        name: session.name,
+        locationName: session.locationName,
+        startsAt: session.startsAt.toISOString(),
+        endsAt: session.endsAt.toISOString(),
+        dateKey: operationalDateKey(session.startsAt),
+        capacity: session.capacity,
+        occupied: sessionOccupiedCount(session),
+        waitlisted: session.waitlistedCount,
+        state: sessionCalendarState(session, now),
+      }))
+    : [];
+
+  // Pre-build all nav hrefs once — avoids repeated object spread + string
+  // construction inside JSX expressions.
+  const prevPeriodHref = scheduleHref(baseParams, { date: prevDateKey });
+  const nextPeriodHref = scheduleHref(baseParams, { date: nextDateKey });
+  const todayHref = scheduleHref(baseParams, { date: todayKey });
+  const prevPageHref =
+    schedule.page > 1
+      ? scheduleHref(baseParams, { page: String(schedule.page - 1) })
+      : null;
+  const nextPageHref =
+    schedule.page < pageCount
+      ? scheduleHref(baseParams, { page: String(schedule.page + 1) })
+      : null;
+
+  const dateNavigation = (
+    <nav
+      aria-label="Navegación de fechas"
+      className="flex min-w-0 items-center gap-1"
+    >
+      <Link
+        href={prevPeriodHref}
+        aria-label="Período anterior"
+        title="Período anterior"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+      </Link>
+      {isCalendar ? null : (
+        <p className="px-1 text-sm font-semibold first-letter:uppercase">
+          {periodTitle}
+        </p>
+      )}
+      <Link
+        href={nextPeriodHref}
+        aria-label="Período siguiente"
+        title="Período siguiente"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <ChevronRight aria-hidden="true" className="h-4 w-4" />
+      </Link>
+      <Link
+        href={todayHref}
+        className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        Hoy
+      </Link>
+    </nav>
+  );
+
   const pagination =
     schedule.total > 0 ? (
       <nav
@@ -172,9 +263,9 @@ export default async function SchedulePage({
           {Math.min(schedule.page * schedule.pageSize, schedule.total)} de{" "}
           {schedule.total}
         </p>
-        {schedule.page > 1 ? (
+        {prevPageHref ? (
           <Link
-            href={pageHref(schedule.page - 1)}
+            href={prevPageHref}
             aria-label="Anterior"
             title="Página anterior"
             className={`${pagerClass} text-foreground hover:bg-surface-raised`}
@@ -192,7 +283,7 @@ export default async function SchedulePage({
             action="/dashboard/schedule"
             className="flex items-center gap-1"
           >
-            {Array.from(filterParams.entries()).map(([key, value]) => (
+            {Object.entries(baseParams).map(([key, value]) => (
               <input key={key} type="hidden" name={key} value={value} />
             ))}
             <label htmlFor="session-page" className="sr-only">
@@ -222,9 +313,9 @@ export default async function SchedulePage({
             {schedule.page} / {pageCount}
           </span>
         )}
-        {schedule.page < pageCount ? (
+        {nextPageHref ? (
           <Link
-            href={pageHref(schedule.page + 1)}
+            href={nextPageHref}
             aria-label="Siguiente"
             title="Página siguiente"
             className={`${pagerClass} text-foreground hover:bg-surface-raised`}
@@ -239,68 +330,32 @@ export default async function SchedulePage({
       </nav>
     ) : null;
 
-  const calendarQuery = new URLSearchParams(filterParams);
-  calendarQuery.delete("date");
-  calendarQuery.delete("period");
-  const calendarBaseQuery = calendarQuery.toString();
-  const calendarSessions: CalendarSession[] = isCalendar
-    ? sessions.map((session) => ({
-        id: session.id,
-        name: session.name,
-        locationName: session.locationName,
-        startsAt: session.startsAt.toISOString(),
-        endsAt: session.endsAt.toISOString(),
-        dateKey: operationalDateKey(session.startsAt),
-        capacity: session.capacity,
-        occupied: sessionOccupiedCount(session),
-        waitlisted: session.waitlistedCount,
-        state: sessionCalendarState(session, now),
-      }))
-    : [];
-
-  const dateNavigation = (
-    <nav
-      aria-label="Navegación de fechas"
-      className="flex min-w-0 items-center gap-1"
-    >
-      <Link
-        href={displayHref(
-          period,
-          previousDate.toISOString().slice(0, 10),
-        )}
-        aria-label="Período anterior"
-        title="Período anterior"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-      </Link>
-      {isCalendar ? null : (
-        <p className="px-1 text-sm font-semibold first-letter:uppercase">
-          {periodTitle}
-        </p>
-      )}
-      <Link
-        href={displayHref(period, nextDate.toISOString().slice(0, 10))}
-        aria-label="Período siguiente"
-        title="Período siguiente"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <ChevronRight aria-hidden="true" className="h-4 w-4" />
-      </Link>
-      <Link
-        href={displayHref(period, operationalDateKey(now))}
-        className="inline-flex h-9 items-center rounded-md px-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        Hoy
-      </Link>
-    </nav>
-  );
+  const summaryCards = [
+    {
+      label: isCalendar ? "En este período" : "En esta página",
+      value: sessions.length,
+      detail: `${schedule.total} resultados · ${currentCount} en curso`,
+      icon: CalendarDays,
+    },
+    {
+      label: "Reservas confirmadas",
+      value: confirmedCount,
+      detail: "En las sesiones de esta vista",
+      icon: UsersRound,
+    },
+    {
+      label: "En lista de espera",
+      value: waitingCount,
+      detail: "Reservas pendientes de cupo",
+      icon: ListChecks,
+    },
+  ];
 
   return (
     <div
       className={`mx-auto space-y-6 ${isCalendar ? "max-w-7xl" : "max-w-6xl"}`}
     >
-      <Surface className="border-primary/15 bg-linear-to-br from-primary/10 via-card to-card p-5 sm:p-7">
+      <Surface className="border-primary/30 bg-linear-to-br from-primary/20 via-primary/5 to-card p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-2xl">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
@@ -331,28 +386,12 @@ export default async function SchedulePage({
         aria-label="Resumen de las sesiones mostradas"
         className="grid gap-3 sm:grid-cols-3"
       >
-        {[
-          {
-            label: isCalendar ? "En este período" : "En esta página",
-            value: sessions.length,
-            detail: `${schedule.total} resultados · ${currentCount} en curso`,
-            icon: CalendarDays,
-          },
-          {
-            label: "Reservas confirmadas",
-            value: confirmedCount,
-            detail: "En las sesiones de esta vista",
-            icon: UsersRound,
-          },
-          {
-            label: "En lista de espera",
-            value: waitingCount,
-            detail: "Reservas pendientes de cupo",
-            icon: ListChecks,
-          },
-        ].map(({ label, value, detail, icon: Icon }) => (
-          <Surface key={label} className="flex min-w-0 items-start gap-4 p-5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        {summaryCards.map(({ label, value, detail, icon: Icon }) => (
+          <Surface
+            key={label}
+            className="flex min-w-0 items-start gap-4 border-border/80 bg-surface-raised p-5"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
               <Icon aria-hidden="true" className="h-5 w-5" />
             </span>
             <div className="min-w-0">
@@ -394,7 +433,7 @@ export default async function SchedulePage({
             <select
               name="discipline"
               defaultValue={params.discipline ?? ""}
-              className="h-10 w-full min-w-0 rounded-lg border border-input bg-background/60 px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-10 w-full min-w-0 rounded-lg border border-border/60 bg-muted px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Todas las disciplinas</option>
               {schedule.disciplines.map((item) => (
@@ -409,7 +448,7 @@ export default async function SchedulePage({
             <select
               name="location"
               defaultValue={selectedLocation?.id ?? ""}
-              className="h-10 w-full min-w-0 rounded-lg border border-input bg-background/60 px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-10 w-full min-w-0 rounded-lg border border-border/60 bg-muted px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">Todas las ubicaciones</option>
               {schedule.locations.map((item) => (
@@ -424,7 +463,7 @@ export default async function SchedulePage({
             <select
               name="status"
               defaultValue={selectedStatus}
-              className="h-10 w-full min-w-0 rounded-lg border border-input bg-background/60 px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-10 w-full min-w-0 rounded-lg border border-border/60 bg-muted px-3 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="scheduled">Programadas</option>
               <option value="cancelled">Canceladas</option>
@@ -455,23 +494,17 @@ export default async function SchedulePage({
       </Surface>
 
       <section aria-labelledby="sessions-heading" className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/8 pb-4">
           <nav
             aria-label="Período de visualización"
-            className="grid grid-cols-3 rounded-lg border border-border p-0.5"
+            className="grid grid-cols-3 rounded-lg border border-border bg-muted p-0.5"
           >
-            {(
-              [
-                ["day", "Día"],
-                ["week", "Semana"],
-                ["month", "Mes"],
-              ] as const
-            ).map(([value, label]) => (
+            {PERIOD_OPTIONS.map(([value, label]) => (
               <Link
                 key={value}
-                href={displayHref(value)}
+                href={scheduleHref(baseParams, { period: value })}
                 aria-current={period === value ? "page" : undefined}
-                className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${period === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${period === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"}`}
               >
                 {label}
               </Link>
@@ -480,35 +513,29 @@ export default async function SchedulePage({
           {isCalendar ? null : dateNavigation}
           <nav
             aria-label="Vista de sesiones"
-            className="ml-auto flex shrink-0 rounded-lg border border-border p-0.5"
+            className="ml-auto flex shrink-0 rounded-lg border border-border bg-muted p-0.5"
           >
-            <Link
-              href={viewHref("grid")}
-              aria-label="Grid"
-              title="Vista Grid"
-              aria-current={view === "grid" ? "page" : undefined}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <LayoutGrid aria-hidden="true" className="h-4 w-4" />
-            </Link>
-            <Link
-              href={viewHref("table")}
-              aria-label="Tabla"
-              title="Vista de tabla"
-              aria-current={view === "table" ? "page" : undefined}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Table2 aria-hidden="true" className="h-4 w-4" />
-            </Link>
-            <Link
-              href={viewHref("calendar")}
-              aria-label="Calendario"
-              title="Vista de calendario"
-              aria-current={view === "calendar" ? "page" : undefined}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <CalendarRange aria-hidden="true" className="h-4 w-4" />
-            </Link>
+            {(
+              [
+                ["grid", "Grid", LayoutGrid],
+                ["table", "Tabla", Table2],
+                ["calendar", "Calendario", CalendarRange],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <Link
+                key={value}
+                href={scheduleHref(baseParams, {
+                  view: value,
+                  page: String(schedule.page),
+                })}
+                aria-label={label}
+                title={`Vista ${label}`}
+                aria-current={view === value ? "page" : undefined}
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${view === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"}`}
+              >
+                <Icon aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            ))}
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -528,7 +555,7 @@ export default async function SchedulePage({
             sessions={calendarSessions}
             period={period}
             date={date}
-            today={operationalDateKey(now)}
+            today={todayKey}
             range={range}
             title={periodTitle}
             baseQuery={calendarBaseQuery}

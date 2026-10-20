@@ -15,7 +15,12 @@ export function addProgrammingDays(value: string, days: number) {
 }
 
 export function endTimeForDuration(start: string, duration: number) {
-  if (!/^\d{2}:\d{2}$/.test(start) || !Number.isInteger(duration) || duration <= 0) return null;
+  if (
+    !/^\d{2}:\d{2}$/.test(start) ||
+    !Number.isInteger(duration) ||
+    duration <= 0
+  )
+    return null;
   const [hour, minute] = start.split(":").map(Number);
   if (hour > 23 || minute > 59) return null;
   const total = hour * 60 + minute + duration;
@@ -25,8 +30,15 @@ export function endTimeForDuration(start: string, duration: number) {
   };
 }
 
+// Module-level formatter — constructed once, never re-created per call.
+const programmingDateFormatter = new Intl.DateTimeFormat("es-CL", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 export function programmingDateLabel(value: string) {
   if (!value) return "Selecciona una fecha";
-  return new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-    .format(new Date(`${value}T12:00:00Z`));
+  return programmingDateFormatter.format(new Date(`${value}T12:00:00Z`));
 }
