@@ -30,11 +30,13 @@ export function usePrepare(sound: SoundApi): UsePrepareReturn {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number | null>(null);
   const onDoneRef = useRef<(() => void) | null>(null);
-  // Keep a stable ref to the sound API so the interval closure is always fresh
+  // Keep a stable ref to the sound API so the interval closure is always fresh.
+  // The sound callbacks from useTimerSound are stable useCallback references,
+  // so this effect almost never re-runs in practice.
   const soundRef = useRef(sound);
   useEffect(() => {
     soundRef.current = sound;
-  });
+  }, [sound]);
 
   const clearTick = useCallback(() => {
     if (intervalRef.current !== null) {

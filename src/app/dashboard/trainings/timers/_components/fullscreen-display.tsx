@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useReducer,
+  useSyncExternalStore,
+  useState,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -56,53 +64,7 @@ const REST_IMAGES = [
   "/rest/descanso_3.jpg",
 ] as const;
 
-// ─── Background image hook ────────────────────────────────────────────────────
-
-/**
- * Returns the image src to display as background.
- *
- * - Picks a new image from the correct pool each time `imageKey` changes.
- * - `imageKey` should change once per phase transition, not on every tick,
- *   so the image stays stable throughout a phase.
- * - Uses a counter ref to cycle sequentially through the pool rather than
- *   Math.random() to guarantee every image is shown before repeating.
- */
-function usePhaseImage(phase: "work" | "rest", imageKey: string): string {
-  const workIndexRef = useRef(0);
-  const restIndexRef = useRef(0);
-  const [src, setSrc] = useState<string>(WORK_IMAGES[0]);
-
-  useEffect(() => {
-    if (phase === "work") {
-      const pool = WORK_IMAGES;
-      const idx = workIndexRef.current % pool.length;
-      workIndexRef.current += 1;
-      setSrc(pool[idx]);
-    } else {
-      const pool = REST_IMAGES;
-      const idx = restIndexRef.current % pool.length;
-      restIndexRef.current += 1;
-      setSrc(pool[idx]);
-    }
-    // imageKey changes once per phase transition — that's the only trigger
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageKey]);
-
-  return src;
-}
-
-// ─── Portal ───────────────────────────────────────────────────────────────────
-
-function BodyPortal({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  if (!mounted) return null;
-  return createPortal(children, document.body);
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Static lookup tables (module-level — zero allocation per render) ─────────
 
 const toneColors: Record<FullscreenTone, string> = {
   primary: "text-primary",
@@ -116,41 +78,124 @@ const toneBar: Record<FullscreenTone, string> = {
   success: "bg-success",
 };
 
+// Extracted to module scope: recreating these objects every render of
+// ControlButton is wasteful when it renders 4 times per tick.
+const controlButtonClasses: Record<"primary" | "secondary" | "danger", string> =
+  {
+    primary: "border-primary/50 bg-primary/20 text-primary hover:bg-primary/30",
+    secondary: "border-white/20 bg-white/10 text-white hover:bg-white/20",
+    danger:
+      "border-destructive/50 bg-destructive/15 text-destructive hover:bg-destructive/25",
+  };
+
 const PREPARE_TOTAL = 3;
+
+// ─── Background image hook ────────────────────────────────────────────────────
+
+/**
+ * Returns the image src to display as background.
+ *
+ * Derives the image index deterministically from `imageKey` using modular
+ * arithmetic, so there is no state, no effect, and no extra re-render.
+ *
+ * imageKey format: "work-{series}" | "rest-{series}" | "work"
+ * The series number is used as the index seed, ensuring:
+ * - The same phase+series always shows the same image (stable through a phase).
+ * - Different series cycle through the pool sequentially.
+ */
+function usePhaseImage(phase: "work" | "rest", imageKey: string): string {
+  return useMemo(() => {
+    // Extract the numeric suffix (series number) from the key, if present.
+    const parts = imageKey.split("-");
+    const seed =
+      parts.length > 1 ? parseInt(parts[parts.length - 1], 10) || 0 : 0;
+
+    if (phase === "work") {
+      return WORK_IMAGES[seed % WORK_IMAGES.length];
+    }
+    return REST_IMAGES[seed % REST_IMAGES.length];
+  }, [phase, imageKey]);
+}
+
+// ─── Portal ───────────────────────────────────────────────────────────────────
+
+// useSyncExternalStore-based client detection: avoids the setState-in-effect
+// pattern that the project lint rule react-hooks/set-state-in-effect prohibits.
+// On the server the "server snapshot" returns false; on the client it returns
+// true immediately, so the portal renders on the first client paint with no
+// extra re-render cycle.
+const subscribeNoop = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+/**
+ * Memoized so it doesn't re-render on every timer tick.
+ * The portal itself never moves in the DOM — React reconciles children in-place.
+ */
+const BodyPortal = memo(function BodyPortal({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const isMounted = useSyncExternalStore(
+    subscribeNoop,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
+  if (!isMounted) return null;
+  return createPortal(children, document.body);
+});
 
 // ─── Background image layer ───────────────────────────────────────────────────
 
 /**
  * Full-bleed background image that blends with the dark background.
  *
- * - `fill` so Next.js never needs to know explicit dimensions.
- * - `priority` on the active image so it is never lazy-loaded mid-session.
- * - `mix-blend-mode: luminosity` strips the colour from the photo and lets
- *   the dark background tint show through.
- * - Low opacity keeps the digits readable from across the room.
- * - `transition-opacity` produces a soft crossfade on phase change.
+ * Crossfade is driven by a useReducer to collapse the three-setState sequence
+ * (setVisible(false) → setTimeout → setActiveSrc + setVisible(true)) into a
+ * single dispatch per transition, eliminating the intermediate render where
+ * `activeSrc` had already changed but `visible` was still false.
+ *
+ * The component is memoized: it only re-renders when `src` or `phase` changes
+ * (i.e., once per phase transition), never on every timer tick.
  */
-function BackgroundImage({
+type BgState = { activeSrc: string; visible: boolean };
+type BgAction = { type: "fade_out" } | { type: "swap"; src: string };
+
+function bgReducer(state: BgState, action: BgAction): BgState {
+  switch (action.type) {
+    case "fade_out":
+      return { ...state, visible: false };
+    case "swap":
+      return { activeSrc: action.src, visible: true };
+    default:
+      return state;
+  }
+}
+
+const BackgroundImage = memo(function BackgroundImage({
   src,
   phase,
 }: {
   src: string;
   phase: "work" | "rest";
 }) {
-  // Track the previous src to allow a brief crossfade
-  const [activeSrc, setActiveSrc] = useState(src);
-  const [visible, setVisible] = useState(true);
+  const [state, dispatch] = useReducer(bgReducer, {
+    activeSrc: src,
+    visible: true,
+  });
 
   useEffect(() => {
-    if (src === activeSrc) return;
-    // Fade out → swap → fade in
-    setVisible(false);
+    if (src === state.activeSrc) return;
+    dispatch({ type: "fade_out" });
     const t = setTimeout(() => {
-      setActiveSrc(src);
-      setVisible(true);
+      dispatch({ type: "swap", src });
     }, 300);
     return () => clearTimeout(t);
-  }, [src, activeSrc]);
+    // state.activeSrc intentionally omitted: we only care about src changing.
+    // Including activeSrc would re-trigger on the swap dispatch itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src]);
 
   return (
     <div
@@ -158,14 +203,14 @@ function BackgroundImage({
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
       <Image
-        key={activeSrc}
-        src={activeSrc}
+        key={state.activeSrc}
+        src={state.activeSrc}
         alt=""
         fill
         priority
         sizes="100vw"
         className={`object-cover transition-opacity duration-300 ${
-          visible ? "opacity-100" : "opacity-0"
+          state.visible ? "opacity-100" : "opacity-0"
         } ${
           phase === "work"
             ? "mix-blend-luminosity opacity-[0.18]"
@@ -176,11 +221,17 @@ function BackgroundImage({
       <div className="absolute inset-0 bg-gradient-to-t from-[#181c2a]/80 via-[#181c2a]/40 to-[#181c2a]/60" />
     </div>
   );
-}
+});
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function FullscreenDigits({
+/**
+ * Memoized: only re-renders when `mm`, `ss`, or `tone` actually changes.
+ * Without memo this re-renders on every 250ms tick even when the displayed
+ * second hasn't changed (the interval fires 4× per second but the visible
+ * value only changes once per second).
+ */
+const FullscreenDigits = memo(function FullscreenDigits({
   mm,
   ss,
   tone,
@@ -203,9 +254,9 @@ function FullscreenDigits({
       <span aria-label={`${ss} segundos`}>{ss}</span>
     </div>
   );
-}
+});
 
-function PrepareScreen({
+const PrepareScreen = memo(function PrepareScreen({
   secondsLeft,
   onStop,
   onExitFullscreen,
@@ -271,9 +322,14 @@ function PrepareScreen({
       </button>
     </>
   );
-}
+});
 
-function FullscreenProgressBar({
+/**
+ * Memoized: re-renders only when `percent` or `tone` change.
+ * The progress bar width changes once per second, not 4× per second,
+ * because `progressPercent` is derived with Math.round() in series-timer.
+ */
+const FullscreenProgressBar = memo(function FullscreenProgressBar({
   percent,
   tone,
 }: {
@@ -295,64 +351,90 @@ function FullscreenProgressBar({
       />
     </div>
   );
-}
+});
 
-function SeriesBadge({ meta }: { meta: FullscreenSeriesMeta }) {
-  const isWork = meta.phase === "work";
-  const Icon = isWork ? Dumbbell : Coffee;
-  const label = isWork ? "Trabajo" : "Descanso";
-  const colorClass = isWork
-    ? "border-primary/40 bg-primary/15 text-primary"
-    : "border-warning/40 bg-warning/15 text-warning";
+/**
+ * Memoized with a custom comparator: only re-renders when series number or
+ * phase actually changes, not when the parent re-renders due to a tick.
+ */
+const SeriesBadge = memo(
+  function SeriesBadge({ meta }: { meta: FullscreenSeriesMeta }) {
+    const isWork = meta.phase === "work";
+    const Icon = isWork ? Dumbbell : Coffee;
+    const label = isWork ? "Trabajo" : "Descanso";
+    const colorClass = isWork
+      ? "border-primary/40 bg-primary/15 text-primary"
+      : "border-warning/40 bg-warning/15 text-warning";
 
-  return (
-    <div className="relative flex items-center gap-4">
-      <span
-        className={`inline-flex items-center gap-2 rounded-full border px-5 py-2 text-lg font-bold transition-all duration-500 ${colorClass}`}
+    return (
+      <div className="relative flex items-center gap-4">
+        <span
+          className={`inline-flex items-center gap-2 rounded-full border px-5 py-2 text-lg font-bold transition-all duration-500 ${colorClass}`}
+        >
+          <Icon aria-hidden="true" className="h-5 w-5" />
+          {label}
+        </span>
+        <span className="metric-number text-2xl font-bold text-white/60">
+          Serie {meta.currentSeries} / {meta.totalSeries}
+        </span>
+      </div>
+    );
+  },
+  // Custom comparator: skip re-render when meta values haven't changed.
+  // meta is a new object reference every 250ms from the parent; without this
+  // comparator memo() would never bail out.
+  (prev, next) =>
+    prev.meta.currentSeries === next.meta.currentSeries &&
+    prev.meta.totalSeries === next.meta.totalSeries &&
+    prev.meta.phase === next.meta.phase,
+);
+
+/**
+ * Memoized with the same value-equality comparator as SeriesBadge.
+ */
+const SeriesProgressDots = memo(
+  function SeriesProgressDots({ meta }: { meta: FullscreenSeriesMeta }) {
+    return (
+      <div
+        aria-label={`Serie ${meta.currentSeries} de ${meta.totalSeries}`}
+        className="relative flex items-center gap-2"
       >
-        <Icon aria-hidden="true" className="h-5 w-5" />
-        {label}
-      </span>
-      <span className="metric-number text-2xl font-bold text-white/60">
-        Serie {meta.currentSeries} / {meta.totalSeries}
-      </span>
-    </div>
-  );
-}
+        {Array.from({ length: meta.totalSeries }, (_, i) => {
+          const n = i + 1;
+          const completed = n < meta.currentSeries;
+          const current = n === meta.currentSeries;
+          const isRest = current && meta.phase === "rest";
 
-function SeriesProgressDots({ meta }: { meta: FullscreenSeriesMeta }) {
-  return (
-    <div
-      aria-label={`Serie ${meta.currentSeries} de ${meta.totalSeries}`}
-      className="relative flex items-center gap-2"
-    >
-      {Array.from({ length: meta.totalSeries }, (_, i) => {
-        const n = i + 1;
-        const completed = n < meta.currentSeries;
-        const current = n === meta.currentSeries;
-        const isRest = current && meta.phase === "rest";
+          return (
+            <div
+              key={i}
+              aria-hidden="true"
+              className={`h-3 w-3 rounded-full transition-all duration-500 ${
+                completed
+                  ? "bg-primary/70"
+                  : current && !isRest
+                    ? "scale-125 bg-primary"
+                    : current && isRest
+                      ? "scale-125 bg-warning"
+                      : "bg-white/20"
+              }`}
+            />
+          );
+        })}
+      </div>
+    );
+  },
+  (prev, next) =>
+    prev.meta.currentSeries === next.meta.currentSeries &&
+    prev.meta.totalSeries === next.meta.totalSeries &&
+    prev.meta.phase === next.meta.phase,
+);
 
-        return (
-          <div
-            key={i}
-            aria-hidden="true"
-            className={`h-3 w-3 rounded-full transition-all duration-500 ${
-              completed
-                ? "bg-primary/70"
-                : current && !isRest
-                  ? "scale-125 bg-primary"
-                  : current && isRest
-                    ? "scale-125 bg-warning"
-                    : "bg-white/20"
-            }`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function ControlButton({
+/**
+ * Memoized: buttons are purely presentational and their handlers are stable
+ * useCallbacks. Without memo they'd re-render 4× per second for nothing.
+ */
+const ControlButton = memo(function ControlButton({
   onClick,
   label,
   variant,
@@ -363,28 +445,27 @@ function ControlButton({
   variant: "primary" | "secondary" | "danger";
   children: React.ReactNode;
 }) {
-  const variantClasses = {
-    primary: "border-primary/50 bg-primary/20 text-primary hover:bg-primary/30",
-    secondary: "border-white/20 bg-white/10 text-white hover:bg-white/20",
-    danger:
-      "border-destructive/50 bg-destructive/15 text-destructive hover:bg-destructive/25",
-  };
-
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`relative inline-flex min-h-14 min-w-14 items-center justify-center gap-2.5 rounded-2xl border px-6 text-base font-bold transition-colors ${variantClasses[variant]}`}
+      className={`relative inline-flex min-h-14 min-w-14 items-center justify-center gap-2.5 rounded-2xl border px-6 text-base font-bold transition-colors ${controlButtonClasses[variant]}`}
     >
       {children}
     </button>
   );
-}
+});
 
 // ─── Overlay content ──────────────────────────────────────────────────────────
 
-function OverlayContent({
+/**
+ * Memoized: the entire overlay re-renders only when props change.
+ * Heavy child components (FullscreenDigits, BackgroundImage, SeriesBadge,
+ * SeriesProgressDots) are themselves memoized so they skip unnecessary work
+ * even when OverlayContent does re-render due to a tick update.
+ */
+const OverlayContent = memo(function OverlayContent({
   containerRef,
   mm,
   ss,
@@ -404,8 +485,8 @@ function OverlayContent({
   const isRunning = status === "running";
   const isPaused = status === "paused";
 
-  // Determine the phase for image selection
-  // Series timer provides seriesMeta.phase; countdown timer always uses "work"
+  // Determine the phase for image selection.
+  // Series timer provides seriesMeta.phase; countdown timer always uses "work".
   const phase: "work" | "rest" = seriesMeta?.phase === "rest" ? "rest" : "work";
 
   // imageKey changes once per phase transition — drives the image swap.
@@ -415,6 +496,7 @@ function OverlayContent({
     ? `${seriesMeta.phase}-${seriesMeta.currentSeries}`
     : "work";
 
+  // usePhaseImage is now synchronous (no setState inside) so no extra render.
   const bgSrc = usePhaseImage(phase, imageKey);
 
   return (
@@ -514,7 +596,7 @@ function OverlayContent({
       )}
     </div>
   );
-}
+});
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 

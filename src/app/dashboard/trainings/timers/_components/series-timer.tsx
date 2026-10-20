@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Play,
   Pause,
@@ -289,6 +289,14 @@ export function SeriesTimer() {
   const newSeriesAlertedRef = useRef(false);
   // Tracks the current phase so the interval can read it without a state lookup
   const currentPhaseRef = useRef<Phase>("work");
+  // Mirrors `runtime` so event handlers can read it without adding runtime to
+  // their useCallback dependency arrays (which would invalidate them every tick).
+  // Updated in an effect rather than during render to comply with the project's
+  // react-hooks/refs lint rule.
+  const runtimeRef = useRef<RuntimeState>(runtime);
+  useEffect(() => {
+    runtimeRef.current = runtime;
+  });
 
   // ── Fullscreen ─────────────────────────────────────────────────────────────
   const {
@@ -306,11 +314,13 @@ export function SeriesTimer() {
   // ── Sound ──────────────────────────────────────────────────────────────────
   const { playWork, playRest, playDone, preload, playBeep, playNewSeries } =
     useTimerSound();
-  // Ref so the setInterval closure always reads the latest callbacks
+  // Ref so the setInterval closure always reads the latest callbacks.
+  // useTimerSound returns stable useCallback references, so this effect
+  // only re-runs when those references genuinely change (i.e., almost never).
   const soundRef = useRef({ playWork, playRest, playDone, playNewSeries });
   useEffect(() => {
     soundRef.current = { playWork, playRest, playDone, playNewSeries };
-  });
+  }, [playWork, playRest, playDone, playNewSeries]);
 
   // ── Preparation countdown ──────────────────────────────────────────────────
   const { isPreparing, prepareSecondsLeft, startPrepare, cancelPrepare } =
@@ -343,6 +353,9 @@ export function SeriesTimer() {
     return () => clearTimeout(t);
   }, [status, exitFullscreen, sidebarToggle, config]);
 
+  // Sync runtime when config changes while idle.
+  // Uses the React "adjust state when prop changes" pattern with useState.
+  // (useRef during render is blocked by the project's react-hooks/refs rule.)
   const [prevConfig, setPrevConfig] = useState(config);
   if (status === "idle" && prevConfig !== config) {
     setPrevConfig(config);
@@ -479,9 +492,9 @@ export function SeriesTimer() {
   const handlePause = useCallback(() => {
     clearTick();
     endTimeRef.current = null;
-    pausedRuntimeRef.current = runtime;
+    pausedRuntimeRef.current = runtimeRef.current;
     setStatus("paused");
-  }, [clearTick, runtime]);
+  }, [clearTick]);
 
   const handleStop = useCallback(() => {
     cancelPrepare();
@@ -531,7 +544,9 @@ export function SeriesTimer() {
     } else if (status === "running") {
       clearTick();
       endTimeRef.current = null;
-      pausedRuntimeRef.current = runtime;
+      // Read current runtime from the ref — no need to include `runtime` in
+      // the dependency array, which would invalidate this callback every tick.
+      pausedRuntimeRef.current = runtimeRef.current;
       setStatus("paused");
     }
     exitFullscreen();
@@ -544,7 +559,6 @@ export function SeriesTimer() {
     status,
     cancelPrepare,
     clearTick,
-    runtime,
     exitFullscreen,
     sidebarToggle,
   ]);
@@ -562,6 +576,17 @@ export function SeriesTimer() {
   const isConfigDisabled =
     isPreparing || status === "running" || status === "paused";
   const canStart = phaseDuration(config, "work") > 0 && config.totalSeries > 0;
+
+  // Compute once per render — used in both the inline preview and FullscreenDisplay.
+  const idleWorkTime = useMemo(
+    () => formatTime(phaseDuration(config, "work")),
+    // Only recompute when the relevant config fields change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [config.workMinutes, config.workSeconds],
+  );
+
+  const displayMm = status === "idle" ? idleWorkTime.mm : mm;
+  const displaySs = status === "idle" ? idleWorkTime.ss : ss;
 
   const currentPhaseDuration =
     status === "idle"
@@ -583,6 +608,21 @@ export function SeriesTimer() {
         ? "primary"
         : "warning";
 
+  // Stable object reference: only recreated when the values actually change.
+  // Without useMemo this is a new object every 250ms, defeating memo() on the
+  // child components that receive it (SeriesBadge, SeriesProgressDots).
+  const seriesMeta = useMemo(
+    () =>
+      status !== "idle" && status !== "done"
+        ? {
+            currentSeries: runtime.currentSeries,
+            totalSeries: config.totalSeries,
+            phase: runtime.phase,
+          }
+        : undefined,
+    [status, runtime.currentSeries, runtime.phase, config.totalSeries],
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -591,27 +631,15 @@ export function SeriesTimer() {
       <FullscreenDisplay
         containerRef={fsRef}
         isFullscreen={isFullscreen}
-        mm={
-          status === "idle" ? formatTime(phaseDuration(config, "work")).mm : mm
-        }
-        ss={
-          status === "idle" ? formatTime(phaseDuration(config, "work")).ss : ss
-        }
+        mm={displayMm}
+        ss={displaySs}
         tone={fsTone}
         status={
           isPreparing ? "preparing" : status === "idle" ? "running" : status
         }
         progressPercent={progressPercent}
         prepareSecondsLeft={prepareSecondsLeft}
-        seriesMeta={
-          status !== "idle" && status !== "done"
-            ? {
-                currentSeries: runtime.currentSeries,
-                totalSeries: config.totalSeries,
-                phase: runtime.phase,
-              }
-            : undefined
-        }
+        seriesMeta={seriesMeta}
         onPause={handlePause}
         onResume={handleResume}
         onStop={handleStop}
@@ -642,23 +670,11 @@ export function SeriesTimer() {
                   : "text-warning"
             }`}
           >
-            <span
-              aria-label={`${status === "idle" ? formatTime(phaseDuration(config, "work")).mm : mm} minutos`}
-            >
-              {status === "idle"
-                ? formatTime(phaseDuration(config, "work")).mm
-                : mm}
-            </span>
+            <span aria-label={`${displayMm} minutos`}>{displayMm}</span>
             <span aria-hidden="true" className="mx-1.5 opacity-50">
               :
             </span>
-            <span
-              aria-label={`${status === "idle" ? formatTime(phaseDuration(config, "work")).ss : ss} segundos`}
-            >
-              {status === "idle"
-                ? formatTime(phaseDuration(config, "work")).ss
-                : ss}
-            </span>
+            <span aria-label={`${displaySs} segundos`}>{displaySs}</span>
           </div>
 
           {/* Phase progress bar */}
