@@ -58,8 +58,14 @@ export interface SubscriptionManagement {
   activeStudents: number;
   activeUsers: number;
   scheduledChange: {
-    id: string; planName: string; price: number; currency: string; effectiveOn: string;
-    status: "scheduled" | "blocked"; reason: string; blockedReason: string | null;
+    id: string;
+    planName: string;
+    price: number;
+    currency: string;
+    effectiveOn: string;
+    status: "scheduled" | "blocked";
+    reason: string;
+    blockedReason: string | null;
   } | null;
   subscription: {
     id: string;

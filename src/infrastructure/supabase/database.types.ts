@@ -3978,12 +3978,12 @@ export type Database = {
       };
       finish_saas_billing_job: {
         Args: {
-          document_hash: string;
-          document_path: string;
-          document_size: number;
-          error_code: string;
+          document_hash: string | undefined;
+          document_path: string | undefined;
+          document_size: number | undefined;
+          error_code: string | undefined;
           outcome: string;
-          provider_id: string;
+          provider_id: string | undefined;
           target_job: string;
           target_lease: string;
         };
@@ -4398,7 +4398,7 @@ export type Database = {
         Args: {
           change_reason: string;
           confirmed_not_sent: boolean;
-          confirmed_provider_id: string;
+          confirmed_provider_id: string | undefined;
           target_delivery: string;
         };
         Returns: Json;
@@ -4425,7 +4425,7 @@ export type Database = {
           operation_id: string;
           paid_on: string;
           payment_method: string;
-          payment_reference: string;
+          payment_reference: string | undefined;
           target_invoice: string;
         };
         Returns: Json;
@@ -4528,7 +4528,7 @@ export type Database = {
           address: string;
           change_reason: string;
           email: string;
-          expected_version: string;
+          expected_version: string | undefined;
           legal_name: string;
           operation_id: string;
           tax_id: string;

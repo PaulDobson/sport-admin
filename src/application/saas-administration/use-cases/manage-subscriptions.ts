@@ -8,32 +8,50 @@ const requestSchema = z.object({
   planVersionId: z.uuid({ error: "Selecciona una versión del plan." }),
   startsOn: z.iso.date({ error: "Ingresa una fecha de inicio válida." }),
   useTrial: z.boolean(),
-  dueOn: z.iso.date({ error: "Ingresa un vencimiento válido." }).nullable(),
+  dueOn: z.iso.date({ error: "Ingresa un vencimiento válido." }).nonempty(),
 });
 const confirmationSchema = requestSchema.extend({
-  fingerprint: z.string().regex(/^[a-f0-9]{32}$/, "Debes revisar una previsualización vigente."),
+  fingerprint: z
+    .string()
+    .regex(/^[a-f0-9]{32}$/, "Debes revisar una previsualización vigente."),
   operationId: z.uuid({ error: "El identificador de operación no es válido." }),
-  reason: z.string().trim().min(3, "Ingresa un motivo de al menos 3 caracteres.")
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Ingresa un motivo de al menos 3 caracteres.")
     .max(500, "El motivo admite hasta 500 caracteres."),
 });
 
 async function assertAdmin(repository: SubscriptionManagementPort) {
   if (!(await repository.isPlatformAdmin())) {
-    throw new UnauthorizedError("Se requiere acceso de administrador de plataforma.");
+    throw new UnauthorizedError(
+      "Se requiere acceso de administrador de plataforma.",
+    );
   }
 }
 
-export async function getSaasSubscriptionManagement(tenantId: string, repository: SubscriptionManagementPort) {
+export async function getSaasSubscriptionManagement(
+  tenantId: string,
+  repository: SubscriptionManagementPort,
+) {
   await assertAdmin(repository);
   return repository.getManagement(parseWithSchema(z.uuid(), tenantId));
 }
 
-export async function previewSaasAssignment(input: unknown, repository: SubscriptionManagementPort) {
+export async function previewSaasAssignment(
+  input: unknown,
+  repository: SubscriptionManagementPort,
+) {
   await assertAdmin(repository);
   return repository.previewAssignment(parseWithSchema(requestSchema, input));
 }
 
-export async function confirmSaasAssignment(input: unknown, repository: SubscriptionManagementPort) {
+export async function confirmSaasAssignment(
+  input: unknown,
+  repository: SubscriptionManagementPort,
+) {
   await assertAdmin(repository);
-  return repository.confirmAssignment(parseWithSchema(confirmationSchema, input));
+  return repository.confirmAssignment(
+    parseWithSchema(confirmationSchema, input),
+  );
 }
