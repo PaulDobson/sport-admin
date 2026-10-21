@@ -10,46 +10,35 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
+    PostgrestVersion: "14.15";
+  };
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
   public: {
     Tables: {
-      tenant_details: {
-        Row: {
-          tenant_id: string;
-          address: string | null;
-          contact_name: string | null;
-          contact_email: string | null;
-          phone: string | null;
-          city: string | null;
-          region: string | null;
-        };
-        Insert: {
-          tenant_id: string;
-          address?: string | null;
-          contact_name?: string | null;
-          contact_email?: string | null;
-          phone?: string | null;
-          city?: string | null;
-          region?: string | null;
-        };
-        Update: {
-          tenant_id?: string;
-          address?: string | null;
-          contact_name?: string | null;
-          contact_email?: string | null;
-          phone?: string | null;
-          city?: string | null;
-          region?: string | null;
-        };
-        Relationships: [{
-          foreignKeyName: "tenant_details_tenant_id_fkey";
-          columns: ["tenant_id"];
-          isOneToOne: true;
-          referencedRelation: "tenants";
-          referencedColumns: ["id"];
-        }];
-      };
       abandonment_policies: {
         Row: {
           attendance_percentage_threshold: number;
@@ -575,6 +564,38 @@ export type Database = {
           },
           {
             foreignKeyName: "class_templates_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cognitive_exercise_configs: {
+        Row: {
+          config: Json;
+          created_at: string;
+          id: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          config: Json;
+          created_at?: string;
+          id?: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          config?: Json;
+          created_at?: string;
+          id?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cognitive_exercise_configs_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
             referencedRelation: "tenants";
@@ -1335,6 +1356,136 @@ export type Database = {
         };
         Relationships: [];
       };
+      saas_billing_jobs: {
+        Row: {
+          attempts: number;
+          available_at: string;
+          completed_at: string | null;
+          created_at: string;
+          deduplication_key: string;
+          delivery_id: string | null;
+          id: string;
+          kind: string;
+          last_error: string | null;
+          lease_expires_at: string | null;
+          lease_token: string | null;
+          max_attempts: number;
+          receipt_id: string;
+          status: string;
+        };
+        Insert: {
+          attempts?: number;
+          available_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          deduplication_key: string;
+          delivery_id?: string | null;
+          id?: string;
+          kind: string;
+          last_error?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          max_attempts?: number;
+          receipt_id: string;
+          status?: string;
+        };
+        Update: {
+          attempts?: number;
+          available_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          deduplication_key?: string;
+          delivery_id?: string | null;
+          id?: string;
+          kind?: string;
+          last_error?: string | null;
+          lease_expires_at?: string | null;
+          lease_token?: string | null;
+          max_attempts?: number;
+          receipt_id?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_billing_jobs_delivery_id_fkey";
+            columns: ["delivery_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_receipt_deliveries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_billing_jobs_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_payment_receipts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saas_billing_operations: {
+        Row: {
+          action: string;
+          actor_user_id: string;
+          created_at: string;
+          operation_id: string;
+          payload: Json;
+          result: Json;
+          tenant_id: string | null;
+        };
+        Insert: {
+          action: string;
+          actor_user_id: string;
+          created_at?: string;
+          operation_id: string;
+          payload: Json;
+          result: Json;
+          tenant_id?: string | null;
+        };
+        Update: {
+          action?: string;
+          actor_user_id?: string;
+          created_at?: string;
+          operation_id?: string;
+          payload?: Json;
+          result?: Json;
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_billing_operations_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saas_billing_settings: {
+        Row: {
+          issuer_version_id: string;
+          singleton: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          issuer_version_id: string;
+          singleton?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          issuer_version_id?: string;
+          singleton?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_billing_settings_issuer_version_id_fkey";
+            columns: ["issuer_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_issuer_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       saas_charges: {
         Row: {
           amount: number;
@@ -1345,9 +1496,12 @@ export type Database = {
           failure_message: string | null;
           id: string;
           invoice_id: string;
+          manual_method: string | null;
+          manual_reference: string | null;
           occurred_at: string;
           operation_id: string;
           provider: string | null;
+          recorded_by: string | null;
           status: string;
           tenant_id: string;
           updated_at: string;
@@ -1361,9 +1515,12 @@ export type Database = {
           failure_message?: string | null;
           id?: string;
           invoice_id: string;
+          manual_method?: string | null;
+          manual_reference?: string | null;
           occurred_at?: string;
           operation_id: string;
           provider?: string | null;
+          recorded_by?: string | null;
           status?: string;
           tenant_id: string;
           updated_at?: string;
@@ -1377,9 +1534,12 @@ export type Database = {
           failure_message?: string | null;
           id?: string;
           invoice_id?: string;
+          manual_method?: string | null;
+          manual_reference?: string | null;
           occurred_at?: string;
           operation_id?: string;
           provider?: string | null;
+          recorded_by?: string | null;
           status?: string;
           tenant_id?: string;
           updated_at?: string;
@@ -1396,25 +1556,63 @@ export type Database = {
             foreignKeyName: "saas_charges_tenant_id_invoice_id_fkey";
             columns: ["tenant_id", "invoice_id"];
             isOneToOne: false;
+            referencedRelation: "saas_collection_balances";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "saas_charges_tenant_id_invoice_id_fkey";
+            columns: ["tenant_id", "invoice_id"];
+            isOneToOne: false;
             referencedRelation: "saas_invoices";
             referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      saas_document_worker_runs: {
+        Row: {
+          claimed_job: string | null;
+          id: string;
+          started_at: string;
+        };
+        Insert: {
+          claimed_job?: string | null;
+          id?: string;
+          started_at?: string;
+        };
+        Update: {
+          claimed_job?: string | null;
+          id?: string;
+          started_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_document_worker_runs_claimed_job_fkey";
+            columns: ["claimed_job"];
+            isOneToOne: false;
+            referencedRelation: "saas_billing_jobs";
+            referencedColumns: ["id"];
           },
         ];
       };
       saas_invoices: {
         Row: {
           amount: number;
+          contract_snapshot: Json | null;
           created_at: string;
           currency: string;
           due_on: string | null;
           external_invoice_id: string | null;
           id: string;
+          invoice_kind: string;
           invoice_number: string;
           issued_at: string | null;
+          line_items: Json;
           paid_at: string | null;
           payment_provider: string | null;
+          period_end_exclusive: string | null;
           period_ends_on: string;
           period_starts_on: string;
+          plan_version_id: string | null;
           status: string;
           subscription_id: string;
           tenant_id: string;
@@ -1422,17 +1620,22 @@ export type Database = {
         };
         Insert: {
           amount: number;
+          contract_snapshot?: Json | null;
           created_at?: string;
           currency: string;
           due_on?: string | null;
           external_invoice_id?: string | null;
           id?: string;
+          invoice_kind?: string;
           invoice_number: string;
           issued_at?: string | null;
+          line_items?: Json;
           paid_at?: string | null;
           payment_provider?: string | null;
+          period_end_exclusive?: string | null;
           period_ends_on: string;
           period_starts_on: string;
+          plan_version_id?: string | null;
           status?: string;
           subscription_id: string;
           tenant_id: string;
@@ -1440,23 +1643,35 @@ export type Database = {
         };
         Update: {
           amount?: number;
+          contract_snapshot?: Json | null;
           created_at?: string;
           currency?: string;
           due_on?: string | null;
           external_invoice_id?: string | null;
           id?: string;
+          invoice_kind?: string;
           invoice_number?: string;
           issued_at?: string | null;
+          line_items?: Json;
           paid_at?: string | null;
           payment_provider?: string | null;
+          period_end_exclusive?: string | null;
           period_ends_on?: string;
           period_starts_on?: string;
+          plan_version_id?: string | null;
           status?: string;
           subscription_id?: string;
           tenant_id?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "saas_invoices_plan_version_id_fkey";
+            columns: ["plan_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plan_versions";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "saas_invoices_tenant_id_fkey";
             columns: ["tenant_id"];
@@ -1472,6 +1687,39 @@ export type Database = {
             referencedColumns: ["tenant_id", "id"];
           },
         ];
+      };
+      saas_issuer_versions: {
+        Row: {
+          address: string;
+          created_at: string;
+          created_by: string;
+          email: string;
+          id: string;
+          legal_name: string;
+          tax_id: string;
+          version_number: number;
+        };
+        Insert: {
+          address: string;
+          created_at?: string;
+          created_by: string;
+          email: string;
+          id?: string;
+          legal_name: string;
+          tax_id: string;
+          version_number?: never;
+        };
+        Update: {
+          address?: string;
+          created_at?: string;
+          created_by?: string;
+          email?: string;
+          id?: string;
+          legal_name?: string;
+          tax_id?: string;
+          version_number?: never;
+        };
+        Relationships: [];
       };
       saas_limits: {
         Row: {
@@ -1537,11 +1785,165 @@ export type Database = {
           },
         ];
       };
+      saas_payment_receipts: {
+        Row: {
+          charge_id: string;
+          created_at: string;
+          currency: string;
+          folio: number;
+          id: string;
+          invoice_id: string;
+          issuer_version_id: string;
+          net: number;
+          snapshot: Json;
+          tenant_id: string;
+          total: number;
+          vat: number;
+          vat_rate: number;
+        };
+        Insert: {
+          charge_id: string;
+          created_at?: string;
+          currency?: string;
+          folio?: number;
+          id?: string;
+          invoice_id: string;
+          issuer_version_id: string;
+          net: number;
+          snapshot: Json;
+          tenant_id: string;
+          total: number;
+          vat: number;
+          vat_rate?: number;
+        };
+        Update: {
+          charge_id?: string;
+          created_at?: string;
+          currency?: string;
+          folio?: number;
+          id?: string;
+          invoice_id?: string;
+          issuer_version_id?: string;
+          net?: number;
+          snapshot?: Json;
+          tenant_id?: string;
+          total?: number;
+          vat?: number;
+          vat_rate?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_payment_receipts_issuer_version_id_fkey";
+            columns: ["issuer_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_issuer_versions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_payment_receipts_tenant_id_charge_id_fkey";
+            columns: ["tenant_id", "charge_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_charges";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "saas_payment_receipts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_payment_receipts_tenant_id_invoice_id_fkey";
+            columns: ["tenant_id", "invoice_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_collection_balances";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "saas_payment_receipts_tenant_id_invoice_id_fkey";
+            columns: ["tenant_id", "invoice_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_invoices";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      saas_plan_versions: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          description: string | null;
+          duration_count: number;
+          duration_unit: string;
+          features: Json;
+          id: string;
+          legacy: boolean;
+          max_students: number;
+          max_users: number;
+          name: string;
+          plan_id: string;
+          price: number;
+          services: Json;
+          trial_days: number;
+          version_number: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          currency: string;
+          description?: string | null;
+          duration_count: number;
+          duration_unit: string;
+          features: Json;
+          id?: string;
+          legacy?: boolean;
+          max_students: number;
+          max_users: number;
+          name: string;
+          plan_id: string;
+          price: number;
+          services?: Json;
+          trial_days: number;
+          version_number: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          description?: string | null;
+          duration_count?: number;
+          duration_unit?: string;
+          features?: Json;
+          id?: string;
+          legacy?: boolean;
+          max_students?: number;
+          max_users?: number;
+          name?: string;
+          plan_id?: string;
+          price?: number;
+          services?: Json;
+          trial_days?: number;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_plan_versions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       saas_plans: {
         Row: {
           billing_cycle: string;
+          commercially_managed: boolean;
           created_at: string;
           currency: string;
+          current_version_id: string | null;
           description: string | null;
           features: Json;
           id: string;
@@ -1556,8 +1958,10 @@ export type Database = {
         };
         Insert: {
           billing_cycle: string;
+          commercially_managed?: boolean;
           created_at?: string;
-          currency: string;
+          currency?: string;
+          current_version_id?: string | null;
           description?: string | null;
           features?: Json;
           id?: string;
@@ -1572,8 +1976,10 @@ export type Database = {
         };
         Update: {
           billing_cycle?: string;
+          commercially_managed?: boolean;
           created_at?: string;
           currency?: string;
+          current_version_id?: string | null;
           description?: string | null;
           features?: Json;
           id?: string;
@@ -1586,7 +1992,15 @@ export type Database = {
           trial_days?: number;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "saas_plans_current_version_fkey";
+            columns: ["id", "current_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plan_versions";
+            referencedColumns: ["plan_id", "id"];
+          },
+        ];
       };
       saas_privileged_audit_log: {
         Row: {
@@ -1700,6 +2114,97 @@ export type Database = {
           },
         ];
       };
+      saas_receipt_deliveries: {
+        Row: {
+          accepted_at: string | null;
+          delivered_at: string | null;
+          fallback_approved: boolean;
+          id: string;
+          last_error: string | null;
+          operation_id: string;
+          provider_id: string | null;
+          receipt_id: string;
+          recipient: string;
+          recipient_source: string;
+          requested_at: string;
+          requested_by: string;
+          status: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          fallback_approved?: boolean;
+          id?: string;
+          last_error?: string | null;
+          operation_id: string;
+          provider_id?: string | null;
+          receipt_id: string;
+          recipient: string;
+          recipient_source: string;
+          requested_at?: string;
+          requested_by: string;
+          status?: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          delivered_at?: string | null;
+          fallback_approved?: boolean;
+          id?: string;
+          last_error?: string | null;
+          operation_id?: string;
+          provider_id?: string | null;
+          receipt_id?: string;
+          recipient?: string;
+          recipient_source?: string;
+          requested_at?: string;
+          requested_by?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_receipt_deliveries_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_payment_receipts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saas_receipt_documents: {
+        Row: {
+          byte_size: number;
+          content_type: string;
+          created_at: string;
+          receipt_id: string;
+          sha256: string;
+          storage_path: string;
+        };
+        Insert: {
+          byte_size: number;
+          content_type?: string;
+          created_at?: string;
+          receipt_id: string;
+          sha256: string;
+          storage_path: string;
+        };
+        Update: {
+          byte_size?: number;
+          content_type?: string;
+          created_at?: string;
+          receipt_id?: string;
+          sha256?: string;
+          storage_path?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_receipt_documents_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: true;
+            referencedRelation: "saas_payment_receipts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       saas_refunds: {
         Row: {
           amount: number;
@@ -1763,14 +2268,175 @@ export type Database = {
           },
         ];
       };
+      saas_renewal_failures: {
+        Row: {
+          attempt_count: number;
+          error_code: string;
+          next_attempt_at: string | null;
+          period_starts_on: string;
+          subscription_id: string;
+        };
+        Insert: {
+          attempt_count: number;
+          error_code: string;
+          next_attempt_at?: string | null;
+          period_starts_on: string;
+          subscription_id: string;
+        };
+        Update: {
+          attempt_count?: number;
+          error_code?: string;
+          next_attempt_at?: string | null;
+          period_starts_on?: string;
+          subscription_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_renewal_failures_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saas_renewal_runs: {
+        Row: {
+          actor_user_id: string | null;
+          occurred_at: string;
+          payload: Json;
+          request_id: string;
+          result: Json;
+          status: string;
+          subscription_id: string | null;
+          tenant_id: string | null;
+        };
+        Insert: {
+          actor_user_id?: string | null;
+          occurred_at?: string;
+          payload: Json;
+          request_id: string;
+          result: Json;
+          status: string;
+          subscription_id?: string | null;
+          tenant_id?: string | null;
+        };
+        Update: {
+          actor_user_id?: string | null;
+          occurred_at?: string;
+          payload?: Json;
+          request_id?: string;
+          result?: Json;
+          status?: string;
+          subscription_id?: string | null;
+          tenant_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_renewal_runs_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_subscriptions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_renewal_runs_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saas_scheduled_plan_changes: {
+        Row: {
+          blocked_reason: string | null;
+          created_at: string;
+          created_by: string;
+          effective_on: string;
+          id: string;
+          operation_id: string;
+          plan_id: string;
+          plan_version_id: string;
+          processed_at: string | null;
+          reason: string;
+          status: string;
+          subscription_id: string;
+          tenant_id: string;
+        };
+        Insert: {
+          blocked_reason?: string | null;
+          created_at?: string;
+          created_by: string;
+          effective_on: string;
+          id?: string;
+          operation_id: string;
+          plan_id: string;
+          plan_version_id: string;
+          processed_at?: string | null;
+          reason: string;
+          status?: string;
+          subscription_id: string;
+          tenant_id: string;
+        };
+        Update: {
+          blocked_reason?: string | null;
+          created_at?: string;
+          created_by?: string;
+          effective_on?: string;
+          id?: string;
+          operation_id?: string;
+          plan_id?: string;
+          plan_version_id?: string;
+          processed_at?: string | null;
+          reason?: string;
+          status?: string;
+          subscription_id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_scheduled_plan_changes_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_scheduled_plan_changes_plan_id_plan_version_id_fkey";
+            columns: ["plan_id", "plan_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plan_versions";
+            referencedColumns: ["plan_id", "id"];
+          },
+          {
+            foreignKeyName: "saas_scheduled_plan_changes_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_scheduled_plan_changes_tenant_id_subscription_id_fkey";
+            columns: ["tenant_id", "subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_subscriptions";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
       saas_subscription_events: {
         Row: {
           billing_cycle: string;
           currency: string;
+          duration_count: number | null;
+          duration_unit: string | null;
           effective_on: string;
+          event_order: number;
           id: string;
           new_status: string;
           occurred_at: string;
+          plan_version_id: string | null;
           previous_status: string | null;
           price: number;
           subscription_id: string;
@@ -1779,10 +2445,14 @@ export type Database = {
         Insert: {
           billing_cycle: string;
           currency: string;
+          duration_count?: number | null;
+          duration_unit?: string | null;
           effective_on: string;
+          event_order?: never;
           id?: string;
           new_status: string;
           occurred_at?: string;
+          plan_version_id?: string | null;
           previous_status?: string | null;
           price: number;
           subscription_id: string;
@@ -1791,16 +2461,27 @@ export type Database = {
         Update: {
           billing_cycle?: string;
           currency?: string;
+          duration_count?: number | null;
+          duration_unit?: string | null;
           effective_on?: string;
+          event_order?: never;
           id?: string;
           new_status?: string;
           occurred_at?: string;
+          plan_version_id?: string | null;
           previous_status?: string | null;
           price?: number;
           subscription_id?: string;
           tenant_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "saas_subscription_events_plan_version_id_fkey";
+            columns: ["plan_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plan_versions";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "saas_subscription_events_subscription_id_fkey";
             columns: ["subscription_id"];
@@ -1826,20 +2507,30 @@ export type Database = {
       };
       saas_subscriptions: {
         Row: {
+          applied_rate_denominator: number | null;
+          applied_rate_numerator: number | null;
           billing_cycle: string;
+          contract_snapshot: Json | null;
           converted_at: string | null;
           created_at: string;
           currency: string;
+          current_period_end_exclusive: string | null;
           current_period_ends_on: string;
           current_period_starts_on: string;
+          duration_count: number | null;
+          duration_unit: string | null;
           ended_on: string | null;
           external_customer_id: string | null;
           external_subscription_id: string | null;
+          first_invoice_due_on: string | null;
           id: string;
           next_billing_date: string | null;
           payment_provider: string | null;
           payment_status: string;
+          period_anchor_on: string | null;
+          period_index: number;
           plan_id: string;
+          plan_version_id: string | null;
           price: number;
           starts_on: string;
           status: string;
@@ -1848,20 +2539,30 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          applied_rate_denominator?: number | null;
+          applied_rate_numerator?: number | null;
           billing_cycle: string;
+          contract_snapshot?: Json | null;
           converted_at?: string | null;
           created_at?: string;
           currency: string;
+          current_period_end_exclusive?: string | null;
           current_period_ends_on: string;
           current_period_starts_on: string;
+          duration_count?: number | null;
+          duration_unit?: string | null;
           ended_on?: string | null;
           external_customer_id?: string | null;
           external_subscription_id?: string | null;
+          first_invoice_due_on?: string | null;
           id?: string;
           next_billing_date?: string | null;
           payment_provider?: string | null;
           payment_status?: string;
+          period_anchor_on?: string | null;
+          period_index?: number;
           plan_id: string;
+          plan_version_id?: string | null;
           price: number;
           starts_on: string;
           status: string;
@@ -1870,20 +2571,30 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          applied_rate_denominator?: number | null;
+          applied_rate_numerator?: number | null;
           billing_cycle?: string;
+          contract_snapshot?: Json | null;
           converted_at?: string | null;
           created_at?: string;
           currency?: string;
+          current_period_end_exclusive?: string | null;
           current_period_ends_on?: string;
           current_period_starts_on?: string;
+          duration_count?: number | null;
+          duration_unit?: string | null;
           ended_on?: string | null;
           external_customer_id?: string | null;
           external_subscription_id?: string | null;
+          first_invoice_due_on?: string | null;
           id?: string;
           next_billing_date?: string | null;
           payment_provider?: string | null;
           payment_status?: string;
+          period_anchor_on?: string | null;
+          period_index?: number;
           plan_id?: string;
+          plan_version_id?: string | null;
           price?: number;
           starts_on?: string;
           status?: string;
@@ -1905,6 +2616,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_subscriptions_version_fkey";
+            columns: ["plan_id", "plan_version_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_plan_versions";
+            referencedColumns: ["plan_id", "id"];
           },
         ];
       };
@@ -2564,6 +3282,102 @@ export type Database = {
           },
         ];
       };
+      student_portal_accounts: {
+        Row: {
+          created_at: string;
+          invited_by_membership_id: string;
+          student_id: string;
+          tenant_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          invited_by_membership_id: string;
+          student_id: string;
+          tenant_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          invited_by_membership_id?: string;
+          student_id?: string;
+          tenant_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "student_portal_accounts_tenant_id_invited_by_membership_id_fkey";
+            columns: ["tenant_id", "invited_by_membership_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_memberships";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "student_portal_accounts_tenant_id_student_id_fkey";
+            columns: ["tenant_id", "student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      student_portal_invitations: {
+        Row: {
+          created_at: string;
+          created_by_membership_id: string;
+          expires_at: string;
+          id: string;
+          invited_email: string;
+          redeemed_at: string | null;
+          redeemed_by: string | null;
+          revoked_at: string | null;
+          student_id: string;
+          tenant_id: string;
+          token_hash: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by_membership_id: string;
+          expires_at: string;
+          id?: string;
+          invited_email: string;
+          redeemed_at?: string | null;
+          redeemed_by?: string | null;
+          revoked_at?: string | null;
+          student_id: string;
+          tenant_id: string;
+          token_hash: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by_membership_id?: string;
+          expires_at?: string;
+          id?: string;
+          invited_email?: string;
+          redeemed_at?: string | null;
+          redeemed_by?: string | null;
+          revoked_at?: string | null;
+          student_id?: string;
+          tenant_id?: string;
+          token_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "student_portal_invitations_tenant_id_created_by_membership_fkey";
+            columns: ["tenant_id", "created_by_membership_id"];
+            isOneToOne: false;
+            referencedRelation: "tenant_memberships";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "student_portal_invitations_tenant_id_student_id_fkey";
+            columns: ["tenant_id", "student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
       students: {
         Row: {
           archived_at: string | null;
@@ -2618,6 +3432,44 @@ export type Database = {
             foreignKeyName: "students_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tenant_details: {
+        Row: {
+          address: string | null;
+          city: string | null;
+          contact_email: string | null;
+          contact_name: string | null;
+          phone: string | null;
+          region: string | null;
+          tenant_id: string;
+        };
+        Insert: {
+          address?: string | null;
+          city?: string | null;
+          contact_email?: string | null;
+          contact_name?: string | null;
+          phone?: string | null;
+          region?: string | null;
+          tenant_id: string;
+        };
+        Update: {
+          address?: string | null;
+          city?: string | null;
+          contact_email?: string | null;
+          contact_name?: string | null;
+          phone?: string | null;
+          region?: string | null;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_details_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
             referencedRelation: "tenants";
             referencedColumns: ["id"];
           },
@@ -2781,172 +3633,48 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      saas_collection_balances: {
+        Row: {
+          amount: number | null;
+          balance: number | null;
+          confirmed_amount: number | null;
+          currency: string | null;
+          due_on: string | null;
+          id: string | null;
+          imported_settlement: boolean | null;
+          in_flight_count: number | null;
+          invoice_kind: string | null;
+          invoice_number: string | null;
+          issued_at: string | null;
+          paid_at: string | null;
+          period_end_exclusive: string | null;
+          period_starts_on: string | null;
+          plan_name: string | null;
+          status: string | null;
+          stored_status: string | null;
+          subscription_id: string | null;
+          tenant_id: string | null;
+          tenant_name: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saas_invoices_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saas_invoices_tenant_id_subscription_id_fkey";
+            columns: ["tenant_id", "subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "saas_subscriptions";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
     };
     Functions: {
-      get_saas_financial_ledger: {
-        Args: { target_period: string; target_currency: string; target_metric: string; page_number: number };
-        Returns: Json;
-      };
-      reconcile_saas_receipt_delivery: {
-        Args: { target_delivery: string; confirmed_provider_id: string | null; confirmed_not_sent: boolean; change_reason: string };
-        Returns: Json;
-      };
-      get_my_saas_billing: { Args: { target_tenant: string; page_number: number }; Returns: Json };
-      record_saas_manual_payment: {
-        Args: { target_invoice: string; expected_amount: number; paid_on: string; payment_method: string; payment_reference: string | null; operation_id: string; change_reason: string };
-        Returns: Json;
-      };
-      void_saas_invoice: { Args: { target_invoice: string; operation_id: string; change_reason: string }; Returns: Json };
-      get_saas_receipt: { Args: { target_receipt: string }; Returns: Json };
-      list_saas_invoice_receipts: { Args: { target_invoice: string }; Returns: Json };
-      authorize_saas_receipt_download: { Args: { target_receipt: string }; Returns: Json };
-      request_saas_receipt_delivery: {
-        Args: { target_receipt: string; operation_id: string; recipient: string; recipient_source: string; fallback_approved: boolean };
-        Returns: Json;
-      };
-      retry_saas_receipt_pdf: { Args: { target_receipt: string }; Returns: Json };
-      claim_saas_billing_job: { Args: Record<PropertyKey, never>; Returns: Json };
-      finish_saas_billing_job: {
-        Args: { target_job: string; target_lease: string; outcome: string; document_path: string | null;
-          document_hash: string | null; document_size: number | null; provider_id: string | null; error_code: string | null };
-        Returns: Json;
-      };
-      get_saas_document_processor_status: { Args: Record<PropertyKey, never>; Returns: Json };
-      list_saas_document_jobs: {
-        Args: { tenant_query: string; target_kind: string; target_status: string; page_number: number; page_size: number };
-        Returns: Json;
-      };
-      list_saas_collections: {
-        Args: {
-          target_tenant: string | null; tenant_query: string; target_status: string; target_currency: string | null;
-          due_from: string | null; due_until: string | null; page_number: number; page_size: number;
-        };
-        Returns: Json;
-      };
-      get_saas_collection: { Args: { target_invoice: string }; Returns: Json };
-      get_saas_billing_issuer: { Args: Record<PropertyKey, never>; Returns: Json };
-      save_saas_billing_issuer: {
-        Args: {
-          operation_id: string; expected_version: string | null; legal_name: string;
-          tax_id: string; address: string; email: string; change_reason: string;
-        };
-        Returns: Json;
-      };
-      process_saas_subscription_renewal: {
-        Args: { request_id: string; target_subscription: string | null; expected_period_end: string | null };
-        Returns: Json;
-      };
-      get_saas_renewal_status: {
-        Args: { target_tenant: string | null };
-        Returns: Json;
-      };
-      preview_saas_plan_change: {
-        Args: { target_tenant: string; target_version: string };
-        Returns: Json;
-      };
-      confirm_saas_plan_change: {
-        Args: { target_tenant: string; target_version: string; expected_fingerprint: string; operation_id: string; change_reason: string };
-        Returns: Json;
-      };
-      cancel_saas_scheduled_change: {
-        Args: { target_tenant: string; target_change: string; operation_id: string; change_reason: string };
-        Returns: Json;
-      };
-      get_saas_subscription_management: {
-        Args: { target_tenant: string };
-        Returns: Json;
-      };
-      preview_saas_subscription_assignment: {
-        Args: { target_tenant: string; target_version: string; starts_on: string; use_trial: boolean; due_on: string | null };
-        Returns: Json;
-      };
-      confirm_saas_subscription_assignment: {
-        Args: {
-          target_tenant: string; target_version: string; starts_on: string; use_trial: boolean;
-          due_on: string | null; expected_fingerprint: string; operation_id: string; change_reason: string;
-        };
-        Returns: Json;
-      };
-      list_saas_plan_catalog: {
-        Args: Record<PropertyKey, never>;
-        Returns: Json;
-      };
-      list_saas_plan_versions: {
-        Args: { target_plan: string; page_number: number; page_size: number };
-        Returns: Json;
-      };
-      publish_saas_plan_version: {
-        Args: {
-          target_plan: string | null;
-          expected_version: string | null;
-          operation_id: string;
-          terms: Json;
-          change_reason: string;
-        };
-        Returns: Json;
-      };
-      archive_saas_plan: {
-        Args: {
-          target_plan: string;
-          expected_version: string;
-          operation_id: string;
-          change_reason: string;
-        };
-        Returns: Json;
-      };
-      get_tenant_details: {
-        Args: { target_tenant: string };
-        Returns: {
-          tenant_id: string;
-          name: string;
-          address: string | null;
-          contact_name: string | null;
-          contact_email: string | null;
-          phone: string | null;
-          city: string | null;
-          region: string | null;
-        }[];
-      };
-      update_tenant_details: {
-        Args: {
-          target_tenant: string;
-          target_name: string;
-          target_address: string;
-          target_contact_name: string;
-          target_contact_email: string;
-          target_phone: string;
-          target_city: string;
-          target_region: string;
-        };
-        Returns: undefined;
-      };
-      programming_batch_row_uuid: {
-        Args: { value: string };
-        Returns: string;
-      };
-      program_class_batch: {
-        Args: {
-          target_tenant_id: string;
-          target_instructor_membership_id: string;
-          target_programming: Json;
-          target_intent: string;
-          target_commit: boolean;
-          target_preview_fingerprint?: string | null;
-        };
-        Returns: Json;
-      };
-      list_class_templates_for_administration: {
-        Args: { target_tenant_id: string };
-        Returns: {
-          id: string;
-          name: string;
-          capacity: number;
-          discipline_name: string;
-          schedule_count: number;
-          session_count: number;
-        }[];
-      };
       activate_student_membership: {
         Args: {
           target_actor_membership: string;
@@ -2962,13 +3690,36 @@ export type Database = {
         Args: { operation_key: string };
         Returns: string;
       };
+      archive_saas_plan: {
+        Args: {
+          change_reason: string;
+          expected_version: string;
+          operation_id: string;
+          target_plan: string;
+        };
+        Returns: Json;
+      };
+      authorize_saas_receipt_download: {
+        Args: { target_receipt: string };
+        Returns: Json;
+      };
+      calculate_saas_assignment: {
+        Args: {
+          due_on: string;
+          starts_on: string;
+          target_tenant: string;
+          target_version: string;
+          use_trial: boolean;
+        };
+        Returns: Json;
+      };
+      calculate_saas_plan_change: {
+        Args: { target_tenant: string; target_version: string };
+        Returns: Json;
+      };
       can_access_student_health: {
         Args: { target_tenant: string };
         Returns: boolean;
-      };
-      search_attendance_students: {
-        Args: { target_tenant: string; search_text: string; page_number?: number };
-        Returns: { student_id: string; student_name: string; total_count: number }[];
       };
       can_manage_instructor_scope: {
         Args: { target_instructor_membership: string; target_tenant: string };
@@ -2998,6 +3749,10 @@ export type Database = {
         Args: { target_tenant: string };
         Returns: boolean;
       };
+      can_read_saas_receipt: {
+        Args: { target_tenant: string };
+        Returns: boolean;
+      };
       can_review_sensitive_audit: {
         Args: { target_tenant: string };
         Returns: boolean;
@@ -3014,13 +3769,14 @@ export type Database = {
         Args: { target_instructor_membership: string; target_tenant: string };
         Returns: boolean;
       };
-      cancel_student_portal_enrollment: {
+      cancel_saas_scheduled_change: {
         Args: {
-          target_session_id: string;
-          target_student_id: string;
-          target_tenant_id: string;
+          change_reason: string;
+          operation_id: string;
+          target_change: string;
+          target_tenant: string;
         };
-        Returns: undefined;
+        Returns: Json;
       };
       cancel_session_enrollment: {
         Args: {
@@ -3048,6 +3804,7 @@ export type Database = {
         Args: { target_now: string };
         Returns: Json;
       };
+      claim_saas_billing_job: { Args: never; Returns: Json };
       complete_notification_delivery: {
         Args: {
           target_attempt_number: number;
@@ -3060,6 +3817,29 @@ export type Database = {
         };
         Returns: string;
       };
+      confirm_saas_plan_change: {
+        Args: {
+          change_reason: string;
+          expected_fingerprint: string;
+          operation_id: string;
+          target_tenant: string;
+          target_version: string;
+        };
+        Returns: Json;
+      };
+      confirm_saas_subscription_assignment: {
+        Args: {
+          change_reason: string;
+          due_on: string;
+          expected_fingerprint: string;
+          operation_id: string;
+          starts_on: string;
+          target_tenant: string;
+          target_version: string;
+          use_trial: boolean;
+        };
+        Returns: Json;
+      };
       correct_student_personal_data: {
         Args: {
           corrected_birth_date?: string;
@@ -3069,74 +3849,6 @@ export type Database = {
         };
         Returns: undefined;
       };
-      create_routed_activity_event: {
-        Args: {
-          include_scoped_instructors?: boolean;
-          target_entity: string;
-          target_entity_type: string;
-          target_event_type: string;
-          target_message: string;
-          target_metadata: Json;
-          target_occurred_at: string;
-          target_operation: string;
-          target_origin: string;
-          target_session?: string;
-          target_severity: string;
-          target_student?: string;
-          target_tenant: string;
-          target_title: string;
-        };
-        Returns: string;
-      };
-      current_membership_id: {
-        Args: { target_tenant: string };
-        Returns: string;
-      };
-      current_membership_role: {
-        Args: { target_tenant: string };
-        Returns: string;
-      };
-      evaluate_membership_collection_notices: {
-        Args: {
-          reference_date?: string;
-          renewal_window_days?: number;
-          target_tenant?: string;
-        };
-        Returns: number;
-      };
-      membership_outstanding_balances: {
-        Args: { target_tenant?: string };
-        Returns: {
-          balance: number;
-          currency: string;
-          expiration_grace_days: number;
-          expires_at: string;
-          membership_id: string;
-          next_billing_date: string;
-          status: string;
-          student_id: string;
-          tenant_id: string;
-        }[];
-      };
-      resolve_settled_collection_notices: {
-        Args: { target_membership: string; target_tenant: string };
-        Returns: number;
-      };
-      redeem_student_portal_invitation: {
-        Args: { target_token_hash: string };
-        Returns: undefined;
-      };
-      current_saas_limits: {
-        Args: { effective_on?: string; target_tenant: string };
-        Returns: {
-          features: Json;
-          max_students: number;
-          max_users: number;
-          plan_id: string;
-          subscription_status: string;
-        }[];
-      };
-      current_tenant_ids: { Args: never; Returns: string[] };
       create_one_off_class_session: {
         Args: {
           target_class_template_id: string;
@@ -3171,6 +3883,25 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      create_routed_activity_event: {
+        Args: {
+          include_scoped_instructors?: boolean;
+          target_entity: string;
+          target_entity_type: string;
+          target_event_type: string;
+          target_message: string;
+          target_metadata: Json;
+          target_occurred_at: string;
+          target_operation: string;
+          target_origin: string;
+          target_session?: string;
+          target_severity: string;
+          target_student?: string;
+          target_tenant: string;
+          target_title: string;
+        };
+        Returns: string;
+      };
       create_student_portal_invitation: {
         Args: {
           target_expires_at: string;
@@ -3183,6 +3914,33 @@ export type Database = {
           invited_email: string;
           tenant_name: string;
         }[];
+      };
+      current_membership_id: {
+        Args: { target_tenant: string };
+        Returns: string;
+      };
+      current_membership_role: {
+        Args: { target_tenant: string };
+        Returns: string;
+      };
+      current_saas_limits: {
+        Args: { effective_on?: string; target_tenant: string };
+        Returns: {
+          features: Json;
+          max_students: number;
+          max_users: number;
+          plan_id: string;
+          subscription_status: string;
+        }[];
+      };
+      current_tenant_ids: { Args: never; Returns: string[] };
+      enqueue_saas_payment_receipt: {
+        Args: {
+          receipt_method: string;
+          receipt_reference: string;
+          target_charge: string;
+        };
+        Returns: string;
       };
       enroll_student_in_session: {
         Args: {
@@ -3206,8 +3964,29 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      evaluate_membership_collection_notices: {
+        Args: {
+          reference_date?: string;
+          renewal_window_days?: number;
+          target_tenant?: string;
+        };
+        Returns: number;
+      };
       export_student_personal_data: {
         Args: { target_student: string; target_tenant: string };
+        Returns: Json;
+      };
+      finish_saas_billing_job: {
+        Args: {
+          document_hash: string | undefined;
+          document_path: string | undefined;
+          document_size: number | undefined;
+          error_code: string | undefined;
+          outcome: string;
+          provider_id: string | undefined;
+          target_job: string;
+          target_lease: string;
+        };
         Returns: Json;
       };
       generate_class_session: {
@@ -3241,55 +4020,13 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      has_pending_student_portal_invitation: {
-        Args: never;
-        Returns: boolean;
+      get_my_saas_billing: {
+        Args: { page_number?: number; target_tenant: string };
+        Returns: Json;
       };
-      list_my_student_portal_sessions: {
-        Args: { target_student_id: string };
-        Returns: {
-          capacity: number;
-          class_name: string;
-          confirmed_count: number;
-          enrollment_status: string | null;
-          ends_at: string;
-          location_name: string;
-          session_id: string;
-          starts_at: string;
-          student_id: string;
-          tenant_id: string;
-          timezone: string;
-          waitlist_enabled: boolean;
-          waitlisted_count: number;
-        }[];
-      };
-      list_my_student_portal_students: {
-        Args: never;
-        Returns: {
-          full_name: string;
-          student_id: string;
-          tenant_id: string;
-          tenant_name: string;
-        }[];
-      };
-      publish_recurring_class_sessions: {
-        Args: {
-          target_class_schedule_id: string;
-          target_from_date: string;
-          target_tenant_id: string;
-          target_through_date: string;
-          target_waitlist_enabled?: boolean;
-        };
-        Returns: number;
-      };
-      lookup_student_portal_invitation: {
-        Args: { target_token_hash: string };
-        Returns: {
-          expires_at: string;
-          invited_email: string;
-          tenant_name: string;
-        }[];
-      };
+      get_saas_billing_issuer: { Args: never; Returns: Json };
+      get_saas_collection: { Args: { target_invoice: string }; Returns: Json };
+      get_saas_document_processor_status: { Args: never; Returns: Json };
       get_saas_financial_dashboard: {
         Args: { target_period: string };
         Returns: {
@@ -3327,6 +4064,24 @@ export type Database = {
           trials_converted: number;
           trials_ended: number;
         }[];
+      };
+      get_saas_financial_ledger: {
+        Args: {
+          page_number: number;
+          target_currency: string;
+          target_metric: string;
+          target_period: string;
+        };
+        Returns: Json;
+      };
+      get_saas_receipt: { Args: { target_receipt: string }; Returns: Json };
+      get_saas_renewal_status: {
+        Args: { target_tenant?: string };
+        Returns: Json;
+      };
+      get_saas_subscription_management: {
+        Args: { target_tenant: string };
+        Returns: Json;
       };
       get_saas_tenant_entitlements: {
         Args: { target_tenant: string };
@@ -3374,15 +4129,37 @@ export type Database = {
           reason: string;
         }[];
       };
+      get_tenant_details: {
+        Args: { target_tenant: string };
+        Returns: {
+          address: string;
+          city: string;
+          contact_email: string;
+          contact_name: string;
+          name: string;
+          phone: string;
+          region: string;
+          tenant_id: string;
+        }[];
+      };
       has_current_health_consent: {
         Args: { target_student: string; target_tenant: string };
         Returns: boolean;
       };
+      has_pending_student_portal_invitation: { Args: never; Returns: boolean };
       is_health_policy_approved: {
         Args: { target_tenant: string };
         Returns: boolean;
       };
       is_platform_admin: { Args: never; Returns: boolean };
+      is_student_portal_linked: {
+        Args: { target_student_id: string; target_tenant_id: string };
+        Returns: boolean;
+      };
+      is_valid_saas_issuer_tax_id: {
+        Args: { value: string };
+        Returns: boolean;
+      };
       list_active_saas_plans: {
         Args: never;
         Returns: {
@@ -3403,20 +4180,90 @@ export type Database = {
           name: string;
         }[];
       };
+      list_class_templates_for_administration: {
+        Args: { target_tenant_id: string };
+        Returns: {
+          capacity: number;
+          discipline_name: string;
+          id: string;
+          name: string;
+          schedule_count: number;
+          session_count: number;
+        }[];
+      };
+      list_my_student_portal_sessions: {
+        Args: { target_student_id: string };
+        Returns: {
+          capacity: number;
+          class_name: string;
+          confirmed_count: number;
+          ends_at: string;
+          enrollment_status: string;
+          location_name: string;
+          session_id: string;
+          starts_at: string;
+          student_id: string;
+          tenant_id: string;
+          timezone: string;
+          waitlist_enabled: boolean;
+          waitlisted_count: number;
+        }[];
+      };
+      list_my_student_portal_students: {
+        Args: never;
+        Returns: {
+          full_name: string;
+          student_id: string;
+          tenant_id: string;
+          tenant_name: string;
+        }[];
+      };
+      list_saas_collections: {
+        Args: {
+          due_from: string;
+          due_until: string;
+          page_number: number;
+          page_size: number;
+          target_currency: string;
+          target_status: string;
+          target_tenant: string;
+          tenant_query: string;
+        };
+        Returns: Json;
+      };
+      list_saas_document_jobs: {
+        Args: {
+          page_number: number;
+          page_size: number;
+          target_kind: string;
+          target_status: string;
+          tenant_query: string;
+        };
+        Returns: Json;
+      };
+      list_saas_invoice_receipts: {
+        Args: { target_invoice: string };
+        Returns: Json;
+      };
+      list_saas_plan_catalog: { Args: never; Returns: Json };
+      list_saas_plan_versions: {
+        Args: { page_number: number; page_size: number; target_plan: string };
+        Returns: Json;
+      };
       list_saas_tenants: {
         Args: never;
         Returns: {
-          billing_contact_email: string | null;
-          billing_contact_name: string | null;
-          address: string | null;
-          contact_name: string | null;
-          contact_email: string | null;
-          phone: string | null;
-          city: string | null;
-          region: string | null;
+          address: string;
+          billing_contact_email: string;
+          billing_contact_name: string;
+          city: string;
+          contact_email: string;
+          contact_name: string;
           created_at: string;
           id: string;
           name: string;
+          phone: string;
+          region: string;
           status: string;
         }[];
       };
@@ -3431,9 +4278,49 @@ export type Database = {
           status: string;
         }[];
       };
+      lookup_student_portal_invitation: {
+        Args: { target_token_hash: string };
+        Returns: {
+          expires_at: string;
+          invited_email: string;
+          tenant_name: string;
+        }[];
+      };
       membership_cycle_end: {
         Args: { billing_cycle: string; starts_on: string };
         Returns: string;
+      };
+      membership_outstanding_balances: {
+        Args: { target_tenant?: string };
+        Returns: {
+          balance: number;
+          currency: string;
+          expiration_grace_days: number;
+          expires_at: string;
+          membership_id: string;
+          next_billing_date: string;
+          status: string;
+          student_id: string;
+          tenant_id: string;
+        }[];
+      };
+      notify_saas_blocked_plan_change: {
+        Args: { target_change: string };
+        Returns: undefined;
+      };
+      preview_saas_plan_change: {
+        Args: { target_tenant: string; target_version: string };
+        Returns: Json;
+      };
+      preview_saas_subscription_assignment: {
+        Args: {
+          due_on?: string;
+          starts_on: string;
+          target_tenant: string;
+          target_version: string;
+          use_trial: boolean;
+        };
+        Returns: Json;
       };
       process_saas_payment_event: {
         Args: {
@@ -3451,6 +4338,71 @@ export type Database = {
         };
         Returns: string;
       };
+      process_saas_payment_event_legacy: {
+        Args: {
+          target_amount: number;
+          target_currency: string;
+          target_event_type: string;
+          target_external_charge_id: string;
+          target_external_event_id: string;
+          target_external_invoice_id: string;
+          target_external_refund_id: string;
+          target_external_subscription_id: string;
+          target_occurred_at: string;
+          target_provider: string;
+          target_reason?: string;
+        };
+        Returns: string;
+      };
+      process_saas_subscription_renewal: {
+        Args: {
+          expected_period_end?: string;
+          request_id: string;
+          target_subscription?: string;
+        };
+        Returns: Json;
+      };
+      program_class_batch: {
+        Args: {
+          target_commit: boolean;
+          target_instructor_membership_id: string;
+          target_intent: string;
+          target_preview_fingerprint?: string;
+          target_programming: Json;
+          target_tenant_id: string;
+        };
+        Returns: Json;
+      };
+      programming_batch_row_uuid: { Args: { value: string }; Returns: string };
+      publish_recurring_class_sessions: {
+        Args: {
+          target_class_schedule_id: string;
+          target_from_date: string;
+          target_tenant_id: string;
+          target_through_date: string;
+          target_waitlist_enabled?: boolean;
+        };
+        Returns: number;
+      };
+      publish_saas_plan_version: {
+        Args: {
+          change_reason: string;
+          expected_version: string;
+          operation_id: string;
+          target_plan: string;
+          terms: Json;
+        };
+        Returns: Json;
+      };
+      reconcile_saas_receipt_delivery: {
+        Args: {
+          change_reason: string;
+          confirmed_not_sent: boolean;
+          confirmed_provider_id: string | undefined;
+          target_delivery: string;
+        };
+        Returns: Json;
+      };
       record_membership_payment: {
         Args: {
           target_actor_membership: string;
@@ -3465,6 +4417,18 @@ export type Database = {
           target_tenant: string;
         };
         Returns: string;
+      };
+      record_saas_manual_payment: {
+        Args: {
+          change_reason: string;
+          expected_amount: number;
+          operation_id: string;
+          paid_on: string;
+          payment_method: string;
+          payment_reference: string | undefined;
+          target_invoice: string;
+        };
+        Returns: Json;
       };
       record_saas_privileged_operation: {
         Args: {
@@ -3485,6 +4449,14 @@ export type Database = {
         };
         Returns: string;
       };
+      redeem_student_portal_invitation: {
+        Args: { target_token_hash: string };
+        Returns: undefined;
+      };
+      refresh_saas_subscription_payment: {
+        Args: { target_subscription: string };
+        Returns: undefined;
+      };
       register_health_consent: {
         Args: {
           target_decision: string;
@@ -3494,6 +4466,16 @@ export type Database = {
           target_tenant: string;
         };
         Returns: string;
+      };
+      request_saas_receipt_delivery: {
+        Args: {
+          fallback_approved: boolean;
+          operation_id: string;
+          recipient: string;
+          recipient_source: string;
+          target_receipt: string;
+        };
+        Returns: Json;
       };
       request_student_erasure: {
         Args: {
@@ -3524,7 +4506,64 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      resolve_settled_collection_notices: {
+        Args: { target_membership: string; target_tenant: string };
+        Returns: number;
+      };
+      retry_saas_receipt_pdf: {
+        Args: { target_receipt: string };
+        Returns: Json;
+      };
+      saas_period_boundary: {
+        Args: {
+          anchor_on: string;
+          duration_count: number;
+          duration_unit: string;
+          period_index: number;
+        };
+        Returns: string;
+      };
+      save_saas_billing_issuer: {
+        Args: {
+          address: string;
+          change_reason: string;
+          email: string;
+          expected_version: string | undefined;
+          legal_name: string;
+          operation_id: string;
+          tax_id: string;
+        };
+        Returns: Json;
+      };
       schedule_saas_plan_limits: {
+        Args: {
+          change_reason: string;
+          target_effective_from: string;
+          target_plan: string;
+          target_subscription: string;
+          target_tenant: string;
+        };
+        Returns: {
+          created_at: string;
+          effective_from: string;
+          effective_until: string | null;
+          features: Json;
+          id: string;
+          max_students: number;
+          max_users: number;
+          plan_id: string;
+          subscription_id: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "saas_limits";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      schedule_saas_plan_limits_legacy: {
         Args: {
           change_reason: string;
           target_effective_from: string;
@@ -3579,6 +4618,18 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      search_attendance_students: {
+        Args: {
+          page_number?: number;
+          search_text: string;
+          target_tenant: string;
+        };
+        Returns: {
+          student_id: string;
+          student_name: string;
+          total_count: number;
+        }[];
       };
       transition_saas_tenant_status: {
         Args: {
@@ -3637,6 +4688,19 @@ export type Database = {
         };
         Returns: string;
       };
+      update_tenant_details: {
+        Args: {
+          target_address: string;
+          target_city: string;
+          target_contact_email: string;
+          target_contact_name: string;
+          target_name: string;
+          target_phone: string;
+          target_region: string;
+          target_tenant: string;
+        };
+        Returns: undefined;
+      };
       upsert_abandonment_alert: {
         Args: {
           target_deduplication_key: string;
@@ -3669,6 +4733,14 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      void_saas_invoice: {
+        Args: {
+          change_reason: string;
+          operation_id: string;
+          target_invoice: string;
+        };
+        Returns: Json;
       };
     };
     Enums: {
@@ -3801,6 +4873,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

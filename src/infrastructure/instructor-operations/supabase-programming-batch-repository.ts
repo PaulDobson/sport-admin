@@ -6,7 +6,13 @@ import { BusinessRuleViolationError } from "@/domain/shared/errors";
 const previewSchema = z.object({
   newCount: z.number().int().nonnegative(),
   existingCount: z.number().int().nonnegative(),
-  occurrences: z.array(z.object({ startsAt: z.string(), endsAt: z.string(), locationId: z.string().uuid() })),
+  occurrences: z.array(
+    z.object({
+      startsAt: z.string(),
+      endsAt: z.string(),
+      locationId: z.string().uuid(),
+    }),
+  ),
   conflicts: z.array(z.object({ message: z.string() })),
   fingerprint: z.string(),
 });
@@ -21,7 +27,7 @@ export class SupabaseProgrammingBatchRepository implements ProgrammingBatchPort 
       target_programming: input.programming,
       target_intent: input.intent,
       target_commit: input.commit,
-      target_preview_fingerprint: input.previewFingerprint ?? null,
+      target_preview_fingerprint: input.previewFingerprint ?? undefined,
     });
     if (error) {
       if (["22023", "23514", "P0002", "42501"].includes(error.code)) {
