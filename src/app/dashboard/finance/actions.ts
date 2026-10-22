@@ -67,6 +67,8 @@ function readBenefits(formData: FormData) {
 
 function revalidateFinance() {
   revalidatePath("/dashboard/finance");
+  revalidatePath("/dashboard/finance/collections");
+  revalidatePath("/dashboard/finance/plans");
   revalidatePath("/dashboard/students");
 }
 
