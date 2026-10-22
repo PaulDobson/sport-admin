@@ -32,7 +32,9 @@ function indicators(
   };
 }
 
-function dashboard(overrides: Partial<FinanceDashboard> = {}): FinanceDashboard {
+function dashboard(
+  overrides: Partial<FinanceDashboard> = {},
+): FinanceDashboard {
   return {
     period: "2026-04",
     previousPeriod: "2026-03",
@@ -114,14 +116,22 @@ describe("FinanceSummary", () => {
     expect(within(collected).getByText("$120.000")).toBeTruthy();
     expect(within(collected).getByText("+20 %")).toBeTruthy();
     expect(within(collected).getByText("Mes anterior: $100.000")).toBeTruthy();
-    expect(collected.getAttribute("href")).toContain("section=collections");
+    // Now links to the collections sub-route instead of ?section=collections
+    expect(collected.getAttribute("href")).toContain(
+      "/dashboard/finance/collections",
+    );
 
     const pending = card("Por cobrar");
     expect(within(pending).getByText("$45.000")).toBeTruthy();
     expect(within(pending).getByText("1 en mora")).toBeTruthy();
-    expect(within(pending).getByText("$30.000 en mora · 2 cuentas")).toBeTruthy();
+    expect(
+      within(pending).getByText("$30.000 en mora · 2 cuentas"),
+    ).toBeTruthy();
     expect(pending.getAttribute("href")).toContain("status=past_due");
-    expect(pending.getAttribute("href")).toContain("period=2026-04");
+    // No longer needs period= in the collections link (sub-route handles its own period)
+    expect(pending.getAttribute("href")).toContain(
+      "/dashboard/finance/collections",
+    );
 
     const memberships = card("Membresías vigentes");
     expect(within(memberships).getByText("4")).toBeTruthy();
@@ -131,7 +141,10 @@ describe("FinanceSummary", () => {
     const projected = card("Proyectado");
     expect(within(projected).getByText("$165.000")).toBeTruthy();
     expect(within(projected).getByText("73 % cobrado")).toBeTruthy();
-    expect(projected.getAttribute("href")).toContain("section=plans");
+    // Now links to the plans sub-route instead of ?section=plans
+    expect(projected.getAttribute("href")).toContain(
+      "/dashboard/finance/plans",
+    );
   });
 
   it("reports the variation as unavailable without a previous baseline", () => {
@@ -166,7 +179,9 @@ describe("FinanceSummary", () => {
     const rows = within(table).getAllByRole("row").slice(1);
     expect(within(rows[0]).getByText("10 abr 2026")).toBeTruthy();
     expect(
-      within(rows[0]).getByRole("link", { name: "Ana Pérez" }).getAttribute("href"),
+      within(rows[0])
+        .getByRole("link", { name: "Ana Pérez" })
+        .getAttribute("href"),
     ).toBe("/dashboard/students/s-1");
     expect(within(rows[0]).getByText("Pagado")).toBeTruthy();
     expect(within(rows[1]).getByText("En mora")).toBeTruthy();
@@ -175,11 +190,15 @@ describe("FinanceSummary", () => {
   it("shows plan performance with a textual share, not only a bar", () => {
     renderSummary();
 
-    const list = screen.getByRole("list", { name: "Planes por ingreso mensual" });
+    const list = screen.getByRole("list", {
+      name: "Planes por ingreso mensual",
+    });
     const items = within(list).getAllByRole("listitem");
     expect(within(items[0]).getByText("Mensual")).toBeTruthy();
     expect(within(items[0]).getByText("75 %")).toBeTruthy();
-    expect(within(items[0]).getByText(/3 alumnos · \$90\.000 al mes/)).toBeTruthy();
+    expect(
+      within(items[0]).getByText(/3 alumnos · \$90\.000 al mes/),
+    ).toBeTruthy();
     expect(within(items[1]).getByText(/1 alumno · /)).toBeTruthy();
   });
 
@@ -193,7 +212,9 @@ describe("FinanceSummary", () => {
       }),
     });
 
-    expect(within(card("Cobrado del mes")).getAllByText("$0").length).toBeGreaterThan(0);
+    expect(
+      within(card("Cobrado del mes")).getAllByText("$0").length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Sin movimientos todavía")).toBeTruthy();
     expect(screen.getByText("Ningún plan con alumnos vigentes")).toBeTruthy();
     const assignLinks = screen.getAllByRole("link", { name: "Asignar plan" });
@@ -201,7 +222,7 @@ describe("FinanceSummary", () => {
     expect(assignLinks[0].getAttribute("href")).toContain("assign=1");
     expect(
       screen.getByRole("link", { name: "Crear plan" }).getAttribute("href"),
-    ).toContain("section=plans");
+    ).toContain("/dashboard/finance/plans");
     expect(screen.getByLabelText("Mes")).toBeTruthy();
   });
 
@@ -228,7 +249,9 @@ describe("FinanceSummary", () => {
 
     const switcher = screen.getByRole("navigation", { name: "Moneda" });
     expect(
-      within(switcher).getByRole("link", { name: "USD" }).getAttribute("aria-current"),
+      within(switcher)
+        .getByRole("link", { name: "USD" })
+        .getAttribute("aria-current"),
     ).toBe("page");
     expect(
       within(switcher).getByRole("link", { name: "CLP" }).getAttribute("href"),

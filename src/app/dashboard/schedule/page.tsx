@@ -22,7 +22,6 @@ import {
   EmptyState,
   Surface,
 } from "@/presentation/components/primitives";
-import { ScheduleNavigation } from "@/presentation/components/schedule-navigation";
 import { SessionList } from "./session-list";
 import { SessionTable } from "./session-table";
 import { SessionCalendar, type CalendarSession } from "./session-calendar";

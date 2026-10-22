@@ -29,17 +29,31 @@ export interface NavigationDestination {
   label: string;
   href: string;
   icon: LucideIcon;
+  /**
+   * Whether this destination appears in the mobile bottom navigation.
+   * The bottom nav shows 4 slots (2 before + 2 after the FAB).
+   * Destinations with mobile: false are only accessible via the "Más" sheet
+   * or the desktop sidebar.
+   */
   mobile: boolean;
   roles?: readonly TenantMembershipRole[];
 }
 
-export type ScheduleSection = "sessions" | "programming" | "disciplines";
+export type ScheduleSection = "sessions" | "programming";
 
 export type TrainingSection = "cognitive" | "combinations" | "timers";
+
+export type FinanceSection = "collections" | "plans";
 
 // Pre-compiled at module load — never re-created on hot paths.
 const SESSION_ATTENDANCE_RE = /^\/dashboard\/sessions\/[^/]+\/attendance\/?$/;
 
+/**
+ * Sub-sections of the Sesiones nav item (desktop sidebar only).
+ * Disciplinas was intentionally moved out of this submenu — it belongs
+ * under "Configuración / Mi gimnasio" because it is setup data, not daily
+ * operations. The sidebar renders it as a gym sub-section.
+ */
 const scheduleSections: ReadonlyArray<{
   id: ScheduleSection;
   label: string;
@@ -49,7 +63,7 @@ const scheduleSections: ReadonlyArray<{
 }> = [
   {
     id: "sessions",
-    label: "Sesiones",
+    label: "Sesiones hoy",
     href: "/dashboard/schedule",
     icon: CalendarDays,
   },
@@ -59,12 +73,6 @@ const scheduleSections: ReadonlyArray<{
     href: "/dashboard/schedule/programming",
     icon: Repeat2,
     roles: ["owner", "admin", "instructor"],
-  },
-  {
-    id: "disciplines",
-    label: "Disciplinas",
-    href: "/dashboard/disciplines",
-    icon: Dumbbell,
   },
 ];
 
@@ -77,7 +85,6 @@ export function scheduleSectionsForRole(role: TenantMembershipRole) {
 export function activeScheduleSection(
   pathname: string,
 ): ScheduleSection | null {
-  if (pathname === "/dashboard/disciplines") return "disciplines";
   if (pathname === "/dashboard/schedule/programming") return "programming";
   if (
     pathname === "/dashboard/schedule" ||
@@ -130,17 +137,75 @@ export function activeTrainingSection(
   return null;
 }
 
+/**
+ * Whether the current path is under the Disciplinas section.
+ * Used to mark the gym destination as active when disciplines is open.
+ */
+export function isDisciplinesActive(pathname: string): boolean {
+  return pathname === "/dashboard/disciplines";
+}
+
+// ---------------------------------------------------------------------------
+// Finance submenu
+// ---------------------------------------------------------------------------
+
+const financeSections: ReadonlyArray<{
+  id: FinanceSection;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}> = [
+  {
+    id: "collections",
+    label: "Cobros",
+    href: "/dashboard/finance/collections",
+    icon: CircleDollarSign,
+  },
+  {
+    id: "plans",
+    label: "Mantención de planes",
+    href: "/dashboard/finance/plans",
+    icon: CreditCard,
+  },
+];
+
+export function financeSectionsForRole(_role: TenantMembershipRole) {
+  // All roles that can see finance see both subsections.
+  // (Assistant role cannot reach finance actions but can view them.)
+  return financeSections;
+}
+
+export function activeFinanceSection(pathname: string): FinanceSection | null {
+  if (pathname.startsWith("/dashboard/finance/collections"))
+    return "collections";
+  if (pathname.startsWith("/dashboard/finance/plans")) return "plans";
+  return null;
+}
+
+/**
+ * Full ordered list of navigation destinations.
+ *
+ * Mobile bottom nav layout (5 cols):
+ *   [Sesiones] [Alumnos] [FAB] [Entrenamientos] [Más]
+ *
+ * "finance", "reports", "gym", "billing" are accessible via the "Más" bottom
+ * sheet on mobile and via the sidebar on desktop.
+ */
 export const operationalDestinations: readonly NavigationDestination[] = [
   {
     id: "home",
     label: "Inicio",
     href: "/dashboard",
     icon: House,
-    mobile: true,
+    // Home is not in the bottom nav — the instructor goes straight to Sesiones.
+    // It remains accessible from the desktop sidebar.
+    mobile: false,
   },
   {
     id: "schedule",
-    label: "Agenda",
+    // Canonical label is "Sesiones" — matches topbar, submenus and FAB copy.
+    // Previously called "Agenda" which created two names for the same destination.
+    label: "Sesiones",
     href: "/dashboard/schedule",
     icon: CalendarDays,
     mobile: true,
@@ -157,14 +222,18 @@ export const operationalDestinations: readonly NavigationDestination[] = [
     label: "Entrenamientos",
     href: "/dashboard/trainings",
     icon: Swords,
-    mobile: false,
+    // Now visible in the mobile bottom nav (slot 4 after the FAB).
+    // Previously mobile: false which hid the instructor's primary tool on mobile.
+    mobile: true,
   },
   {
     id: "finance",
     label: "Finanzas",
     href: "/dashboard/finance",
     icon: CircleDollarSign,
-    mobile: true,
+    // Moved to the "Más" sheet on mobile. Owners/admins can still reach it
+    // there; instructors rarely need it as a primary tab.
+    mobile: false,
   },
   {
     id: "reports",
@@ -183,7 +252,7 @@ export const operationalDestinations: readonly NavigationDestination[] = [
   },
   {
     id: "billing",
-    label: "Mi suscripción",
+    label: "Suscripción",
     href: "/billing",
     icon: CreditCard,
     mobile: false,
@@ -197,6 +266,15 @@ export function destinationsForRole(role: TenantMembershipRole) {
   );
 }
 
+/**
+ * Destinations shown in the "Más" bottom sheet on mobile.
+ * These are all non-mobile destinations visible to the given role,
+ * plus "Inicio" which is also excluded from the main bottom nav.
+ */
+export function moreDestinationsForRole(role: TenantMembershipRole) {
+  return destinationsForRole(role).filter((destination) => !destination.mobile);
+}
+
 export function isDestinationActive(
   destination: NavigationDestination,
   pathname: string,
@@ -205,6 +283,11 @@ export function isDestinationActive(
   if (destination.id === "schedule" && activeScheduleSection(pathname))
     return true;
   if (destination.id === "trainings" && activeTrainingSection(pathname))
+    return true;
+  // Gym is also active when navigating disciplines (its sub-section).
+  if (destination.id === "gym" && isDisciplinesActive(pathname)) return true;
+  // Finance is also active on its sub-routes (collections, plans).
+  if (destination.id === "finance" && activeFinanceSection(pathname))
     return true;
   return (
     pathname === destination.href || pathname.startsWith(`${destination.href}/`)

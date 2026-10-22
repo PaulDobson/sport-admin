@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Building2,
   Check,
   ChevronDown,
+  CreditCard,
   MapPin,
-  Swords,
   UserRound,
 } from "lucide-react";
 import { selectTenantAction } from "@/app/select-tenant/actions";
@@ -22,12 +21,23 @@ export interface LocationContextOption {
   name: string;
 }
 
+/**
+ * AccountContextMenu is exclusively for identity and session context:
+ * - Who you are (name, role)
+ * - Which organization is active (org switcher)
+ * - Access to your subscription (owner only)
+ * - Profile settings
+ * - Sign out
+ *
+ * Navigation links to content sections (Entrenamientos, Mi gimnasio) were
+ * removed — they duplicated the sidebar and added cognitive load for new users
+ * trying to understand which channel is the primary navigation.
+ */
 export function AccountContextMenu({
   profileName,
   currentTenantId,
   tenants,
   roleLabel,
-  canManageGym = false,
   canReadBilling = false,
   locations = [],
   currentLocationId = "",
@@ -99,6 +109,7 @@ export function AccountContextMenu({
           aria-label="Menú de cuenta"
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/20"
         >
+          {/* Identity header */}
           <div className="border-b border-border/70 px-2 pb-3">
             <p className="font-semibold">{profileName}</p>
             <p className="mt-1 text-xs text-muted-foreground">{roleLabel}</p>
@@ -106,6 +117,8 @@ export function AccountContextMenu({
               {currentTenant?.name ?? "Organización activa"}
             </p>
           </div>
+
+          {/* Organization switcher */}
           <div className="border-b border-border/70 py-2">
             <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Organización
@@ -140,41 +153,24 @@ export function AccountContextMenu({
               </p>
             ) : null}
           </div>
+
+          {/* Account actions */}
           <div className="pt-2">
-            {canManageGym ? (
-              <a
-                href="/dashboard/gym"
-                role="menuitem"
-                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <Building2
-                  className="h-4 w-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                Mi gimnasio
-              </a>
-            ) : null}
+            {/* Subscription — owner only */}
             {canReadBilling ? (
               <a
                 href={`/billing?tenant=${currentTenantId}`}
                 role="menuitem"
-                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised"
+                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
-                <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Mi suscripción
+                <CreditCard
+                  className="h-4 w-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                Suscripción
               </a>
             ) : null}
-            <a
-              href="/dashboard/trainings"
-              role="menuitem"
-              className="flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <Swords
-                className="h-4 w-4 text-muted-foreground"
-                aria-hidden="true"
-              />
-              Entrenamientos
-            </a>
+
             <a
               href="/dashboard/profile"
               role="menuitem"
@@ -186,6 +182,7 @@ export function AccountContextMenu({
               />
               Perfil y cuenta
             </a>
+
             <form action={signOutAction}>
               <button
                 type="submit"
@@ -195,6 +192,8 @@ export function AccountContextMenu({
                 Cerrar sesión
               </button>
             </form>
+
+            {/* Location selector — shown only when the tenant has multiple locations */}
             {locations.length > 0 ? (
               <form action="/dashboard" method="get" className="px-2 pt-2">
                 <label className="flex items-center gap-2">

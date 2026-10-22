@@ -16,31 +16,48 @@ interface CollectionDateFilterProps {
   from?: string;
   to?: string;
   status?: string;
+  /**
+   * The form action URL. Defaults to "/dashboard/finance" (legacy single-page
+   * mode). Pass "/dashboard/finance/collections" when used on the dedicated
+   * collections sub-route so the form submits to the correct endpoint.
+   */
+  action?: string;
 }
 
 function DateFields({
   from,
   to,
   status,
+  action = "/dashboard/finance",
   idPrefix,
   layout,
 }: CollectionDateFilterProps & {
   idPrefix: string;
   layout: "inline" | "stacked";
 }) {
+  // Only inject ?section=collections when targeting the legacy single-page URL.
+  const injectSection = action === "/dashboard/finance";
   const hasRange = Boolean(from || to);
+  // Build the "clear" href relative to the same action URL.
+  const clearHref =
+    action === "/dashboard/finance"
+      ? financeHref({ section: "collections", status })
+      : status
+        ? `${action}?status=${status}`
+        : action;
+
   return (
     <form
       method="get"
-      action="/dashboard/finance"
+      action={action}
       aria-label="Filtrar por fecha de cobro"
       className={
-        layout === "inline"
-          ? "flex flex-wrap items-end gap-3"
-          : "grid gap-4"
+        layout === "inline" ? "flex flex-wrap items-end gap-3" : "grid gap-4"
       }
     >
-      <input type="hidden" name="section" value="collections" />
+      {injectSection ? (
+        <input type="hidden" name="section" value="collections" />
+      ) : null}
       {status ? <input type="hidden" name="status" value={status} /> : null}
       <label
         htmlFor={`${idPrefix}-from`}
@@ -73,10 +90,7 @@ function DateFields({
           Aplicar fechas
         </button>
         {hasRange ? (
-          <Link
-            href={financeHref({ section: "collections", status })}
-            className={clearClass}
-          >
+          <Link href={clearHref} className={clearClass}>
             Quitar fechas
           </Link>
         ) : null}
@@ -112,7 +126,11 @@ export function CollectionDateFilter(props: CollectionDateFilterProps) {
             </>
           }
         >
-          <DateFields {...props} idPrefix="collections-sheet" layout="stacked" />
+          <DateFields
+            {...props}
+            idPrefix="collections-sheet"
+            layout="stacked"
+          />
         </BottomSheet>
       </div>
     </>

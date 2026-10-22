@@ -13,18 +13,28 @@ import { OperationalTopbar } from "./operational-topbar";
 const SESSION_DETAIL_RE = /^\/dashboard\/students\/[^/]+\/edit$/;
 const STUDENT_DETAIL_RE = /^\/dashboard\/students\/[^/]+$/;
 
+/**
+ * Maps a pathname to a { section, title } pair shown in the topbar.
+ *
+ * Rules:
+ * - "section" must match the sidebar group/item label exactly (no more
+ *   "Agenda" vs "Sesiones" split — canonical label is "Sesiones").
+ * - Disciplines moved from "Agenda" section to "Configuración · Mi gimnasio"
+ *   to match its new sidebar location.
+ * - Sessions attendance uses "Sesiones" (not "Agenda · Sesiones").
+ */
 function routeHeading(pathname: string) {
   if (pathname === "/dashboard") {
-    return { section: "Jornada", title: "Tu jornada deportiva" };
+    return { section: "Inicio", title: "Tu jornada deportiva" };
   }
   if (pathname === "/dashboard/schedule/programming") {
-    return { section: "Agenda", title: "Programación de sesiones" };
+    return { section: "Sesiones", title: "Programación de sesiones" };
   }
   if (pathname === "/dashboard/disciplines") {
-    return { section: "Agenda", title: "Administración de disciplinas" };
+    return { section: "Configuración · Mi gimnasio", title: "Disciplinas" };
   }
   if (pathname === "/dashboard/schedule") {
-    return { section: "Agenda", title: "Sesiones" };
+    return { section: "Sesiones", title: "Sesiones" };
   }
   if (SESSION_DETAIL_RE.test(pathname)) {
     return { section: "Alumnos", title: "Editar alumno" };
@@ -51,10 +61,16 @@ function routeHeading(pathname: string) {
     return { section: "Entrenamientos", title: "Entrenamientos" };
   }
   if (pathname.startsWith("/dashboard/sessions/")) {
-    return { section: "Agenda · Sesiones", title: "Tomar asistencia" };
+    return { section: "Sesiones", title: "Tomar asistencia" };
+  }
+  if (pathname.startsWith("/dashboard/finance/collections")) {
+    return { section: "Finanzas", title: "Cobros" };
+  }
+  if (pathname.startsWith("/dashboard/finance/plans")) {
+    return { section: "Finanzas", title: "Mantención de planes" };
   }
   if (pathname.startsWith("/dashboard/finance")) {
-    return { section: "Finanzas", title: "Membresías y finanzas" };
+    return { section: "Finanzas", title: "Resumen financiero" };
   }
   if (pathname.startsWith("/dashboard/reports")) {
     return { section: "Reportes", title: "Operación y finanzas" };
@@ -63,7 +79,7 @@ function routeHeading(pathname: string) {
     return { section: "Cuenta", title: "Perfil y preferencias" };
   }
   if (pathname === "/dashboard/gym") {
-    return { section: "Gestión", title: "Mi gimnasio" };
+    return { section: "Configuración", title: "Mi gimnasio" };
   }
   return { section: "Operación", title: "Sport Admin" };
 }
@@ -98,7 +114,7 @@ export function OperationalRouteTopbar({
           href="/dashboard/schedule"
           className="hidden text-sm font-semibold text-primary md:block"
         >
-          Volver a sesiones
+          ← Sesiones
         </Link>
       ) : undefined,
     [isSessionRoute],

@@ -15,26 +15,47 @@ afterEach(() => {
 });
 
 describe("QuickActionMenu", () => {
-  it("only offers usable actions for the current session", () => {
-    render(<QuickActionMenu role="instructor" currentSessionId="session-1" />);
+  it("always shows Tomar asistencia for roles that can take attendance", () => {
+    // Previously this action depended on currentSessionId being passed (it never was).
+    // Now it always navigates to the sessions list where the instructor selects a session.
+    for (const role of ["owner", "admin", "instructor", "assistant"] as const) {
+      const { unmount } = render(<QuickActionMenu role={role} />);
+      fireEvent.click(screen.getByRole("button", { name: "Acción rápida" }));
+
+      const attendanceLink = screen.getByRole("menuitem", {
+        name: "Tomar asistencia",
+      });
+      expect(attendanceLink).toBeTruthy();
+      expect(attendanceLink.getAttribute("href")).toBe("/dashboard/schedule");
+      unmount();
+    }
+  });
+
+  it("shows student management actions to all roles except assistant", () => {
+    render(<QuickActionMenu role="instructor" />);
     fireEvent.click(screen.getByRole("button", { name: "Acción rápida" }));
 
     expect(
-      screen.getByRole("menuitem", { name: "Abrir asistencia" }),
-    ).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Ver agenda" })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Nuevo alumno" }).getAttribute("href")).toBe("/dashboard/students/new");
+      screen
+        .getByRole("menuitem", { name: "Nuevo alumno" })
+        .getAttribute("href"),
+    ).toBe("/dashboard/students/new");
+    expect(screen.getByRole("menuitem", { name: "Asignar plan" })).toBeTruthy();
   });
 
-  it("does not offer attendance when there is no current session", () => {
+  it("hides student management actions for assistants", () => {
     render(<QuickActionMenu role="assistant" />);
     fireEvent.click(screen.getByRole("button", { name: "Acción rápida" }));
 
-    expect(
-      screen.queryByRole("menuitem", { name: "Abrir asistencia" }),
-    ).toBeNull();
-    expect(screen.getByRole("menuitem", { name: "Ver agenda" })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "Nuevo alumno" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Asignar plan" })).toBeNull();
+  });
+
+  it("always shows Ver sesiones as a fallback action", () => {
+    render(<QuickActionMenu role="assistant" />);
+    fireEvent.click(screen.getByRole("button", { name: "Acción rápida" }));
+
+    expect(screen.getByRole("menuitem", { name: "Ver sesiones" })).toBeTruthy();
   });
 
   it("opens plan assignment over the current page keeping its filters", () => {

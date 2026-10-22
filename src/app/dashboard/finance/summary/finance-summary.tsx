@@ -121,14 +121,8 @@ export function FinanceSummary({
   const money = (amount: number) => formatMoney(amount, currency);
   const periodLabel = formatPeriod(dashboard.period);
   const assignHref = financeHref(linkParams, { assign: "1" });
-  const collectionsHref = financeHref(linkParams, {
-    section: "collections",
-    status: undefined,
-  });
-  const plansHref = financeHref(linkParams, {
-    section: "plans",
-    status: undefined,
-  });
+  const collectionsHref = "/dashboard/finance/collections";
+  const plansHref = "/dashboard/finance/plans";
 
   return (
     <div className="grid gap-6">
@@ -210,10 +204,7 @@ export function FinanceSummary({
               "cuenta",
               "cuentas",
             )}`}
-            href={financeHref(linkParams, {
-              section: "collections",
-              status: "past_due",
-            })}
+            href="/dashboard/finance/collections?status=past_due"
           />
           <StatCard
             label="Membresías vigentes"
@@ -357,7 +348,10 @@ function StudentLink({
   className: string;
 }) {
   return (
-    <Link href={`/dashboard/students/${movement.studentId}`} className={className}>
+    <Link
+      href={`/dashboard/students/${movement.studentId}`}
+      className={className}
+    >
       {movement.studentName}
     </Link>
   );
