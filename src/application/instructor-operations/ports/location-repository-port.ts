@@ -10,6 +10,13 @@ export interface LocationRepositoryPort {
     type: LocationType;
     address: string | null;
   }): Promise<Location>;
+  update(input: {
+    tenantId: string;
+    id: string;
+    name: string;
+    type: LocationType;
+    address: string | null;
+  }): Promise<Location>;
   archive(tenantId: string, locationId: string): Promise<Location>;
   findActiveByTenant(tenantId: string): Promise<Location[]>;
 }

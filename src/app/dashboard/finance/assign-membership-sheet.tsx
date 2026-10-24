@@ -81,7 +81,11 @@ function StepIndicator({ steps, current }: { steps: Step[]; current: Step }) {
   );
 }
 
-function StudentStep({ onSelect }: { onSelect: (student: AssignStudent) => void }) {
+function StudentStep({
+  onSelect,
+}: {
+  onSelect: (student: AssignStudent) => void;
+}) {
   const searchId = useId();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AssignableStudent[] | null>(null);
@@ -229,7 +233,11 @@ function PlanStep({
             </p>
           </div>
         ) : (
-          <Button type="button" variant="quiet" onClick={() => setCreating(false)}>
+          <Button
+            type="button"
+            variant="quiet"
+            onClick={() => setCreating(false)}
+          >
             Volver a los planes
           </Button>
         )}
@@ -289,7 +297,13 @@ function PlanStep({
   );
 }
 
-function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
+function SummaryRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-muted-foreground">{label}</dt>
@@ -575,7 +589,7 @@ function ConfirmStep({
   );
 }
 
-function AssignMembershipFlow({
+export function AssignMembershipFlow({
   initialStudent,
   initialPlan,
   onDone,
@@ -689,7 +703,9 @@ function AssignMembershipFlow({
           student={student}
           plan={plan}
           assignmentToken={assignmentToken}
-          onChangeStudent={initialStudent ? undefined : () => setStep("student")}
+          onChangeStudent={
+            initialStudent ? undefined : () => setStep("student")
+          }
           onChangePlan={() => setStep("plan")}
           onDone={onDone}
         />

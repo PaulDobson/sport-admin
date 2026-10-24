@@ -10,11 +10,14 @@ import {
   getTenantHealthPolicy,
   registerStudentHealthConsent,
 } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
+import { assignMembership } from "@/application/instructor-finance/use-cases/manage-membership";
 import { UnauthorizedError } from "@/domain/shared/errors";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
+import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
 import { formatActionError } from "@/app/_lib/format-error";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
+import { collectionOperationId } from "@/app/dashboard/finance/operation-id";
 
 export interface StudentFormState {
   error: string | null;
@@ -176,6 +179,49 @@ export async function createStudentAction(
 
   revalidatePath("/dashboard/students");
   if (studentId) revalidatePath(`/dashboard/students/${studentId}`);
+
+  // Optional membership assignment — only when the instructor selected a plan.
+  const membershipPlanId = String(
+    formData.get("membershipPlanId") ?? "",
+  ).trim();
+  const membershipStartsOn = String(
+    formData.get("membershipStartsOn") ?? "",
+  ).trim();
+  if (membershipPlanId && studentId) {
+    const startsOn =
+      membershipStartsOn || new Date().toISOString().slice(0, 10);
+    const assignmentToken = collectionOperationId([
+      membership.tenantId,
+      studentId,
+      membershipPlanId,
+      startsOn,
+      "initial-assignment",
+    ]);
+    try {
+      const finance = await createInstructorFinanceDeps();
+      await assignMembership(
+        {
+          tenantId: membership.tenantId,
+          studentId,
+          planId: membershipPlanId,
+          startsOn,
+          actorMembershipId: membership.id,
+          assignmentToken,
+        },
+        finance,
+      );
+      revalidatePath("/dashboard/finance");
+      revalidatePath(`/dashboard/students/${studentId}`);
+    } catch (error) {
+      // Student was created; report membership failure without blocking.
+      return {
+        error: `Alumno creado, pero no se pudo asignar la membresía: ${formatActionError(error)}`,
+        saved: false,
+        createdStudentId: studentId,
+      };
+    }
+  }
+
   return { error: null, saved: true, createdStudentId: studentId };
 }
 

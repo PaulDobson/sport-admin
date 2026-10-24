@@ -1,9 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Tabs } from "@base-ui/react/tabs";
+import { Dialog } from "@base-ui/react/dialog";
 import Link from "next/link";
-import { CalendarPlus, Dumbbell, MapPin, Repeat2, Tags } from "lucide-react";
+import {
+  CalendarPlus,
+  Dumbbell,
+  MapPin,
+  Pencil,
+  Repeat2,
+  Tags,
+  Trash2,
+  X,
+} from "lucide-react";
 import type {
   ClassScheduleOption,
   ClassTemplateOption,
@@ -11,15 +28,19 @@ import type {
 } from "@/application/instructor-operations/ports/schedule-catalog-port";
 import type { ClassTemplateAdministrationRow } from "@/application/instructor-operations/ports/class-template-administration-port";
 import type { DayLocation } from "@/domain/instructor-operations/instructor-day";
-import { Surface } from "@/presentation/components/primitives";
+import { Button, Surface } from "@/presentation/components/primitives";
 import { ClassTemplateAdministrationWorkspace } from "./class-template-administration-workspace";
 import {
   CatalogCreationPanel,
   ClassCreationForm,
   DisciplineCreationForm,
   LocationCreationForm,
-  ProgrammingButton as Button,
+  programmingFieldClass,
 } from "./programming-catalog-forms";
+import {
+  saveLocationAction,
+  type ProgrammingActionState,
+} from "./programming-actions";
 import { ProgrammingWizard } from "./programming-wizard";
 import { programmingDays } from "./programming-time";
 
@@ -94,6 +115,166 @@ export function groupProgrammingSchedules(schedules: ClassScheduleOption[]) {
 
 function timeRange(schedule: ClassScheduleOption) {
   return `${schedule.startsAt.slice(0, 5)}–${schedule.endsAt.slice(0, 5)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Location editor dialog
+// ---------------------------------------------------------------------------
+
+type LocationEditor =
+  | { operation: "update"; location: DayLocation }
+  | { operation: "archive"; location: DayLocation };
+
+function LocationEditor({
+  editor,
+  onClose,
+  onSaved,
+}: {
+  editor: LocationEditor;
+  onClose: () => void;
+  onSaved: (id: string, updated?: Partial<DayLocation>) => void;
+}) {
+  const { location } = editor;
+  const archiving = editor.operation === "archive";
+  const [name, setName] = useState(location.name);
+  const [type, setType] = useState("external_gym");
+  const [address, setAddress] = useState(location.address ?? "");
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  const [state, action, pending] = useActionState(
+    async (previous: ProgrammingActionState, data: FormData) => {
+      const result = await saveLocationAction(previous, data);
+      if (!result.error) {
+        onSaved(
+          location.id,
+          archiving
+            ? undefined
+            : { name: name.trim(), address: address.trim() || null },
+        );
+      }
+      return result;
+    },
+    { error: null, message: null },
+  );
+
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !pending) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-60 bg-black/65 backdrop-blur-sm" />
+        <Dialog.Popup
+          initialFocus={archiving ? cancelRef : nameRef}
+          className="fixed left-1/2 top-1/2 z-70 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl sm:p-7"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <span
+              className={`grid h-12 w-12 place-items-center rounded-xl ${archiving ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}
+            >
+              {archiving ? (
+                <Trash2 aria-hidden="true" />
+              ) : (
+                <MapPin aria-hidden="true" />
+              )}
+            </span>
+            <Button
+              variant="quiet"
+              aria-label="Cerrar formulario"
+              disabled={pending}
+              onClick={onClose}
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+            </Button>
+          </div>
+          <Dialog.Title className="mt-4 text-xl font-bold tracking-tight">
+            {archiving ? "Archivar ubicación" : "Editar ubicación"}
+          </Dialog.Title>
+          <Dialog.Description className="mt-2 text-sm leading-6 text-muted-foreground">
+            {archiving
+              ? `Vas a archivar "${location.name}". La ubicación dejará de estar disponible para nuevas clases.`
+              : "Actualiza el nombre, tipo o dirección de esta ubicación."}
+          </Dialog.Description>
+          <form action={action} className="mt-6 space-y-5">
+            <input type="hidden" name="operation" value={editor.operation} />
+            <input type="hidden" name="id" value={location.id} />
+            {!archiving ? (
+              <>
+                <label className={`block space-y-1.5 text-sm font-semibold`}>
+                  <span>Nombre del lugar</span>
+                  <input
+                    ref={nameRef}
+                    name="name"
+                    required
+                    maxLength={100}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={pending}
+                    className={programmingFieldClass}
+                    placeholder="Parque Norte"
+                  />
+                </label>
+                <label className={`block space-y-1.5 text-sm font-semibold`}>
+                  <span>Tipo</span>
+                  <select
+                    name="type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    disabled={pending}
+                    className={programmingFieldClass}
+                  >
+                    <option value="external_gym">Gimnasio o salón</option>
+                    <option value="park">Parque</option>
+                    <option value="home">Domicilio</option>
+                    <option value="online">En línea</option>
+                  </select>
+                </label>
+                <label className={`block space-y-1.5 text-sm font-semibold`}>
+                  <span>Dirección (opcional)</span>
+                  <input
+                    name="address"
+                    maxLength={180}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    disabled={pending}
+                    className={programmingFieldClass}
+                    placeholder="Calle y número"
+                  />
+                </label>
+              </>
+            ) : null}
+            {state.error ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                {state.error}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap justify-end gap-3 border-t border-border pt-5">
+              <Button ref={cancelRef} onClick={onClose} disabled={pending}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant={archiving ? "danger" : "primary"}
+                isLoading={pending}
+              >
+                {pending
+                  ? "Guardando…"
+                  : archiving
+                    ? "Archivar ubicación"
+                    : "Guardar cambios"}
+              </Button>
+            </div>
+          </form>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 }
 
 function WeeklyRoutineCard({
@@ -252,6 +433,12 @@ export function ProgrammingWorkspace({
     [],
   );
   const [createdLocations, setCreatedLocations] = useState<DayLocation[]>([]);
+  const [locationEditor, setLocationEditor] = useState<LocationEditor | null>(
+    null,
+  );
+  const [archivedLocationIds, setArchivedLocationIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [creationOpen, setCreationOpen] = useState(templates.length === 0);
   const [wizardKey, setWizardKey] = useState(0);
   const [preset, setPreset] =
@@ -259,7 +446,9 @@ export function ProgrammingWorkspace({
   const [dirty, setDirty] = useState(false);
   const allDisciplines = mergeCreated(disciplines, createdDisciplines);
   const allTemplates = mergeCreated(templates, createdClasses);
-  const allLocations = mergeCreated(locations, createdLocations);
+  const allLocations = mergeCreated(locations, createdLocations).filter(
+    (loc) => !archivedLocationIds.has(loc.id),
+  );
   const allClasses = mergeCreated(
     classes,
     createdClasses.map((item) => ({
@@ -281,6 +470,22 @@ export function ProgrammingWorkspace({
   const onLocationCreated = useCallback(
     (value: DayLocation) =>
       setCreatedLocations((current) => mergeCreated(current, [value])),
+    [],
+  );
+
+  const onLocationSaved = useCallback(
+    (id: string, updated?: Partial<DayLocation>) => {
+      if (!updated) {
+        // archived
+        setArchivedLocationIds((current) => new Set([...current, id]));
+      } else {
+        // updated: patch both lists in place
+        setCreatedLocations((current) =>
+          current.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)),
+        );
+      }
+      setLocationEditor(null);
+    },
     [],
   );
   const classCreationExpanded =
@@ -426,15 +631,35 @@ export function ProgrammingWorkspace({
                 >
                   <MapPin
                     aria-hidden="true"
-                    className="h-4 w-4 shrink-0 text-primary"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
                   />
-                  <div className="min-w-0 wrap-anywhere">
+                  <div className="min-w-0 grow wrap-anywhere">
                     <p className="font-semibold">{location.name}</p>
                     {location.address ? (
                       <p className="mt-1 text-muted-foreground">
                         {location.address}
                       </p>
                     ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button
+                      variant="quiet"
+                      aria-label={`Editar ${location.name}`}
+                      onClick={() =>
+                        setLocationEditor({ operation: "update", location })
+                      }
+                    >
+                      <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="quiet"
+                      aria-label={`Archivar ${location.name}`}
+                      onClick={() =>
+                        setLocationEditor({ operation: "archive", location })
+                      }
+                    >
+                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </li>
               ))}
@@ -444,6 +669,13 @@ export function ProgrammingWorkspace({
           <LocationCreationForm onCreated={onLocationCreated} />
         </Surface>
       </Tabs.Panel>
+      {locationEditor ? (
+        <LocationEditor
+          editor={locationEditor}
+          onClose={() => setLocationEditor(null)}
+          onSaved={onLocationSaved}
+        />
+      ) : null}
       <Tabs.Panel
         value="schedules"
         keepMounted
