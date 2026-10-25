@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { synchronizeOfflineCommands } from "@/application/synchronization/use-cases/synchronize-offline-commands";
 import type { OfflineCommand } from "@/domain/synchronization/offline-command";
 import { createObservability } from "@/infrastructure/composition/observability-composition";
@@ -37,15 +37,20 @@ const BADGE_STATUS: Record<
 export function OfflineSynchronization({ tenantId }: { tenantId: string }) {
   const [conflicts, setConflicts] = useState<OfflineCommand[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const [status, setStatus] = useState<SynchronizationStatus>(
-    typeof navigator !== "undefined" && !navigator.onLine
-      ? "offline"
-      : "online",
-  );
+  // Always start with "online" to match the server render, then correct on the
+  // client inside the effect to avoid a hydration mismatch.
+  const [status, setStatus] = useState<SynchronizationStatus>("online");
 
   useEffect(() => {
     let running = false;
     let disposed = false;
+
+    // Correct the initial status now that we're on the client.
+    // Wrapped in startTransition to avoid a synchronous setState inside an
+    // effect body, which would trigger cascading renders.
+    if (!navigator.onLine) {
+      startTransition(() => setStatus("offline"));
+    }
 
     // Reads the current queue state using a single deps instance and closes it
     // when done, returning the derived counts for the caller to apply.

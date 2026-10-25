@@ -49,6 +49,25 @@ export class SupabaseLocationRepository implements LocationRepositoryPort {
     return toDomain(data as LocationRow);
   }
 
+  async update(
+    input: Parameters<LocationRepositoryPort["update"]>[0],
+  ): Promise<Location> {
+    const { data, error } = await this.client
+      .from("locations")
+      .update({
+        name: input.name,
+        type: input.type,
+        address: input.address,
+      })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new NotFoundError("Location", input.id);
+    return toDomain(data as LocationRow);
+  }
+
   async archive(tenantId: string, locationId: string): Promise<Location> {
     const { data, error } = await this.client
       .from("locations")

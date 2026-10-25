@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { getStudentHealthHistory } from "@/application/evolution-health-attendance/use-cases/manage-student-health";
 import { getStudentPrivacyState } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
-import { listCurrentMemberships } from "@/application/instructor-finance/use-cases/manage-membership";
+import {
+  listCurrentMemberships,
+  listMembershipPlans,
+} from "@/application/instructor-finance/use-cases/manage-membership";
 import { getMembershipBalance } from "@/application/instructor-finance/use-cases/manage-payment";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
@@ -33,6 +36,7 @@ import {
   RestrictionForm,
 } from "./student-detail-forms";
 import { AssignMembershipSheet } from "../../finance/assign-membership-sheet";
+import { ChangeMembershipSheet } from "../../finance/change-membership-sheet";
 
 const primaryActionClass =
   "inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90";
@@ -105,6 +109,17 @@ export default async function StudentDetailPage({
       const result = results[i];
       balances[memberships[i].id] =
         result.status === "fulfilled" ? result.value.balance : 0;
+    }
+  }
+
+  // Load plan names so ChangeMembershipSheet can show the current plan name.
+  const planNames: Record<string, string> = {};
+  if (finance && memberships.length > 0) {
+    const plans = await listMembershipPlans({ tenantId }, finance).catch(
+      () => [],
+    );
+    for (const plan of plans) {
+      planNames[plan.id] = plan.name;
     }
   }
 
@@ -289,12 +304,36 @@ export default async function StudentDetailPage({
               <div className="grid gap-4 sm:grid-cols-2">
                 {memberships.map((item) => (
                   <Surface key={item.id}>
-                    <StatusBadge
-                      tone={item.status === "past_due" ? "warning" : "success"}
-                    >
-                      {item.status === "past_due" ? "En mora" : "Activa"}
-                    </StatusBadge>
+                    <div className="flex items-start justify-between gap-3">
+                      <StatusBadge
+                        tone={
+                          item.status === "past_due" ? "warning" : "success"
+                        }
+                      >
+                        {item.status === "past_due" ? "En mora" : "Activa"}
+                      </StatusBadge>
+                      {student.status === "active" ? (
+                        <ChangeMembershipSheet
+                          studentId={studentId}
+                          studentName={student.fullName}
+                          currentMembership={{
+                            id: item.id,
+                            planId: item.planId,
+                            planName: planNames[item.planId] ?? "Plan actual",
+                            agreedPrice: item.agreedPrice,
+                            currency: item.currency,
+                            expiresOn: item.expiresOn,
+                            status: item.status,
+                          }}
+                          triggerClassName={studentLinkClass}
+                          trigger="Cambiar plan"
+                        />
+                      ) : null}
+                    </div>
                     <p className="mt-3 text-sm text-muted-foreground">
+                      {planNames[item.planId]
+                        ? `${planNames[item.planId]} · `
+                        : ""}
                       {formatMoney(item.agreedPrice, item.currency)} · próxima
                       fecha {item.nextBillingDate}
                     </p>

@@ -11,6 +11,11 @@ import {
 import { QuickActionMenu } from "@/presentation/components/quick-action-menu";
 import { AssignPlanFromUrl } from "./finance/assign-plan-from-url";
 import { canManageTenantDetails } from "@/domain/tenants/tenant-details";
+import { checkInstructorSetup } from "./_lib/instructor-setup-check";
+import {
+  InstructorSetupWizard,
+  SetupWizardTopbarButton,
+} from "./instructor-setup-wizard";
 
 function roleLabel(role: string) {
   return role === "owner"
@@ -42,13 +47,21 @@ export default async function DashboardLayout({
   ]);
   const membership = context.membership;
   const label = roleLabel(membership.role);
-  const tenantName =
-    tenants.find((tenant) => tenant.id === membership.tenantId)?.name ??
-    "Organización activa";
+  const activeTenant = tenants.find(
+    (tenant) => tenant.id === membership.tenantId,
+  );
+  const tenantName = activeTenant?.name ?? "Organización activa";
   const tenantOptions = tenants.map((tenant) => ({
     id: tenant.id,
     name: tenant.name,
   }));
+
+  // Wizard: only for owners (who created the tenant), not assistants/instructors.
+  const canSeeWizard =
+    membership.role === "owner" && activeTenant !== undefined;
+  const setupState = canSeeWizard
+    ? await checkInstructorSetup(membership.tenantId, activeTenant.createdAt)
+    : null;
 
   return (
     <AppShell
@@ -71,6 +84,18 @@ export default async function DashboardLayout({
             canReadBilling: membership.role === "owner",
             tenants: tenantOptions,
           }}
+          extraActions={
+            setupState?.showWizard ? (
+              <SetupWizardTopbarButton
+                completedCount={
+                  (setupState.hasDiscipline ? 1 : 0) +
+                  (setupState.hasPlan ? 1 : 0) +
+                  (setupState.hasStudent ? 1 : 0) +
+                  (setupState.hasMembership ? 1 : 0)
+                }
+              />
+            ) : undefined
+          }
         />
       }
     >
@@ -79,6 +104,16 @@ export default async function DashboardLayout({
         <Suspense fallback={null}>
           <AssignPlanFromUrl />
         </Suspense>
+      ) : null}
+      {setupState?.showWizard && activeTenant ? (
+        <InstructorSetupWizard
+          hasDiscipline={setupState.hasDiscipline}
+          hasLocation={setupState.hasLocation}
+          hasPlan={setupState.hasPlan}
+          hasStudent={setupState.hasStudent}
+          hasMembership={setupState.hasMembership}
+          tenantCreatedAt={activeTenant.createdAt.toISOString()}
+        />
       ) : null}
     </AppShell>
   );

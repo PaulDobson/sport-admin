@@ -3,14 +3,25 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
+  CalendarCheck2,
   CalendarDays,
+  CalendarRange,
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Dumbbell,
+  Globe,
+  ListChecks,
+  MapPin,
   Plus,
+  Repeat2,
+  Sliders,
   Tags,
+  Timer,
   Trash2,
+  Users,
 } from "lucide-react";
 import type {
   ClassTemplateOption,
@@ -69,7 +80,13 @@ interface Props {
   onLocationCreated: (value: DayLocation) => void;
 }
 
-const steps = ["Qué impartes", "Dónde", "Cuándo", "Revisar"];
+const steps = [
+  { label: "Clase", icon: Dumbbell },
+  { label: "Lugar", icon: MapPin },
+  { label: "Cuándo", icon: CalendarDays },
+  { label: "Revisar", icon: ListChecks },
+] as const;
+
 const initialFeedback: ProgrammingActionState = { error: null, message: null };
 const timezoneOptions = [
   operationalTimezone,
@@ -78,7 +95,6 @@ const timezoneOptions = [
   "America/Argentina/Buenos_Aires",
   "America/Mexico_City",
 ];
-const detailsClass = "rounded-xl border border-border p-4";
 
 async function runProgrammingAction(
   action: (
@@ -145,7 +161,10 @@ export function ProgrammingWizard({
   const [personalized, setPersonalized] = useState(Boolean(preset));
   const [slots, setSlots] = useState<Slot[]>(
     preset
-      ? preset.slots.map((slot, index) => ({ ...slot, key: `preset-${index}` }))
+      ? preset.slots.map((slot, index) => ({
+          ...slot,
+          key: `preset-${index}`,
+        }))
       : [1, 3, 5].map((day) => ({
           key: `day-${day}`,
           dayOfWeek: day,
@@ -345,9 +364,6 @@ export function ProgrammingWizard({
     setMode(mode);
     setStep((current) => current + 1);
   }
-  // Memoize the occurrence formatter — timezone is the only variable part.
-  // Without this, a new Intl.DateTimeFormat is created for every occurrence
-  // item in the preview list on every render.
   const occurrenceFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat("es-CL", {
@@ -358,150 +374,259 @@ export function ProgrammingWizard({
     [timezone],
   );
   const conflictList = review?.preview?.conflicts ?? [];
-  const summary = (
-    <div className="space-y-3 text-sm">
-      <p className="font-bold wrap-anywhere">
-        {selectedClass?.name || "Selecciona una clase"}
-      </p>
-      {selectedClass ? (
-        <p className="text-muted-foreground">
-          {selectedClass.disciplineName} · {selectedClass.capacity} cupos
-        </p>
-      ) : null}
-      <p className="wrap-anywhere">
-        {selectedLocation?.name || "Selecciona un lugar"}
-      </p>
-      {selectedLocation?.address ? (
-        <p className="text-muted-foreground wrap-anywhere">
-          {selectedLocation.address}
-        </p>
-      ) : null}
-      {mode === "weekly" ? (
-        <ul className="space-y-2">
-          {[...slots]
-            .sort((a, b) => ((a.dayOfWeek + 6) % 7) - ((b.dayOfWeek + 6) % 7))
-            .map((slot) => (
-              <li key={slot.key} className="wrap-anywhere">
-                <span className="font-semibold">
-                  {
-                    programmingDays.find((day) => day.value === slot.dayOfWeek)
-                      ?.name
-                  }
-                </span>{" "}
-                {slot.startsAt}–{slot.endsAt}
-                {slot.locationId && slot.locationId !== locationId
-                  ? ` · ${locations.find((item) => item.id === slot.locationId)?.name}`
-                  : ""}
-              </li>
-            ))}
-        </ul>
-      ) : (
-        <p>
-          {programmingDateLabel(date)} · {startsAt}–{endsAt}
-          {otherDay ? ` (${programmingDateLabel(endDate)})` : ""}
-        </p>
-      )}
-      <p className="text-muted-foreground">
-        Zona horaria: {timezone.replaceAll("_", " ")}
-      </p>
-      {responsibleInstructor ? (
-        <p className="text-muted-foreground">
-          Se conserva el instructor responsable de estos horarios.
-        </p>
+
+  // ── Sidebar summary card ───────────────────────────────────────────────────
+  const summaryCard = (
+    <div className="space-y-3.5 text-sm">
+      {/* Class */}
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold wrap-anywhere">
+            {selectedClass?.name ?? (
+              <span className="text-muted-foreground">Sin clase</span>
+            )}
+          </p>
+          {selectedClass ? (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <Users aria-hidden="true" className="h-3 w-3" />
+              {selectedClass.disciplineName} · {selectedClass.capacity} cupos
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Location */}
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0">
+          <p className="wrap-anywhere">
+            {selectedLocation?.name ?? (
+              <span className="text-muted-foreground">Sin lugar</span>
+            )}
+          </p>
+          {selectedLocation?.address ? (
+            <p className="mt-0.5 text-xs text-muted-foreground wrap-anywhere">
+              {selectedLocation.address}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Schedule */}
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 w-full">
+          {mode === "weekly" ? (
+            <ul className="space-y-1">
+              {[...slots]
+                .sort(
+                  (a, b) => ((a.dayOfWeek + 6) % 7) - ((b.dayOfWeek + 6) % 7),
+                )
+                .map((slot) => (
+                  <li key={slot.key} className="wrap-anywhere text-xs">
+                    <span className="font-semibold">
+                      {
+                        programmingDays.find((d) => d.value === slot.dayOfWeek)
+                          ?.short
+                      }
+                    </span>{" "}
+                    {slot.startsAt}–{slot.endsAt}
+                    {slot.locationId && slot.locationId !== locationId
+                      ? ` · ${locations.find((l) => l.id === slot.locationId)?.name}`
+                      : ""}
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <p className="text-xs">
+              {programmingDateLabel(date)} · {startsAt}–{endsAt}
+              {otherDay ? ` (${programmingDateLabel(endDate)})` : ""}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Timezone (only when non-default) */}
+      {timezone !== operationalTimezone ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Globe aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          {timezone.replaceAll("_", " ")}
+        </div>
       ) : null}
     </div>
   );
 
+  // ── Published ──────────────────────────────────────────────────────────────
   if (published)
     return (
-      <Surface
-        className="space-y-5 border-success/30"
-        aria-labelledby="programming-complete"
-      >
-        <Check aria-hidden="true" className="h-8 w-8 text-success" />
-        <h2
-          ref={heading}
-          tabIndex={-1}
-          id="programming-complete"
-          className="text-xl font-bold outline-none"
+      <div className="space-y-5">
+        <Surface
+          className="border-success/30 bg-linear-to-br from-success/15 via-success/5 to-card p-5 sm:p-7"
+          aria-labelledby="programming-complete"
         >
-          Programación guardada
-        </h2>
-        <ProgrammingFeedback
-          state={saveFeedback.error ? saveFeedback : initialFeedback}
-        />
-        {summary}
-        <p className="text-sm text-muted-foreground">
-          Las sesiones que ya existían conservan sus cambios, cupos, reservas y
-          estado.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/dashboard/schedule"
-            className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-success/20 text-success">
+            <Check aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <h2
+            ref={heading}
+            tabIndex={-1}
+            id="programming-complete"
+            className="mt-3 text-2xl font-bold tracking-tight outline-none sm:text-3xl"
           >
-            Ver sesiones en la agenda
-          </Link>
-          <Button
-            onClick={() => {
-              setPublished(false);
-              setStep(0);
-              setReview(null);
-              setOperationId("");
-              setAllowConflict(false);
-              setResponsibleInstructor(undefined);
-              reviewedPayload.current = null;
-              reviewedFingerprint.current = null;
-            }}
-          >
-            Programar otra clase
-          </Button>
+            Programación guardada
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Las sesiones que ya existían conservan sus cambios, cupos, reservas
+            y estado.
+          </p>
+        </Surface>
+
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <Surface className="space-y-5">
+            <ProgrammingFeedback
+              state={saveFeedback.error ? saveFeedback : initialFeedback}
+            />
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/dashboard/schedule"
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <CalendarCheck2 aria-hidden="true" className="h-4 w-4" />
+                Ver en la agenda
+              </Link>
+              <Button
+                onClick={() => {
+                  setPublished(false);
+                  setStep(0);
+                  setReview(null);
+                  setOperationId("");
+                  setAllowConflict(false);
+                  setResponsibleInstructor(undefined);
+                  reviewedPayload.current = null;
+                  reviewedFingerprint.current = null;
+                }}
+              >
+                Programar otra clase
+              </Button>
+            </div>
+          </Surface>
+
+          <Surface aria-label="Resumen de la programación">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold">
+              <ListChecks
+                aria-hidden="true"
+                className="h-4 w-4 text-muted-foreground"
+              />
+              Resumen
+            </h3>
+            {summaryCard}
+          </Surface>
         </div>
-      </Surface>
+      </div>
     );
 
+  // ── Wizard ─────────────────────────────────────────────────────────────────
   return (
-    <section aria-labelledby="programming-wizard-heading" className="space-y-5">
-      <div>
-        <h2 id="programming-wizard-heading" className="text-xl font-bold">
-          Programar clase
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Elige qué impartes, dónde y cuándo. Revisa todo antes de publicar.
-        </p>
-      </div>
-      <ol aria-label="Pasos para programar" className="grid grid-cols-4 gap-2">
-        {steps.map((label, index) => (
-          <li
-            key={label}
-            aria-current={index === step ? "step" : undefined}
-            className={`min-w-0 rounded-lg border px-1 py-3 text-center text-xs font-semibold sm:text-sm ${index === step ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+    <div className="space-y-4" aria-labelledby="programming-wizard-heading">
+      {/* Compact page header */}
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
+          <CalendarDays aria-hidden="true" className="h-5 w-5" />
+        </span>
+        <div>
+          <h2
+            id="programming-wizard-heading"
+            className="text-lg font-bold leading-tight"
           >
-            <span className="mb-1 block">
-              {index < step ? (
-                <Check aria-label="Completado" className="mx-auto h-4 w-4" />
+            Programar clase
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Elige qué, dónde y cuándo. Revisa antes de publicar.
+          </p>
+        </div>
+      </div>
+
+      {/* Step indicator — icon-only on mobile, icon+label on sm+ */}
+      <ol
+        aria-label="Pasos para programar"
+        className="grid grid-cols-4 gap-1.5"
+      >
+        {steps.map(({ label, icon: Icon }, index) => {
+          const isActive = index === step;
+          const isDone = index < step;
+          return (
+            <li
+              key={label}
+              aria-current={isActive ? "step" : undefined}
+              className={[
+                "flex min-w-0 flex-col items-center gap-1 rounded-xl border px-1 py-2.5 text-center transition-colors sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:py-2",
+                isActive
+                  ? "border-primary bg-primary/10 text-primary"
+                  : isDone
+                    ? "border-success/40 bg-success/8 text-success"
+                    : "border-border text-muted-foreground",
+              ].join(" ")}
+            >
+              {isDone ? (
+                <Check aria-label="Completado" className="h-4 w-4 shrink-0" />
               ) : (
-                index + 1
+                <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
               )}
-            </span>
-            {label}
-          </li>
-        ))}
+              <span className="text-xs font-semibold leading-tight">
+                {label}
+              </span>
+            </li>
+          );
+        })}
       </ol>
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <Surface className="min-w-0 space-y-5 p-4 sm:p-6">
+
+      {/*
+       * Desktop layout: 2-column grid shared by all steps.
+       * Left  = main form content  (grows)
+       * Right = summary + catalog panels  (fixed 22rem)
+       *
+       * On mobile everything stacks naturally.
+       */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* ── LEFT: main form card ─────────────────────────────────────── */}
+        <Surface className="min-w-0 space-y-6 p-5 sm:p-6">
+          {/* Step heading */}
           <h3
             ref={heading}
             tabIndex={-1}
-            className="text-lg font-bold outline-none"
+            className="flex items-center gap-2 text-base font-bold outline-none"
           >
-            {step + 1}. {steps[step]}
+            {(() => {
+              const { icon: Icon } = steps[step];
+              return (
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                </span>
+              );
+            })()}
+            {steps[step].label}
           </h3>
+
+          {/* ── Step 0: Clase ─────────────────────────────────────────── */}
           {step === 0 ? (
-            <>
-              <form onSubmit={continueStep} className="space-y-5">
+            <form onSubmit={continueStep} className="space-y-5">
+              {/* 2-column on desktop: Disciplina | Clase */}
+              <div className="grid gap-5 sm:grid-cols-2">
                 <label className={labelClass}>
-                  Disciplina
+                  <span className="flex items-center gap-1.5">
+                    <Tags
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 text-muted-foreground"
+                    />
+                    Disciplina
+                  </span>
                   <select
                     value={discipline}
                     onChange={(event) => {
@@ -511,7 +636,7 @@ export function ProgrammingWizard({
                     }}
                     className={fieldClass}
                   >
-                    <option value="">Todas las disciplinas</option>
+                    <option value="">Todas</option>
                     {availableDisciplines.map((name) => (
                       <option key={name} value={name}>
                         {name}
@@ -519,8 +644,15 @@ export function ProgrammingWizard({
                     ))}
                   </select>
                 </label>
+
                 <label className={labelClass}>
-                  Clase
+                  <span className="flex items-center gap-1.5">
+                    <Dumbbell
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 text-muted-foreground"
+                    />
+                    Clase
+                  </span>
                   <select
                     required
                     value={classId}
@@ -538,177 +670,215 @@ export function ProgrammingWizard({
                     ))}
                   </select>
                 </label>
-                {templates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Comienza creando tu disciplina y tu primera clase aquí
-                    mismo.
-                  </p>
-                ) : null}
+              </div>
+
+              {templates.length === 0 ? (
+                disciplines.length === 0 ? (
+                  /* Neither discipline nor class exists yet */
+                  <div
+                    className="flex items-start gap-3 rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-sm ring-1 ring-primary/20"
+                    style={{
+                      animation: "neon-pulse 2.5s ease-in-out infinite",
+                    }}
+                  >
+                    <span className="relative mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/25 text-primary ring-1 ring-primary/50">
+                      <Tags aria-hidden="true" className="h-3.5 w-3.5" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary"
+                      >
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-75" />
+                      </span>
+                    </span>
+                    <p className="text-foreground">
+                      <span className="font-bold text-primary">
+                        Primero crea una disciplina
+                      </span>{" "}
+                      y luego una clase.{" "}
+                      <span className="hidden text-muted-foreground lg:inline">
+                        Panel derecho ↗
+                      </span>
+                      <span className="text-muted-foreground lg:hidden">
+                        Desliza abajo ↓
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  /* Has disciplines but no classes */
+                  <div
+                    className="flex items-start gap-3 rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-sm ring-1 ring-primary/20"
+                    style={{
+                      animation: "neon-pulse 2.5s ease-in-out infinite",
+                    }}
+                  >
+                    <span className="relative mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/25 text-primary ring-1 ring-primary/50">
+                      <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary"
+                      >
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-75" />
+                      </span>
+                    </span>
+                    <p className="text-foreground">
+                      <span className="font-bold text-primary">
+                        Ahora crea una clase
+                      </span>{" "}
+                      para asignarle horarios.{" "}
+                      <span className="hidden text-muted-foreground lg:inline">
+                        Panel derecho ↗
+                      </span>
+                      <span className="text-muted-foreground lg:hidden">
+                        Debajo ↓
+                      </span>
+                    </p>
+                  </div>
+                )
+              ) : null}
+
+              <Button type="submit" variant="primary">
+                Continuar
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </Button>
+            </form>
+          ) : null}
+
+          {/* ── Step 1: Lugar ─────────────────────────────────────────── */}
+          {step === 1 ? (
+            <form onSubmit={continueStep} className="space-y-5">
+              <label className={labelClass}>
+                <span className="flex items-center gap-1.5">
+                  <MapPin
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                  />
+                  Lugar
+                </span>
+                <select
+                  value={locationId}
+                  required
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    setLocationId(id);
+                    setSlots((current) =>
+                      current.map((slot) => ({
+                        ...slot,
+                        locationId:
+                          slot.locationId === locationId ? id : slot.locationId,
+                      })),
+                    );
+                    invalidateReview();
+                  }}
+                  className={fieldClass}
+                >
+                  <option value="">Selecciona un lugar</option>
+                  {locations.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                      {item.address ? ` · ${item.address}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <p className="text-sm text-muted-foreground">
+                Este lugar aplica a todos los horarios. Puedes cambiarlo por día
+                en el paso siguiente.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={back}>
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                  Atrás
+                </Button>
                 <Button type="submit" variant="primary">
-                  Continuar{" "}
+                  Continuar
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Button>
-              </form>
-              <CatalogCreationPanel
-                title="Crear una disciplina"
-                description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
-                icon={Tags}
-                open={disciplineOpen || disciplines.length === 0}
-                onToggle={(event) =>
-                  setDisciplineOpen(event.currentTarget.open)
-                }
-              >
-                <DisciplineCreationForm
-                  onCreated={(value) => {
-                    onDisciplineCreated(value);
-                    setDiscipline(value.name);
-                    setClassId("");
-                    setDisciplineOpen(false);
-                    setClassOpen(true);
-                    invalidateReview();
-                  }}
-                />
-              </CatalogCreationPanel>
-              <CatalogCreationPanel
-                title="Crear una nueva clase"
-                description="Define el grupo y sus cupos; luego podrás asignarle horarios y lugares."
-                icon={Dumbbell}
-                open={classOpen || templates.length === 0}
-                onToggle={(event) => setClassOpen(event.currentTarget.open)}
-              >
-                <ClassCreationForm
-                  key={selectedDiscipline?.id || "all"}
-                  disciplines={disciplines}
-                  defaultDisciplineId={selectedDiscipline?.id}
-                  onCreated={(value) => {
-                    onClassCreated(value);
-                    setClassId(value.id);
-                    setDiscipline(value.disciplineName);
-                    setClassOpen(false);
-                    invalidateReview();
-                  }}
-                />
-              </CatalogCreationPanel>
-            </>
+              </div>
+            </form>
           ) : null}
-          {step === 1 ? (
-            <>
-              <form onSubmit={continueStep} className="space-y-5">
-                <label className={labelClass}>
-                  Lugar
-                  <select
-                    value={locationId}
-                    required
-                    onChange={(event) => {
-                      const id = event.target.value;
-                      setLocationId(id);
-                      setSlots((current) =>
-                        current.map((slot) => ({
-                          ...slot,
-                          locationId:
-                            slot.locationId === locationId
-                              ? id
-                              : slot.locationId,
-                        })),
-                      );
-                      invalidateReview();
-                    }}
-                    className={fieldClass}
-                  >
-                    <option value="">Selecciona un lugar</option>
-                    {locations.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                        {item.address ? ` · ${item.address}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="text-sm text-muted-foreground">
-                  Este lugar se usará para los horarios nuevos. Puedes cambiarlo
-                  por día sin duplicar tu clase.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={back}>Atrás</Button>
-                  <Button type="submit" variant="primary">
-                    Continuar{" "}
-                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                  </Button>
-                </div>
-              </form>
-              <details
-                open={locationOpen || locations.length === 0}
-                onToggle={(event) => setLocationOpen(event.currentTarget.open)}
-                className={detailsClass}
-              >
-                <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-primary">
-                  Crear un lugar
-                </summary>
-                <div className="mt-3">
-                  <LocationCreationForm
-                    onCreated={(value) => {
-                      onLocationCreated(value);
-                      setLocationId(value.id);
-                      setLocationOpen(false);
-                      invalidateReview();
-                    }}
-                  />
-                </div>
-              </details>
-            </>
-          ) : null}
+
+          {/* ── Step 2: Cuándo ────────────────────────────────────────── */}
           {step === 2 ? (
-            <form action={previewAction} className="space-y-5">
-              <fieldset disabled={pending} className="min-w-0 space-y-5">
-                <legend className="sr-only">
-                  Fechas y horarios de la clase
-                </legend>
-                <div className="grid grid-cols-2 gap-2">
+            <form action={previewAction} className="space-y-6">
+              <fieldset disabled={pending} className="min-w-0 space-y-6">
+                <legend className="sr-only">Fechas y horarios</legend>
+
+                {/* Mode cards */}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
                   {(
                     [
-                      { value: "once", label: "Una sola fecha" },
-                      { value: "weekly", label: "Se repite semanalmente" },
+                      {
+                        value: "once",
+                        label: "Una fecha",
+                        icon: CalendarCheck2,
+                      },
+                      { value: "weekly", label: "Semanal", icon: Repeat2 },
                     ] as const
-                  ).map((item) => (
-                    <label
-                      key={item.value}
-                      className={`flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${mode === item.value ? "border-primary bg-primary/10" : "border-border"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="mode"
-                        value={item.value}
-                        checked={mode === item.value}
-                        onChange={() => {
-                          setMode(item.value);
-                          invalidateReview();
-                        }}
-                        className="accent-primary"
-                      />
-                      {item.label}
-                    </label>
-                  ))}
+                  ).map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <label
+                        key={item.value}
+                        className={[
+                          "flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl border px-4 text-sm font-semibold transition-colors",
+                          mode === item.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border hover:border-border/80 hover:bg-surface-raised",
+                        ].join(" ")}
+                      >
+                        <input
+                          type="radio"
+                          name="mode"
+                          value={item.value}
+                          checked={mode === item.value}
+                          onChange={() => {
+                            setMode(item.value);
+                            invalidateReview();
+                          }}
+                          className="sr-only"
+                        />
+                        <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </label>
+                    );
+                  })}
                 </div>
+
+                {/* Weekly: day grid */}
                 {mode === "weekly" ? (
                   <fieldset>
-                    <legend className="mb-2 text-sm font-semibold">
+                    <legend className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold">
+                      <CalendarRange
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 text-muted-foreground"
+                      />
                       Días de la semana
                     </legend>
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                      {programmingDays.map((day) => (
-                        <button
-                          key={day.value}
-                          type="button"
-                          aria-label={day.name}
-                          aria-pressed={slots.some(
-                            (slot) => slot.dayOfWeek === day.value,
-                          )}
-                          onClick={() => toggleDay(day.value)}
-                          className={`min-h-11 rounded-lg border px-2 text-sm font-semibold ${slots.some((slot) => slot.dayOfWeek === day.value) ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
-                        >
-                          {day.short}
-                        </button>
-                      ))}
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {programmingDays.map((day) => {
+                        const active = slots.some(
+                          (s) => s.dayOfWeek === day.value,
+                        );
+                        return (
+                          <button
+                            key={day.value}
+                            type="button"
+                            aria-label={day.name}
+                            aria-pressed={active}
+                            onClick={() => toggleDay(day.value)}
+                            className={[
+                              "min-h-11 rounded-lg border text-xs font-bold transition-colors",
+                              active
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border hover:border-border/80 hover:bg-surface-raised",
+                            ].join(" ")}
+                          >
+                            {day.short}
+                          </button>
+                        );
+                      })}
                     </div>
                     {slots.length === 0 ? (
                       <p role="alert" className="mt-2 text-sm text-destructive">
@@ -717,8 +887,15 @@ export function ProgrammingWizard({
                     ) : null}
                   </fieldset>
                 ) : (
+                  /* Once: date field */
                   <label className={labelClass}>
-                    Fecha
+                    <span className="flex items-center gap-1.5">
+                      <CalendarDays
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 text-muted-foreground"
+                      />
+                      Fecha
+                    </span>
                     <input
                       type="date"
                       required
@@ -733,11 +910,20 @@ export function ProgrammingWizard({
                     />
                   </label>
                 )}
+
+                {/* Time controls (common or once mode) */}
                 {!personalized || mode === "once" ? (
-                  <>
-                    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                  <div className="space-y-4">
+                    {/* 3-column on wider screens: Inicio | Duración | Término */}
+                    <div className="grid gap-4 sm:grid-cols-3">
                       <label className={labelClass}>
-                        Hora de inicio
+                        <span className="flex items-center gap-1.5">
+                          <Clock
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 text-muted-foreground"
+                          />
+                          Inicio
+                        </span>
                         <input
                           type="time"
                           required
@@ -760,7 +946,13 @@ export function ProgrammingWizard({
                         />
                       </label>
                       <label className={labelClass}>
-                        Duración en minutos
+                        <span className="flex items-center gap-1.5">
+                          <Timer
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 text-muted-foreground"
+                          />
+                          Duración (min)
+                        </span>
                         <input
                           type="number"
                           min={1}
@@ -772,55 +964,72 @@ export function ProgrammingWizard({
                           className={fieldClass}
                         />
                       </label>
+                      <label className={labelClass}>
+                        <span className="flex items-center gap-1.5">
+                          <Clock
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 text-muted-foreground"
+                          />
+                          Término
+                        </span>
+                        <input
+                          type="time"
+                          required
+                          value={endsAt}
+                          onChange={(event) => {
+                            changeCommonTime(startsAt, event.target.value);
+                            const [sh, sm] = startsAt.split(":").map(Number);
+                            const [eh, em] = event.target.value
+                              .split(":")
+                              .map(Number);
+                            const extraDays =
+                              mode === "once" && otherDay
+                                ? (Date.parse(`${endDate}T12:00:00Z`) -
+                                    Date.parse(`${date}T12:00:00Z`)) /
+                                  86_400_000
+                                : 0;
+                            const minutes =
+                              eh * 60 + em - (sh * 60 + sm) + extraDays * 1440;
+                            if (minutes > 0) setDuration(String(minutes));
+                            else setDuration("");
+                          }}
+                          className={fieldClass}
+                        />
+                      </label>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+
+                    {/* Quick chips */}
+                    <div className="flex gap-2">
                       {[45, 60, 90].map((value) => (
-                        <Button
+                        <button
                           key={value}
+                          type="button"
                           aria-pressed={duration === String(value)}
                           onClick={() => changeDuration(String(value))}
+                          className={[
+                            "inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-semibold transition-colors",
+                            duration === String(value)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border hover:border-primary/50 hover:bg-primary/8 hover:text-primary",
+                          ].join(" ")}
                         >
                           {value} min
-                        </Button>
+                        </button>
                       ))}
                     </div>
-                    <label className={labelClass}>
-                      Hora de término
-                      <input
-                        type="time"
-                        required
-                        value={endsAt}
-                        onChange={(event) => {
-                          changeCommonTime(startsAt, event.target.value);
-                          const [sh, sm] = startsAt.split(":").map(Number);
-                          const [eh, em] = event.target.value
-                            .split(":")
-                            .map(Number);
-                          const extraDays =
-                            mode === "once" && otherDay
-                              ? (Date.parse(`${endDate}T12:00:00Z`) -
-                                  Date.parse(`${date}T12:00:00Z`)) /
-                                86_400_000
-                              : 0;
-                          const minutes =
-                            eh * 60 + em - (sh * 60 + sm) + extraDays * 1440;
-                          if (minutes > 0) setDuration(String(minutes));
-                          else setDuration("");
-                        }}
-                        className={fieldClass}
-                      />
-                    </label>
+
                     {mode === "weekly" && endsAt <= startsAt ? (
                       <p role="alert" className="text-sm text-destructive">
-                        El horario semanal debe terminar después de comenzar,
-                        dentro del mismo día.
+                        El horario semanal debe terminar después de comenzar.
                       </p>
                     ) : null}
-                  </>
+                  </div>
                 ) : null}
+
+                {/* Once: overnight */}
                 {mode === "once" ? (
                   <>
-                    <label className="flex min-h-11 items-center gap-2 text-sm">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-surface-raised">
                       <input
                         type="checkbox"
                         checked={otherDay}
@@ -839,7 +1048,13 @@ export function ProgrammingWizard({
                     </label>
                     {otherDay ? (
                       <label className={labelClass}>
-                        Fecha de término
+                        <span className="flex items-center gap-1.5">
+                          <CalendarDays
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 text-muted-foreground"
+                          />
+                          Fecha de término
+                        </span>
                         <input
                           type="date"
                           min={date}
@@ -856,19 +1071,28 @@ export function ProgrammingWizard({
                   </>
                 ) : (
                   <>
+                    {/* Weekly: per-day customization */}
                     {!personalized ? (
-                      <Button onClick={() => setPersonalized(true)}>
+                      <button
+                        type="button"
+                        onClick={() => setPersonalized(true)}
+                        className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                      >
+                        <Sliders
+                          aria-hidden="true"
+                          className="h-4 w-4 shrink-0"
+                        />
                         Personalizar horario por día
-                      </Button>
+                      </button>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">
                           Ajusta cada franja y su lugar. Puedes añadir más de
                           una franja el mismo día.
                         </p>
                         {programmingDays
                           .filter((day) =>
-                            slots.some((slot) => slot.dayOfWeek === day.value),
+                            slots.some((s) => s.dayOfWeek === day.value),
                           )
                           .map((day) => (
                             <fieldset
@@ -880,16 +1104,20 @@ export function ProgrammingWizard({
                               </legend>
                               <div className="space-y-4">
                                 {slots
-                                  .filter(
-                                    (slot) => slot.dayOfWeek === day.value,
-                                  )
+                                  .filter((s) => s.dayOfWeek === day.value)
                                   .map((slot, index) => (
                                     <div
                                       key={slot.key}
                                       className="grid min-w-0 gap-3 border-b border-border pb-4 last:border-0 sm:grid-cols-2"
                                     >
                                       <label className={labelClass}>
-                                        Inicio · {day.name} {index + 1}
+                                        <span className="flex items-center gap-1.5">
+                                          <Clock
+                                            aria-hidden="true"
+                                            className="h-3.5 w-3.5 text-muted-foreground"
+                                          />
+                                          Inicio · {index + 1}
+                                        </span>
                                         <input
                                           type="time"
                                           required
@@ -903,7 +1131,13 @@ export function ProgrammingWizard({
                                         />
                                       </label>
                                       <label className={labelClass}>
-                                        Término · {day.name} {index + 1}
+                                        <span className="flex items-center gap-1.5">
+                                          <Clock
+                                            aria-hidden="true"
+                                            className="h-3.5 w-3.5 text-muted-foreground"
+                                          />
+                                          Término · {index + 1}
+                                        </span>
                                         <input
                                           type="time"
                                           required
@@ -917,7 +1151,13 @@ export function ProgrammingWizard({
                                         />
                                       </label>
                                       <label className={labelClass}>
-                                        Lugar · {day.name} {index + 1}
+                                        <span className="flex items-center gap-1.5">
+                                          <MapPin
+                                            aria-hidden="true"
+                                            className="h-3.5 w-3.5 text-muted-foreground"
+                                          />
+                                          Lugar · {index + 1}
+                                        </span>
                                         <select
                                           value={slot.locationId || locationId}
                                           onChange={(event) =>
@@ -941,23 +1181,26 @@ export function ProgrammingWizard({
                                           ))}
                                         </select>
                                       </label>
-                                      <Button
-                                        aria-label={`Eliminar franja ${index + 1} de ${day.name}`}
-                                        onClick={() => {
-                                          setSlots((current) =>
-                                            current.filter(
-                                              (item) => item.key !== slot.key,
-                                            ),
-                                          );
-                                          invalidateReview();
-                                        }}
-                                      >
-                                        <Trash2
-                                          aria-hidden="true"
-                                          className="h-4 w-4"
-                                        />
-                                        Eliminar franja
-                                      </Button>
+                                      <div className="flex items-end">
+                                        <Button
+                                          variant="danger"
+                                          aria-label={`Eliminar franja ${index + 1} de ${day.name}`}
+                                          onClick={() => {
+                                            setSlots((current) =>
+                                              current.filter(
+                                                (item) => item.key !== slot.key,
+                                              ),
+                                            );
+                                            invalidateReview();
+                                          }}
+                                        >
+                                          <Trash2
+                                            aria-hidden="true"
+                                            className="h-4 w-4"
+                                          />
+                                          Eliminar
+                                        </Button>
+                                      </div>
                                       {slot.endsAt <= slot.startsAt ? (
                                         <p
                                           role="alert"
@@ -988,15 +1231,21 @@ export function ProgrammingWizard({
                                 }}
                               >
                                 <Plus aria-hidden="true" className="h-4 w-4" />
-                                Añadir franja · {day.name}
+                                Añadir franja
                               </Button>
                             </fieldset>
                           ))}
                       </div>
                     )}
+
+                    {/* Date range */}
                     <fieldset className="grid min-w-0 gap-4 sm:grid-cols-2">
-                      <legend className="mb-2 text-sm font-semibold">
-                        Período para publicar
+                      <legend className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                        <CalendarRange
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 text-muted-foreground"
+                        />
+                        Período a publicar
                       </legend>
                       <label className={labelClass}>
                         Desde
@@ -1012,7 +1261,7 @@ export function ProgrammingWizard({
                         />
                       </label>
                       <label className={labelClass}>
-                        Hasta (máximo 8 semanas)
+                        Hasta (máx. 8 semanas)
                         <input
                           type="date"
                           required
@@ -1033,13 +1282,31 @@ export function ProgrammingWizard({
                     </fieldset>
                   </>
                 )}
-                <details className={detailsClass}>
-                  <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold">
-                    Opciones · {timezone.replaceAll("_", " ")}
+
+                {/* Advanced options */}
+                <details className="group overflow-hidden rounded-xl border border-border transition-colors open:border-primary/30">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+                    <Sliders
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                    />
+                    <span className="flex-1">
+                      Opciones · {timezone.replaceAll("_", " ")}
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+                    />
                   </summary>
-                  <div className="mt-3 space-y-4">
+                  <div className="space-y-4 border-t border-border px-4 py-4">
                     <label className={labelClass}>
-                      Zona horaria
+                      <span className="flex items-center gap-1.5">
+                        <Globe
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 text-muted-foreground"
+                        />
+                        Zona horaria
+                      </span>
                       <select
                         value={timezone}
                         onChange={(event) => {
@@ -1058,10 +1325,10 @@ export function ProgrammingWizard({
                       </select>
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Se comprueban las fechas en esta zona. La agenda se
+                      Las fechas se comprueban en esta zona. La agenda se
                       muestra en hora de Santiago.
                     </p>
-                    <label className="flex min-h-11 items-center gap-2 text-sm">
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-surface-raised">
                       <input
                         type="checkbox"
                         checked={waitlistEnabled}
@@ -1075,10 +1342,12 @@ export function ProgrammingWizard({
                     </label>
                   </div>
                 </details>
+
                 <ProgrammingFeedback
                   state={previewState.error ? previewState : initialFeedback}
                 />
-                <div className="flex flex-wrap gap-3 border-t border-border pb-[env(safe-area-inset-bottom)] pt-5">
+
+                <div className="flex flex-wrap gap-3 border-t border-border pt-5">
                   <Button onClick={back} disabled={pending}>
                     <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                     Atrás
@@ -1092,10 +1361,11 @@ export function ProgrammingWizard({
                     disabled={
                       mode === "weekly" &&
                       (slots.length === 0 ||
-                        slots.some((slot) => slot.endsAt <= slot.startsAt))
+                        slots.some((s) => s.endsAt <= s.startsAt))
                     }
                   >
-                    Revisar para publicar
+                    <ListChecks aria-hidden="true" className="h-4 w-4" />
+                    Revisar y publicar
                   </Button>
                   {mode === "weekly" ? (
                     <Button
@@ -1104,7 +1374,7 @@ export function ProgrammingWizard({
                       value="save"
                       disabled={
                         slots.length === 0 ||
-                        slots.some((slot) => slot.endsAt <= slot.startsAt)
+                        slots.some((s) => s.endsAt <= s.startsAt)
                       }
                     >
                       Solo guardar horarios
@@ -1114,6 +1384,8 @@ export function ProgrammingWizard({
               </fieldset>
             </form>
           ) : null}
+
+          {/* ── Step 3: Revisar ───────────────────────────────────────── */}
           {step === 3 && review?.preview ? (
             <form action={saveAction} className="space-y-5">
               <input
@@ -1122,34 +1394,60 @@ export function ProgrammingWizard({
                 value={JSON.stringify(payload)}
               />
               <input type="hidden" name="intent" value={intent} />
-              <div className="lg:hidden">{summary}</div>
-              <p className="text-sm">
+
+              {/* Mobile-only summary (desktop shows it in the right column) */}
+              <div className="lg:hidden rounded-xl border border-border bg-surface-raised/50 p-4">
+                {summaryCard}
+              </div>
+
+              {/* Date range label */}
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CalendarRange
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0"
+                />
                 {mode === "weekly"
                   ? `${programmingDateLabel(fromDate)} al ${programmingDateLabel(untilDate)}`
                   : programmingDateLabel(date)}
               </p>
-              <p
+
+              {/* Result pill */}
+              <div
                 role="status"
-                className="rounded-xl bg-primary/10 p-4 font-semibold"
+                className="flex items-start gap-3 rounded-xl bg-primary/10 p-4"
               >
-                {intent === "save"
-                  ? `Se guardarán ${slots.length} horarios sin publicar sesiones.`
-                  : `${review.preview.newCount === 1 ? "1 sesión nueva" : `${review.preview.newCount} sesiones nuevas`} · ${review.preview.existingCount === 1 ? "1 existente se conservará" : `${review.preview.existingCount} existentes se conservarán`}.`}
-              </p>
+                <CalendarCheck2
+                  aria-hidden="true"
+                  className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                />
+                <p className="text-sm font-semibold">
+                  {intent === "save"
+                    ? `Se guardarán ${slots.length} horarios sin publicar sesiones.`
+                    : `${review.preview.newCount === 1 ? "1 sesión nueva" : `${review.preview.newCount} sesiones nuevas`} · ${review.preview.existingCount === 1 ? "1 existente se conservará" : `${review.preview.existingCount} existentes se conservarán`}.`}
+                </p>
+              </div>
+
               <p className="text-sm text-muted-foreground">
                 No se sobrescriben sesiones existentes, cancelaciones, reservas
-                ni cambios individuales. Guardar horarios no modifica sesiones
-                ya publicadas.
+                ni cambios individuales.
               </p>
+
+              {/* Conflicts */}
               {conflictList.length > 0 ? (
-                <div className="space-y-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
-                  <h4 className="font-semibold">Hay cruces de horarios</h4>
-                  <ul className="list-disc space-y-2 pl-5 text-sm">
+                <div className="space-y-3 rounded-xl border border-warning/40 bg-warning/8 p-4">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold">
+                    <AlertTriangle
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-warning"
+                    />
+                    Hay cruces de horarios
+                  </h4>
+                  <ul className="list-disc space-y-1.5 pl-5 text-sm">
                     {conflictList.map((conflict, index) => (
                       <li key={index}>{conflict.message}</li>
                     ))}
                   </ul>
-                  <label className="flex min-h-11 items-start gap-2 text-sm font-semibold">
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-sm font-semibold">
                     <input
                       type="checkbox"
                       checked={allowConflict}
@@ -1159,52 +1457,76 @@ export function ProgrammingWizard({
                       disabled={pending}
                       className="mt-1 h-4 w-4 shrink-0 accent-primary"
                     />
-                    Revisé estos cruces y confirmo que puedo impartir estas
+                    Revisé los cruces y confirmo que puedo impartir estas
                     clases.
                   </label>
                   <Button onClick={back} disabled={pending}>
+                    <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                     Cambiar horario
                   </Button>
                 </div>
               ) : null}
+
               <p className="text-xs text-muted-foreground">
                 Los cruces se comprueban dentro del período seleccionado. Las
-                horas inexistentes o ambiguas por cambio de horario requieren
-                otra selección.
+                horas inexistentes por cambio de horario requieren otra
+                selección.
               </p>
+
+              {/* Occurrences */}
               {review.preview.occurrences.length > 0 ? (
-                <details className={detailsClass}>
-                  <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold">
-                    Ver fechas y horarios ({review.preview.occurrences.length})
+                <details className="group overflow-hidden rounded-xl border border-border transition-colors open:border-primary/30">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+                    <CalendarDays
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                    />
+                    <span className="flex-1">
+                      Ver fechas y horarios ({review.preview.occurrences.length}
+                      )
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+                    />
                   </summary>
-                  <ul className="mt-3 max-h-72 space-y-3 overflow-y-auto text-sm">
+                  <ul className="max-h-72 space-y-3 overflow-y-auto border-t border-border px-4 py-3 text-sm">
                     {review.preview.occurrences.map((occurrence, index) => (
-                      <li key={index}>
-                        <time dateTime={occurrence.startsAt}>
-                          {occurrenceFormatter.format(
-                            new Date(occurrence.startsAt),
-                          )}
-                        </time>
-                        {" – "}
-                        <time dateTime={occurrence.endsAt}>
-                          {occurrenceFormatter.format(
-                            new Date(occurrence.endsAt),
-                          )}
-                        </time>
-                        {" · "}
-                        {
-                          locations.find(
-                            (item) => item.id === occurrence.locationId,
-                          )?.name
-                        }
+                      <li key={index} className="flex items-center gap-2">
+                        <Clock
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                        />
+                        <span>
+                          <time dateTime={occurrence.startsAt}>
+                            {occurrenceFormatter.format(
+                              new Date(occurrence.startsAt),
+                            )}
+                          </time>
+                          {" – "}
+                          <time dateTime={occurrence.endsAt}>
+                            {occurrenceFormatter.format(
+                              new Date(occurrence.endsAt),
+                            )}
+                          </time>
+                          {" · "}
+                          {
+                            locations.find(
+                              (item) => item.id === occurrence.locationId,
+                            )?.name
+                          }
+                        </span>
                       </li>
                     ))}
                   </ul>
                 </details>
               ) : null}
+
               <ProgrammingFeedback state={savedState} />
-              <div className="flex flex-wrap gap-3">
+
+              <div className="flex flex-wrap gap-3 border-t border-border pt-5">
                 <Button onClick={back} disabled={pending}>
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                   Atrás
                 </Button>
                 <Button
@@ -1220,22 +1542,168 @@ export function ProgrammingWizard({
                   }
                 >
                   <CalendarDays aria-hidden="true" className="h-4 w-4" />
-                  {intent === "save"
-                    ? "Guardar horarios sin publicar"
-                    : "Publicar clases"}
+                  {intent === "save" ? "Guardar horarios" : "Publicar clases"}
                 </Button>
               </div>
             </form>
           ) : null}
         </Surface>
-        <Surface
-          className="hidden min-w-0 space-y-4 lg:sticky lg:top-28 lg:block"
-          aria-label="Resumen de la clase"
-        >
-          <h3 className="font-bold">Tu programación</h3>
-          {summary}
-        </Surface>
+
+        {/* ── RIGHT: summary + catalog panels ─────────────────────────── */}
+        <div className="space-y-4">
+          {/* Summary card — always visible on desktop */}
+          <Surface aria-label="Resumen de la programación">
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-bold">
+              <ListChecks
+                aria-hidden="true"
+                className="h-4 w-4 text-muted-foreground"
+              />
+              Tu programación
+            </h3>
+            {summaryCard}
+          </Surface>
+
+          {/* Step 0: catalog creation panels in the right column on desktop */}
+          {step === 0 ? (
+            <>
+              <CatalogCreationPanel
+                title="Crear disciplina"
+                description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
+                icon={Tags}
+                open={disciplineOpen || disciplines.length === 0}
+                highlight={disciplines.length === 0}
+                onToggle={(event) =>
+                  setDisciplineOpen(event.currentTarget.open)
+                }
+              >
+                <DisciplineCreationForm
+                  onCreated={(value) => {
+                    onDisciplineCreated(value);
+                    setDiscipline(value.name);
+                    setClassId("");
+                    setDisciplineOpen(false);
+                    setClassOpen(true);
+                    invalidateReview();
+                  }}
+                />
+              </CatalogCreationPanel>
+              <CatalogCreationPanel
+                title="Crear clase"
+                description="Define el grupo y sus cupos; luego podrás asignarle horarios."
+                icon={Dumbbell}
+                open={classOpen || templates.length === 0}
+                highlight={disciplines.length > 0 && templates.length === 0}
+                onToggle={(event) => setClassOpen(event.currentTarget.open)}
+              >
+                <ClassCreationForm
+                  key={selectedDiscipline?.id || "all"}
+                  disciplines={disciplines}
+                  defaultDisciplineId={selectedDiscipline?.id}
+                  onCreated={(value) => {
+                    onClassCreated(value);
+                    setClassId(value.id);
+                    setDiscipline(value.disciplineName);
+                    setClassOpen(false);
+                    invalidateReview();
+                  }}
+                />
+              </CatalogCreationPanel>
+            </>
+          ) : null}
+
+          {/* Step 1: location creation panel in the right column on desktop */}
+          {step === 1 ? (
+            <CatalogCreationPanel
+              title="Crear lugar"
+              description="Agrega una sala, gimnasio o espacio donde dictas tus clases."
+              icon={MapPin}
+              open={locationOpen || locations.length === 0}
+              highlight={locations.length === 0}
+              onToggle={(event) => setLocationOpen(event.currentTarget.open)}
+            >
+              <LocationCreationForm
+                onCreated={(value) => {
+                  onLocationCreated(value);
+                  setLocationId(value.id);
+                  setLocationOpen(false);
+                  invalidateReview();
+                }}
+              />
+            </CatalogCreationPanel>
+          ) : null}
+        </div>
       </div>
-    </section>
+
+      {/*
+       * Mobile-only: catalog panels stacked below the main card.
+       * On desktop these live in the right column above, so we hide them here.
+       */}
+      {step === 0 ? (
+        <div className="space-y-3 lg:hidden">
+          <CatalogCreationPanel
+            title="Crear disciplina"
+            description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
+            icon={Tags}
+            open={disciplineOpen || disciplines.length === 0}
+            highlight={disciplines.length === 0}
+            onToggle={(event) => setDisciplineOpen(event.currentTarget.open)}
+          >
+            <DisciplineCreationForm
+              onCreated={(value) => {
+                onDisciplineCreated(value);
+                setDiscipline(value.name);
+                setClassId("");
+                setDisciplineOpen(false);
+                setClassOpen(true);
+                invalidateReview();
+              }}
+            />
+          </CatalogCreationPanel>
+          <CatalogCreationPanel
+            title="Crear clase"
+            description="Define el grupo y sus cupos; luego podrás asignarle horarios."
+            icon={Dumbbell}
+            open={classOpen || templates.length === 0}
+            highlight={disciplines.length > 0 && templates.length === 0}
+            onToggle={(event) => setClassOpen(event.currentTarget.open)}
+          >
+            <ClassCreationForm
+              key={selectedDiscipline?.id || "all"}
+              disciplines={disciplines}
+              defaultDisciplineId={selectedDiscipline?.id}
+              onCreated={(value) => {
+                onClassCreated(value);
+                setClassId(value.id);
+                setDiscipline(value.disciplineName);
+                setClassOpen(false);
+                invalidateReview();
+              }}
+            />
+          </CatalogCreationPanel>
+        </div>
+      ) : null}
+
+      {step === 1 ? (
+        <div className="lg:hidden">
+          <CatalogCreationPanel
+            title="Crear lugar"
+            description="Agrega una sala, gimnasio o espacio donde dictas tus clases."
+            icon={MapPin}
+            open={locationOpen || locations.length === 0}
+            highlight={locations.length === 0}
+            onToggle={(event) => setLocationOpen(event.currentTarget.open)}
+          >
+            <LocationCreationForm
+              onCreated={(value) => {
+                onLocationCreated(value);
+                setLocationId(value.id);
+                setLocationOpen(false);
+                invalidateReview();
+              }}
+            />
+          </CatalogCreationPanel>
+        </div>
+      ) : null}
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import type {
   LocationContextOption,
   TenantContextOption,
@@ -87,6 +87,7 @@ function routeHeading(pathname: string) {
 export function OperationalRouteTopbar({
   tenantName,
   account,
+  extraActions,
 }: {
   tenantName: string;
   account: {
@@ -99,6 +100,7 @@ export function OperationalRouteTopbar({
     locations?: LocationContextOption[];
     currentLocationId?: string;
   };
+  extraActions?: ReactNode;
 }) {
   const pathname = usePathname();
 
@@ -120,15 +122,21 @@ export function OperationalRouteTopbar({
     [isSessionRoute],
   );
 
+  const actions =
+    backLink || extraActions ? (
+      <>
+        {extraActions}
+        {backLink}
+      </>
+    ) : undefined;
+
   return (
-    // key removed — let React reconcile props normally instead of destroying
-    // and recreating the component tree on every route change.
     <OperationalTopbar
       section={heading.section}
       title={heading.title}
       tenantName={tenantName}
       account={account}
-      actions={backLink}
+      actions={actions}
     />
   );
 }

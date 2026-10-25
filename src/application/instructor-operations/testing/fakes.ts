@@ -162,7 +162,10 @@ export class FakeStudentRepository implements StudentRepositoryPort {
             contact.isPrimary &&
             (contact.type === "email" || contact.type === "phone"),
         );
-        return [student.fullName, ...studentContacts.map((contact) => contact.value)]
+        return [
+          student.fullName,
+          ...studentContacts.map((contact) => contact.value),
+        ]
           .join(" ")
           .toLocaleLowerCase("es")
           .includes(search);
@@ -233,6 +236,20 @@ export class FakeLocationRepository implements LocationRepositoryPort {
     );
     if (!location) throw new NotFoundError("Location", locationId);
     location.status = "archived";
+    return location;
+  }
+
+  async update(
+    input: Parameters<LocationRepositoryPort["update"]>[0],
+  ): Promise<Location> {
+    const location = this.locations.find(
+      (candidate) =>
+        candidate.id === input.id && candidate.tenantId === input.tenantId,
+    );
+    if (!location) throw new NotFoundError("Location", input.id);
+    location.name = input.name;
+    location.type = input.type;
+    location.address = input.address;
     return location;
   }
 
