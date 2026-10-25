@@ -3,6 +3,7 @@
 import {
   useActionState,
   useCallback,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -142,7 +143,9 @@ function LocationEditorDialog({
       if (!result.error) {
         onSaved(
           location.id,
-          archiving ? undefined : { name: name.trim(), address: address.trim() || null },
+          archiving
+            ? undefined
+            : { name: name.trim(), address: address.trim() || null },
         );
       }
       return result;
@@ -337,7 +340,10 @@ function WeeklyRoutineCard({
                 </span>
               ))
             ) : (
-              <span aria-hidden="true" className="text-xs text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="text-xs text-muted-foreground"
+              >
                 —
               </span>
             )}
@@ -403,12 +409,21 @@ export function SchedulesWorkspace({
   );
   const activeSection = sectionForHash(hash);
 
-  const [createdDisciplines, setCreatedDisciplines] = useState<DisciplineOption[]>([]);
-  const [createdClasses, setCreatedClasses] = useState<ClassTemplateOption[]>([]);
+  const [createdDisciplines, setCreatedDisciplines] = useState<
+    DisciplineOption[]
+  >([]);
+  const [createdClasses, setCreatedClasses] = useState<ClassTemplateOption[]>(
+    [],
+  );
   const [createdLocations, setCreatedLocations] = useState<DayLocation[]>([]);
-  const [archivedLocationIds, setArchivedLocationIds] = useState<Set<string>>(new Set());
-  const [locationEditor, setLocationEditor] = useState<LocationEditorState | null>(null);
-  const [classCreationOpen, setClassCreationOpen] = useState(templates.length === 0);
+  const [archivedLocationIds, setArchivedLocationIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [locationEditor, setLocationEditor] =
+    useState<LocationEditorState | null>(null);
+  const [classCreationOpen, setClassCreationOpen] = useState(
+    templates.length === 0,
+  );
 
   const allDisciplines = mergeCreated(disciplines, createdDisciplines);
   const allClasses = mergeCreated(
@@ -454,9 +469,18 @@ export function SchedulesWorkspace({
 
   const groupedSchedules = groupProgrammingSchedules(schedules);
 
+  const [pendingHash, setPendingHash] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingHash !== null) {
+      window.location.hash = pendingHash;
+      setTimeout(() => setPendingHash(null), 0);
+    }
+  }, [pendingHash]);
+
   function setSection(value: Section) {
     const section = sections.find((s) => s.value === value);
-    if (section) window.location.hash = section.hash;
+    if (section) setPendingHash(section.hash);
   }
 
   return (
@@ -536,7 +560,8 @@ export function SchedulesWorkspace({
                     group={group}
                     canProgram={
                       !instructorMembershipId ||
-                      instructorMembershipId === group[0].instructorMembershipId ||
+                      instructorMembershipId ===
+                        group[0].instructorMembershipId ||
                       canManageOtherInstructors
                     }
                   />
@@ -651,7 +676,10 @@ export function SchedulesWorkspace({
 
             <div className="border-t border-border pt-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-bold">
-                <Plus aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+                <Plus
+                  aria-hidden="true"
+                  className="h-4 w-4 text-muted-foreground"
+                />
                 Añadir ubicación
               </h3>
               <LocationCreationForm onCreated={onLocationCreated} />
