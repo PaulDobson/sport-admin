@@ -278,7 +278,9 @@ export function DisciplinesWorkspace({
           {message}
         </p>
       ) : null}
-      {canManage ? (
+
+      {/*
+      canManage ? (
         <Surface
           aria-labelledby="discipline-next-step-heading"
           className="border-primary/20 p-5"
@@ -308,7 +310,9 @@ export function DisciplinesWorkspace({
             </Link>
           ) : null}
         </Surface>
-      ) : null}
+      ) : null
+      
+      */}
       {!canManage ? (
         <p className="text-sm text-muted-foreground">
           Tu perfil puede consultar el catálogo. Solicita a un administrador o

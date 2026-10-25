@@ -534,26 +534,30 @@ export function ProgrammingWizard({
 
   // ── Wizard ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5" aria-labelledby="programming-wizard-heading">
-      {/* Hero header */}
-      <Surface className="border-primary/30 bg-linear-to-br from-primary/20 via-primary/5 to-card p-5 sm:p-7">
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">
-          <CalendarDays aria-hidden="true" className="h-4 w-4" />
-          Agenda de clases
-        </p>
-        <h2
-          id="programming-wizard-heading"
-          className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl"
-        >
-          Programar clase
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Elige qué impartes, dónde y cuándo. Revisa todo antes de publicar.
-        </p>
-      </Surface>
+    <div className="space-y-4" aria-labelledby="programming-wizard-heading">
+      {/* Compact page header */}
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
+          <CalendarDays aria-hidden="true" className="h-5 w-5" />
+        </span>
+        <div>
+          <h2
+            id="programming-wizard-heading"
+            className="text-lg font-bold leading-tight"
+          >
+            Programar clase
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Elige qué, dónde y cuándo. Revisa antes de publicar.
+          </p>
+        </div>
+      </div>
 
-      {/* Step indicator */}
-      <ol aria-label="Pasos para programar" className="grid grid-cols-4 gap-2">
+      {/* Step indicator — icon-only on mobile, icon+label on sm+ */}
+      <ol
+        aria-label="Pasos para programar"
+        className="grid grid-cols-4 gap-1.5"
+      >
         {steps.map(({ label, icon: Icon }, index) => {
           const isActive = index === step;
           const isDone = index < step;
@@ -562,7 +566,7 @@ export function ProgrammingWizard({
               key={label}
               aria-current={isActive ? "step" : undefined}
               className={[
-                "flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center transition-colors",
+                "flex min-w-0 flex-col items-center gap-1 rounded-xl border px-1 py-2.5 text-center transition-colors sm:flex-row sm:justify-center sm:gap-2 sm:px-3 sm:py-2",
                 isActive
                   ? "border-primary bg-primary/10 text-primary"
                   : isDone
@@ -590,7 +594,7 @@ export function ProgrammingWizard({
        *
        * On mobile everything stacks naturally.
        */}
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* ── LEFT: main form card ─────────────────────────────────────── */}
         <Surface className="min-w-0 space-y-6 p-5 sm:p-6">
           {/* Step heading */}
@@ -669,10 +673,67 @@ export function ProgrammingWizard({
               </div>
 
               {templates.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-                  Comienza creando tu disciplina y tu primera clase en el panel
-                  de la derecha.
-                </p>
+                disciplines.length === 0 ? (
+                  /* Neither discipline nor class exists yet */
+                  <div
+                    className="flex items-start gap-3 rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-sm ring-1 ring-primary/20"
+                    style={{
+                      animation: "neon-pulse 2.5s ease-in-out infinite",
+                    }}
+                  >
+                    <span className="relative mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/25 text-primary ring-1 ring-primary/50">
+                      <Tags aria-hidden="true" className="h-3.5 w-3.5" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary"
+                      >
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-75" />
+                      </span>
+                    </span>
+                    <p className="text-foreground">
+                      <span className="font-bold text-primary">
+                        Primero crea una disciplina
+                      </span>{" "}
+                      y luego una clase.{" "}
+                      <span className="hidden text-muted-foreground lg:inline">
+                        Panel derecho ↗
+                      </span>
+                      <span className="text-muted-foreground lg:hidden">
+                        Desliza abajo ↓
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  /* Has disciplines but no classes */
+                  <div
+                    className="flex items-start gap-3 rounded-xl border border-primary/50 bg-primary/10 px-4 py-3 text-sm ring-1 ring-primary/20"
+                    style={{
+                      animation: "neon-pulse 2.5s ease-in-out infinite",
+                    }}
+                  >
+                    <span className="relative mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/25 text-primary ring-1 ring-primary/50">
+                      <Dumbbell aria-hidden="true" className="h-3.5 w-3.5" />
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary"
+                      >
+                        <span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-75" />
+                      </span>
+                    </span>
+                    <p className="text-foreground">
+                      <span className="font-bold text-primary">
+                        Ahora crea una clase
+                      </span>{" "}
+                      para asignarle horarios.{" "}
+                      <span className="hidden text-muted-foreground lg:inline">
+                        Panel derecho ↗
+                      </span>
+                      <span className="text-muted-foreground lg:hidden">
+                        Debajo ↓
+                      </span>
+                    </p>
+                  </div>
+                )
               ) : null}
 
               <Button type="submit" variant="primary">
@@ -1510,6 +1571,7 @@ export function ProgrammingWizard({
                 description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
                 icon={Tags}
                 open={disciplineOpen || disciplines.length === 0}
+                highlight={disciplines.length === 0}
                 onToggle={(event) =>
                   setDisciplineOpen(event.currentTarget.open)
                 }
@@ -1530,6 +1592,7 @@ export function ProgrammingWizard({
                 description="Define el grupo y sus cupos; luego podrás asignarle horarios."
                 icon={Dumbbell}
                 open={classOpen || templates.length === 0}
+                highlight={disciplines.length > 0 && templates.length === 0}
                 onToggle={(event) => setClassOpen(event.currentTarget.open)}
               >
                 <ClassCreationForm
@@ -1555,6 +1618,7 @@ export function ProgrammingWizard({
               description="Agrega una sala, gimnasio o espacio donde dictas tus clases."
               icon={MapPin}
               open={locationOpen || locations.length === 0}
+              highlight={locations.length === 0}
               onToggle={(event) => setLocationOpen(event.currentTarget.open)}
             >
               <LocationCreationForm
@@ -1581,6 +1645,7 @@ export function ProgrammingWizard({
             description="Agrupa tus clases por actividad, como boxeo, yoga o pilates."
             icon={Tags}
             open={disciplineOpen || disciplines.length === 0}
+            highlight={disciplines.length === 0}
             onToggle={(event) => setDisciplineOpen(event.currentTarget.open)}
           >
             <DisciplineCreationForm
@@ -1599,6 +1664,7 @@ export function ProgrammingWizard({
             description="Define el grupo y sus cupos; luego podrás asignarle horarios."
             icon={Dumbbell}
             open={classOpen || templates.length === 0}
+            highlight={disciplines.length > 0 && templates.length === 0}
             onToggle={(event) => setClassOpen(event.currentTarget.open)}
           >
             <ClassCreationForm
@@ -1624,6 +1690,7 @@ export function ProgrammingWizard({
             description="Agrega una sala, gimnasio o espacio donde dictas tus clases."
             icon={MapPin}
             open={locationOpen || locations.length === 0}
+            highlight={locations.length === 0}
             onToggle={(event) => setLocationOpen(event.currentTarget.open)}
           >
             <LocationCreationForm

@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CalendarPlus,
   Building2,
   ChartNoAxesCombined,
   CircleDollarSign,
@@ -39,7 +40,7 @@ export interface NavigationDestination {
   roles?: readonly TenantMembershipRole[];
 }
 
-export type ScheduleSection = "sessions" | "programming";
+export type ScheduleSection = "sessions" | "programming" | "schedules";
 
 export type TrainingSection = "cognitive" | "combinations" | "timers";
 
@@ -63,15 +64,22 @@ const scheduleSections: ReadonlyArray<{
 }> = [
   {
     id: "sessions",
-    label: "Sesiones hoy",
+    label: "Sesiones",
     href: "/dashboard/schedule",
     icon: CalendarDays,
   },
   {
-    id: "programming",
-    label: "Programación",
-    href: "/dashboard/schedule/programming",
+    id: "schedules",
+    label: "Horarios",
+    href: "/dashboard/schedule/schedules",
     icon: Repeat2,
+    roles: ["owner", "admin", "instructor"],
+  },
+  {
+    id: "programming",
+    label: "Programar",
+    href: "/dashboard/schedule/programming",
+    icon: CalendarPlus,
     roles: ["owner", "admin", "instructor"],
   },
 ];
@@ -86,6 +94,7 @@ export function activeScheduleSection(
   pathname: string,
 ): ScheduleSection | null {
   if (pathname === "/dashboard/schedule/programming") return "programming";
+  if (pathname === "/dashboard/schedule/schedules") return "schedules";
   if (
     pathname === "/dashboard/schedule" ||
     SESSION_ATTENDANCE_RE.test(pathname)

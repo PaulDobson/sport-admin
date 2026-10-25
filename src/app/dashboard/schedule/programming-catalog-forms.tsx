@@ -40,6 +40,7 @@ export function CatalogCreationPanel({
   icon: Icon,
   open,
   onToggle,
+  highlight = false,
   children,
 }: {
   title: string;
@@ -47,32 +48,79 @@ export function CatalogCreationPanel({
   icon: LucideIcon;
   open?: boolean;
   onToggle?: ComponentProps<"details">["onToggle"];
+  /** Neon-highlight mode — draws attention when the user hasn't created this resource yet */
+  highlight?: boolean;
   children: ReactNode;
 }) {
   return (
     <details
       open={open}
       onToggle={onToggle}
-      className="group overflow-hidden rounded-xl border border-border bg-card transition-colors open:border-primary/40"
+      className={[
+        "group overflow-hidden rounded-xl border transition-colors duration-300",
+        highlight
+          ? "animate-neon-pulse border-primary/60 bg-card"
+          : "border-border bg-card open:border-primary/40",
+      ].join(" ")}
     >
       <summary className="flex min-h-20 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
         <span className="flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          {/* Icon container — pulses with neon glow when highlighted */}
+          <span
+            className={[
+              "grid h-10 w-10 shrink-0 place-items-center rounded-lg transition-colors",
+              highlight
+                ? "bg-primary/20 text-primary ring-2 ring-primary/50 ring-offset-2 ring-offset-card animate-neon-icon"
+                : "bg-primary/10 text-primary",
+            ].join(" ")}
+          >
             <Icon aria-hidden="true" className="h-5 w-5" />
           </span>
+
           <span className="min-w-0">
-            <span className="block text-sm font-semibold text-foreground">
-              {title}
+            <span className="flex flex-wrap items-center gap-2">
+              <span
+                className={[
+                  "block text-sm font-semibold",
+                  highlight ? "text-primary" : "text-foreground",
+                ].join(" ")}
+              >
+                {title}
+              </span>
+              {highlight ? (
+                <span className="animate-neon-badge inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary ring-1 ring-primary/40">
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-1.5 w-1.5 rounded-full bg-primary"
+                    style={{
+                      animation: "neon-badge-pulse 1s ease-in-out infinite",
+                    }}
+                  />
+                  Requerido
+                </span>
+              ) : null}
             </span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
               {description}
             </span>
           </span>
         </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-        />
+
+        {/* Chevron or animated arrow when highlighted */}
+        {highlight ? (
+          <span
+            aria-hidden="true"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30"
+            style={{ animation: "neon-badge-pulse 1.4s ease-in-out infinite" }}
+          >
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          </span>
+        ) : (
+          <ChevronDown
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          />
+        )}
       </summary>
       <div className="border-t border-border px-4 py-4 sm:px-5">{children}</div>
     </details>

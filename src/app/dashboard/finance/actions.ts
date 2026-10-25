@@ -421,3 +421,90 @@ export async function assignMembershipAction(
   }
   return { status: "assigned", error: null, result: summary };
 }
+
+export interface ChangeMembershipPlanState {
+  status: "idle" | "error" | "changed";
+  error: string | null;
+  result?: {
+    membershipId: string;
+    studentId: string;
+    expiresOn: string;
+    agreedPrice: number;
+    currency: string;
+  };
+}
+
+/**
+ * Cancels the student's current membership and assigns a new plan.
+ * Both operations share the same server roundtrip. The cancellation uses
+ * today's date as effectiveOn so there is no gap between the old and new plan.
+ */
+export async function changeMembershipPlanAction(
+  _previousState: ChangeMembershipPlanState,
+  formData: FormData,
+): Promise<ChangeMembershipPlanState> {
+  const actor = await requireOperationalMembership();
+  if (actor.role === "assistant") {
+    return {
+      status: "error",
+      error:
+        "Tu rol no permite cambiar planes. Pide ayuda al instructor a cargo.",
+    };
+  }
+
+  const currentMembershipId = String(formData.get("currentMembershipId") ?? "");
+  const studentId = String(formData.get("studentId") ?? "");
+  const newPlanId = String(formData.get("newPlanId") ?? "");
+  const startsOn = String(formData.get("startsOn") ?? "");
+  const assignmentToken = String(formData.get("assignmentToken") ?? "");
+  const effectiveOn =
+    String(formData.get("effectiveOn") ?? "") ||
+    new Date().toISOString().slice(0, 10);
+
+  const finance = await createInstructorFinanceDeps();
+
+  try {
+    // 1. Cancel the existing membership
+    await cancelMembership(
+      {
+        tenantId: actor.tenantId,
+        membershipId: currentMembershipId,
+        effectiveOn,
+        actorMembershipId: actor.id,
+        operationId: randomUUID(),
+      },
+      finance,
+    );
+
+    // 2. Assign the new plan
+    const result = await assignMembership(
+      {
+        tenantId: actor.tenantId,
+        studentId,
+        planId: newPlanId,
+        startsOn: startsOn || effectiveOn,
+        actorMembershipId: actor.id,
+        assignmentToken,
+      },
+      finance,
+    );
+
+    revalidateFinance();
+    revalidatePath(`/dashboard/students/${studentId}`);
+    revalidatePath("/dashboard");
+
+    return {
+      status: "changed",
+      error: null,
+      result: {
+        membershipId: result.membership.id,
+        studentId: result.membership.studentId,
+        expiresOn: result.membership.expiresOn,
+        agreedPrice: result.membership.agreedPrice,
+        currency: result.membership.currency,
+      },
+    };
+  } catch (error) {
+    return { status: "error", error: formatActionError(error) };
+  }
+}

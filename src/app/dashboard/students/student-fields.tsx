@@ -108,7 +108,7 @@ function IconField({
   return (
     <label className="grid min-w-0 gap-1.5 text-sm">
       <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-        <span className="text-primary/80" aria-hidden="true">
+        <span className="text-muted-foreground" aria-hidden="true">
           {icon}
         </span>
         {label}
