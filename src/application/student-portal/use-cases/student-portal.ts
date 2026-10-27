@@ -59,6 +59,15 @@ export async function listStudentPortalSessions(
   return deps.portal.listSessions(parseWithSchema(idSchema, studentId));
 }
 
+export async function listStudentPortalAttendanceHistory(
+  studentId: string,
+  deps: { portal: StudentPortalPort },
+) {
+  return deps.portal.listAttendanceHistory(
+    parseWithSchema(idSchema, studentId),
+  );
+}
+
 export async function enrollStudentPortalSession(
   input: { tenantId: string; studentId: string; sessionId: string },
   deps: { portal: StudentPortalPort },

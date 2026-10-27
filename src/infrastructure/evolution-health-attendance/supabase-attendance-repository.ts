@@ -37,12 +37,20 @@ export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
   constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async searchStudents(tenantId: string, search: string, page: number) {
-    const { data, error } = await this.client.rpc("search_attendance_students", {
-      target_tenant: tenantId, search_text: search, page_number: page,
-    });
+    const { data, error } = await this.client.rpc(
+      "search_attendance_students",
+      {
+        target_tenant: tenantId,
+        search_text: search,
+        page_number: page,
+      },
+    );
     if (error) throw error;
     return {
-      students: (data ?? []).map((row) => ({ studentId: row.student_id, studentName: row.student_name })),
+      students: (data ?? []).map((row) => ({
+        studentId: row.student_id,
+        studentName: row.student_name,
+      })),
       total: data?.[0]?.total_count ?? 0,
     };
   }
@@ -91,6 +99,91 @@ export class SupabaseAttendanceRepository implements AttendanceRepositoryPort {
           withoutReservation: true,
         })),
     ];
+  }
+
+  async listStudentHistory(tenantId: string, studentId: string) {
+    const { data, error } = await this.client
+      .from("class_session_attendance")
+      .select(
+        "session_id, status, note, recorded_at, class_sessions!inner(starts_at, ends_at, class_templates!inner(name), locations!inner(name))",
+      )
+      .eq("tenant_id", tenantId)
+      .eq("student_id", studentId)
+      .order("recorded_at", { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return this._mapAttendanceRows(data ?? []);
+  }
+
+  async listStudentMonthlySummary(tenantId: string, studentId: string) {
+    // One GROUP BY query — returns one row per month, all statuses counted.
+    const { data, error } = await this.client.rpc(
+      "get_student_attendance_monthly_summary",
+      { target_tenant_id: tenantId, target_student_id: studentId },
+    );
+    if (error) throw error;
+    return (data ?? []).map(
+      (row: {
+        yr: number;
+        mo: number;
+        present: number;
+        late: number;
+        absent: number;
+        excused: number;
+        total: number;
+      }) => ({
+        year: row.yr,
+        month: row.mo,
+        present: row.present,
+        late: row.late,
+        absent: row.absent,
+        excused: row.excused,
+        total: row.total,
+      }),
+    );
+  }
+
+  async listStudentMonthDetail(
+    tenantId: string,
+    studentId: string,
+    year: number,
+    month: number,
+  ) {
+    const from = new Date(year, month - 1, 1).toISOString();
+    const to = new Date(year, month, 1).toISOString(); // exclusive start of next month
+    const { data, error } = await this.client
+      .from("class_session_attendance")
+      .select(
+        "session_id, status, note, recorded_at, class_sessions!inner(starts_at, ends_at, class_templates!inner(name), locations!inner(name))",
+      )
+      .eq("tenant_id", tenantId)
+      .eq("student_id", studentId)
+      .gte("recorded_at", from)
+      .lt("recorded_at", to)
+      .order("recorded_at", { ascending: false });
+    if (error) throw error;
+    return this._mapAttendanceRows(data ?? []);
+  }
+
+  private _mapAttendanceRows(data: unknown[]) {
+    return (data as Array<Record<string, unknown>>).map((row) => {
+      const session = row.class_sessions as {
+        starts_at: string;
+        ends_at: string;
+        class_templates: { name: string };
+        locations: { name: string };
+      };
+      return {
+        sessionId: (row.session_id as string) ?? "",
+        className: session.class_templates.name,
+        locationName: session.locations.name,
+        startsAt: new Date(session.starts_at),
+        endsAt: new Date(session.ends_at),
+        status: row.status as AttendanceStatus,
+        note: (row.note as string | null) ?? undefined,
+        recordedAt: new Date(row.recorded_at as string),
+      };
+    });
   }
 
   async saveBatch(input: Parameters<AttendanceRepositoryPort["saveBatch"]>[0]) {
