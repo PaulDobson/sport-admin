@@ -101,6 +101,29 @@ export class SupabaseStudentPortalRepository implements StudentPortalPort {
     }));
   }
 
+  async listAttendanceHistory(studentId: string) {
+    const { data, error } = await this.client.rpc(
+      "list_my_student_portal_attendance",
+      { target_student_id: studentId },
+    );
+    if (error) throw error;
+    return data.map((row) => ({
+      sessionId: row.session_id,
+      tenantId: row.tenant_id,
+      studentId: row.student_id,
+      className: row.class_name,
+      locationName: row.location_name,
+      startsAt: new Date(row.starts_at),
+      endsAt: new Date(row.ends_at),
+      timezone: row.timezone,
+      attendanceStatus: (row.attendance_status ?? null) as
+        | "present"
+        | "late"
+        | "absent"
+        | null,
+    }));
+  }
+
   async enroll(input: {
     tenantId: string;
     studentId: string;

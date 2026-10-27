@@ -8,6 +8,11 @@ import { changePortalEnrollmentAction } from "./actions";
 
 const initialState = { error: null, success: false };
 
+/** True when the student can still cancel — more than 1 hour before the class starts. */
+function cancelAllowed(startsAt: Date): boolean {
+  return startsAt.getTime() - Date.now() > 60 * 60 * 1000;
+}
+
 export function SessionEnrollmentForm({
   session,
 }: {
@@ -17,18 +22,22 @@ export function SessionEnrollmentForm({
     changePortalEnrollmentAction,
     initialState,
   );
+
   const enrolled = session.enrollmentStatus === "confirmed";
   const waitlisted = session.enrollmentStatus === "waitlisted";
   const fullWithoutWaitlist =
     !session.enrollmentStatus &&
     session.confirmedCount >= session.capacity &&
     !session.waitlistEnabled;
+  const deadlinePassed =
+    (enrolled || waitlisted) && !cancelAllowed(session.startsAt);
 
   return (
     <form action={formAction} className="flex flex-col items-end gap-2">
       <input type="hidden" name="tenantId" value={session.tenantId} />
       <input type="hidden" name="studentId" value={session.studentId} />
       <input type="hidden" name="sessionId" value={session.id} />
+
       {state.error ? (
         <p
           role="alert"
@@ -38,6 +47,7 @@ export function SessionEnrollmentForm({
           {state.error}
         </p>
       ) : null}
+
       {enrolled || waitlisted ? (
         <>
           <span
@@ -50,16 +60,24 @@ export function SessionEnrollmentForm({
             )}
             {enrolled ? "Reservada" : "En lista de espera"}
           </span>
-          <Button
-            type="submit"
-            name="operation"
-            value="cancel"
-            variant="quiet"
-            isLoading={pending}
-            className="min-h-9 px-2 text-xs text-muted-foreground"
-          >
-            Cancelar
-          </Button>
+
+          {deadlinePassed ? (
+            /* Cancellation window closed — show informational text, no button */
+            <p className="max-w-44 text-right text-[11px] leading-snug text-muted-foreground">
+              Plazo de cancelación vencido
+            </p>
+          ) : (
+            <Button
+              type="submit"
+              name="operation"
+              value="cancel"
+              variant="quiet"
+              isLoading={pending}
+              className="min-h-9 px-2 text-xs text-muted-foreground"
+            >
+              Cancelar
+            </Button>
+          )}
         </>
       ) : fullWithoutWaitlist ? (
         <span className="text-xs font-semibold text-muted-foreground">

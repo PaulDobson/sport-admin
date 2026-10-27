@@ -4,6 +4,10 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { getStudentHealthHistory } from "@/application/evolution-health-attendance/use-cases/manage-student-health";
 import { getStudentPrivacyState } from "@/application/evolution-health-attendance/use-cases/manage-student-privacy";
 import {
+  getStudentAttendanceMonthlySummary,
+  getStudentAttendanceMonthDetail,
+} from "@/application/evolution-health-attendance/use-cases/get-student-attendance-history";
+import {
   listCurrentMemberships,
   listMembershipPlans,
 } from "@/application/instructor-finance/use-cases/manage-membership";
@@ -37,6 +41,7 @@ import {
 } from "./student-detail-forms";
 import { AssignMembershipSheet } from "../../finance/assign-membership-sheet";
 import { ChangeMembershipSheet } from "../../finance/change-membership-sheet";
+import { StudentAttendanceHistory } from "../student-attendance-history";
 
 const primaryActionClass =
   "inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90";
@@ -46,7 +51,9 @@ export default async function StudentDetailPage({
   searchParams,
 }: {
   params: Promise<{ studentId: string }>;
-  searchParams: Promise<StudentListParams & { section?: string }>;
+  searchParams: Promise<
+    StudentListParams & { section?: string; am?: string; ay?: string }
+  >;
 }) {
   const membership = await requireOperationalMembership();
   const { studentId } = await params;
@@ -57,7 +64,8 @@ export default async function StudentDetailPage({
     canManage &&
     (search.section === "membership" ||
       search.section === "health" ||
-      search.section === "privacy")
+      search.section === "privacy" ||
+      search.section === "attendance")
       ? search.section
       : "summary";
 
@@ -73,7 +81,7 @@ export default async function StudentDetailPage({
   const detailHref = studentTaskHref(`/dashboard/students/${studentId}`, query);
 
   const health =
-    section === "health" || section === "privacy"
+    section === "health" || section === "privacy" || section === "attendance"
       ? await createEvolutionHealthAttendanceDeps()
       : null;
   const privacy = health
@@ -85,6 +93,34 @@ export default async function StudentDetailPage({
   const history =
     section === "health" && canAccessHealth && health
       ? await getStudentHealthHistory({ tenantId, studentId }, health)
+      : null;
+
+  const attendanceSummary =
+    section === "attendance" && health
+      ? await getStudentAttendanceMonthlySummary(
+          { tenantId, studentId },
+          health,
+        )
+      : null;
+
+  // Parse selected month from URL params (am = month 1-12, ay = year)
+  const activeMonth = search.am ? parseInt(search.am, 10) : null;
+  const activeYear = search.ay ? parseInt(search.ay, 10) : null;
+
+  // Default to most-recent month when none selected
+  const detailMonth =
+    activeMonth && activeYear
+      ? { year: activeYear, month: activeMonth }
+      : attendanceSummary?.[0]
+        ? { year: attendanceSummary[0].year, month: attendanceSummary[0].month }
+        : null;
+
+  const attendanceDetail =
+    section === "attendance" && health && detailMonth
+      ? await getStudentAttendanceMonthDetail(
+          { tenantId, studentId, ...detailMonth },
+          health,
+        )
       : null;
 
   const finance =
@@ -197,6 +233,7 @@ export default async function StudentDetailPage({
               ...(canManage
                 ? [
                     ["membership", "Membresía"],
+                    ["attendance", "Asistencia"],
                     ["health", "Salud"],
                     ["privacy", "Privacidad"],
                   ]
@@ -373,6 +410,26 @@ export default async function StudentDetailPage({
                 ) : null}
               </Surface>
             )}
+          </section>
+        ) : null}
+
+        {section === "attendance" ? (
+          <section aria-labelledby="attendance-heading" className="space-y-5">
+            <div>
+              <h3 id="attendance-heading" className="text-xl font-semibold">
+                Historial de asistencia
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Registros de asistencia confirmados en cada sesión.
+              </p>
+            </div>
+            <StudentAttendanceHistory
+              months={attendanceSummary ?? []}
+              monthDetail={attendanceDetail}
+              activeYear={detailMonth?.year ?? null}
+              activeMonth={detailMonth?.month ?? null}
+              baseHref={detailHref}
+            />
           </section>
         ) : null}
 

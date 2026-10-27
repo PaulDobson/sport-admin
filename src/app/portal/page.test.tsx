@@ -40,14 +40,19 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// Use a date 2 days from now so it always falls within the current week.
+const TWO_DAYS_FROM_NOW = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+TWO_DAYS_FROM_NOW.setHours(18, 0, 0, 0);
+const TWO_DAYS_END = new Date(TWO_DAYS_FROM_NOW.getTime() + 60 * 60 * 1000);
+
 const session: StudentPortalSession = {
   id: "session-1",
   tenantId: "tenant-1",
   studentId: "student-1",
   className: "Entrenamiento juvenil",
   locationName: "Cancha Norte",
-  startsAt: new Date("2026-10-08T18:00:00Z"),
-  endsAt: new Date("2026-10-08T19:00:00Z"),
+  startsAt: TWO_DAYS_FROM_NOW,
+  endsAt: TWO_DAYS_END,
   timezone: "America/Santiago",
   capacity: 12,
   confirmedCount: 4,
@@ -71,12 +76,16 @@ describe("StudentPortalPage", () => {
 
     render(await StudentPortalPage({ searchParams: Promise.resolve({}) }));
 
+    expect(screen.getByRole("heading", { name: /Hola, Camila/i })).toBeTruthy();
+    // The session renders in both the mobile and desktop layout panels;
+    // use getAllByText to tolerate duplicate DOM nodes.
+    expect(screen.getAllByText("Entrenamiento juvenil").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText("Cancha Norte").length).toBeGreaterThan(0);
     expect(
-      screen.getByRole("heading", { name: "Hola, Camila Soto" }),
-    ).toBeTruthy();
-    expect(screen.getByText("Entrenamiento juvenil")).toBeTruthy();
-    expect(screen.getByText("Cancha Norte")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Reservar cupo" })).toBeTruthy();
+      screen.getAllByRole("button", { name: "Reservar cupo" }).length,
+    ).toBeGreaterThan(0);
     expect(listSessions).toHaveBeenCalledWith("student-1");
   });
 

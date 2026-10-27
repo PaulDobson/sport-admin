@@ -27,6 +27,20 @@ export interface StudentPortalSession {
   waitlistEnabled: boolean;
 }
 
+export type AttendanceStatus = "present" | "late" | "absent" | null;
+
+export interface StudentPortalAttendanceRecord {
+  sessionId: string;
+  tenantId: string;
+  studentId: string;
+  className: string;
+  locationName: string;
+  startsAt: Date;
+  endsAt: Date;
+  timezone: string;
+  attendanceStatus: AttendanceStatus;
+}
+
 export interface StudentPortalPort {
   createInvitation(input: {
     tenantId: string;
@@ -39,6 +53,9 @@ export interface StudentPortalPort {
   redeemInvitation(tokenHash: string): Promise<void>;
   listMyStudents(): Promise<StudentPortalStudent[]>;
   listSessions(studentId: string): Promise<StudentPortalSession[]>;
+  listAttendanceHistory(
+    studentId: string,
+  ): Promise<StudentPortalAttendanceRecord[]>;
   enroll(input: {
     tenantId: string;
     studentId: string;

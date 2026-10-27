@@ -21,6 +21,7 @@ function createPortal(): StudentPortalPort {
     redeemInvitation: vi.fn(),
     listMyStudents: vi.fn().mockResolvedValue([]),
     listSessions: vi.fn().mockResolvedValue([]),
+    listAttendanceHistory: vi.fn().mockResolvedValue([]),
     enroll: vi.fn().mockResolvedValue("confirmed"),
     cancelEnrollment: vi.fn(),
   };

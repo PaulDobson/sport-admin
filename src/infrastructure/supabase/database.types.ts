@@ -4191,6 +4191,20 @@ export type Database = {
           session_count: number;
         }[];
       };
+      list_my_student_portal_attendance: {
+        Args: { target_student_id: string };
+        Returns: {
+          session_id: string;
+          tenant_id: string;
+          student_id: string;
+          class_name: string;
+          location_name: string;
+          starts_at: string;
+          ends_at: string;
+          timezone: string;
+          attendance_status: string | null;
+        }[];
+      };
       list_my_student_portal_sessions: {
         Args: { target_student_id: string };
         Returns: {
@@ -4618,6 +4632,18 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      get_student_attendance_monthly_summary: {
+        Args: { target_tenant_id: string; target_student_id: string };
+        Returns: {
+          yr: number;
+          mo: number;
+          present: number;
+          late: number;
+          absent: number;
+          excused: number;
+          total: number;
+        }[];
       };
       search_attendance_students: {
         Args: {

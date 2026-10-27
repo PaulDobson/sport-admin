@@ -19,6 +19,23 @@ export class FakeAttendanceRepository implements AttendanceRepositoryPort {
     );
   }
 
+  async listStudentHistory(_tenantId: string, _studentId: string) {
+    return [];
+  }
+
+  async listStudentMonthlySummary(_tenantId: string, _studentId: string) {
+    return [];
+  }
+
+  async listStudentMonthDetail(
+    _tenantId: string,
+    _studentId: string,
+    _year: number,
+    _month: number,
+  ) {
+    return [];
+  }
+
   async saveBatch(input: Parameters<AttendanceRepositoryPort["saveBatch"]>[0]) {
     this.saveCalls += 1;
     return input.items.map((item, index) => {
