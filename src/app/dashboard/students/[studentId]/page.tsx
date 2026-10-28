@@ -7,6 +7,8 @@ import {
   getStudentAttendanceMonthlySummary,
   getStudentAttendanceMonthDetail,
 } from "@/application/evolution-health-attendance/use-cases/get-student-attendance-history";
+import { getMetricHistory } from "@/application/evolution-health-attendance/use-cases/get-metric-history";
+import { ensureDefaultMetricDefinitions } from "@/application/evolution-health-attendance/use-cases/list-metric-definitions";
 import {
   listCurrentMemberships,
   listMembershipPlans,
@@ -42,6 +44,8 @@ import {
 import { AssignMembershipSheet } from "../../finance/assign-membership-sheet";
 import { ChangeMembershipSheet } from "../../finance/change-membership-sheet";
 import { StudentAttendanceHistory } from "../student-attendance-history";
+import { StudentEvolutionHistory } from "../student-evolution-history";
+import { StudentEvolutionCharts } from "../student-evolution-charts";
 
 const primaryActionClass =
   "inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90";
@@ -65,7 +69,8 @@ export default async function StudentDetailPage({
     (search.section === "membership" ||
       search.section === "health" ||
       search.section === "privacy" ||
-      search.section === "attendance")
+      search.section === "attendance" ||
+      search.section === "evolution")
       ? search.section
       : "summary";
 
@@ -80,51 +85,121 @@ export default async function StudentDetailPage({
   const today = new Date().toISOString().slice(0, 10);
   const detailHref = studentTaskHref(`/dashboard/students/${studentId}`, query);
 
-  const health =
-    section === "health" || section === "privacy" || section === "attendance"
-      ? await createEvolutionHealthAttendanceDeps()
-      : null;
-  const privacy = health
-    ? await getStudentPrivacyState({ tenantId, studentId }, health)
+  // ─── Health/attendance/evolution deps (single client, reused across branches) ───
+  const needsHealth =
+    section === "health" ||
+    section === "privacy" ||
+    section === "attendance" ||
+    section === "evolution" ||
+    section === "summary";
+
+  const health = needsHealth
+    ? await createEvolutionHealthAttendanceDeps()
     : null;
+
+  // Parse selected month from URL params (am = month 1-12, ay = year)
+  // Needed here so attendance parallel fetch can use it directly.
+  const activeMonth = search.am ? parseInt(search.am, 10) : null;
+  const activeYear = search.ay ? parseInt(search.ay, 10) : null;
+
+  // ─── All section data fetched in parallel where possible ────────────────────
+  //
+  // summary  → privacy + definitions + metric history run concurrently
+  // attendance → summary + detail run concurrently (detail uses URL params if
+  //              already present, otherwise we do a second request below)
+  // evolution → definitions seeding + metric history run concurrently
+  // health   → privacy first (gate), then history only if access is granted
+  // membership → memberships + plans run concurrently; balances in allSettled
+  //
+  // Sections that are not active resolve to null immediately via Promise.resolve.
+
+  const [
+    privacy,
+    summaryEvolutionDefs,
+    summaryEvolutionHistory,
+    attendanceSummaryResult,
+    attendanceDetailFromParams,
+    evolutionDefs,
+    evolutionHistory,
+    finance,
+  ] = await Promise.all([
+    // privacy is needed by summary, health, privacy, and evolution sections
+    health
+      ? getStudentPrivacyState({ tenantId, studentId }, health)
+      : Promise.resolve(null),
+
+    // summary charts — independent of privacy state
+    section === "summary" && health
+      ? health.metrics.listAllActiveDefinitions(tenantId).catch(() => [])
+      : Promise.resolve(null),
+
+    section === "summary" && health
+      ? getMetricHistory({ tenantId, studentId }, health).catch(() => [])
+      : Promise.resolve(null),
+
+    // attendance summary
+    section === "attendance" && health
+      ? getStudentAttendanceMonthlySummary({ tenantId, studentId }, health)
+      : Promise.resolve(null),
+
+    // attendance detail — only when month/year are already in the URL params
+    section === "attendance" && health && activeMonth && activeYear
+      ? getStudentAttendanceMonthDetail(
+          { tenantId, studentId, year: activeYear, month: activeMonth },
+          health,
+        )
+      : Promise.resolve(null),
+
+    // evolution: definitions + history run concurrently
+    section === "evolution" && health
+      ? ensureDefaultMetricDefinitions({ tenantId }, health).catch(() => [])
+      : Promise.resolve(null),
+
+    section === "evolution" && health
+      ? getMetricHistory({ tenantId, studentId }, health).catch(() => [])
+      : Promise.resolve(null),
+
+    // membership finance deps
+    section === "membership"
+      ? createInstructorFinanceDeps()
+      : Promise.resolve(null),
+  ]);
+
   const canAccessHealth = Boolean(
     privacy?.healthEnabled && privacy.hasCurrentConsent,
   );
+
+  // health history requires privacy gate — must be sequential
   const history =
     section === "health" && canAccessHealth && health
       ? await getStudentHealthHistory({ tenantId, studentId }, health)
       : null;
 
-  const attendanceSummary =
-    section === "attendance" && health
-      ? await getStudentAttendanceMonthlySummary(
-          { tenantId, studentId },
-          health,
-        )
-      : null;
-
-  // Parse selected month from URL params (am = month 1-12, ay = year)
-  const activeMonth = search.am ? parseInt(search.am, 10) : null;
-  const activeYear = search.ay ? parseInt(search.ay, 10) : null;
-
-  // Default to most-recent month when none selected
+  // Resolve attendance detail: prefer the parallel result (already loaded when
+  // month params were in the URL); otherwise fall back to the most-recent month
+  // from the summary (requires a second sequential fetch only when no params).
   const detailMonth =
     activeMonth && activeYear
       ? { year: activeYear, month: activeMonth }
-      : attendanceSummary?.[0]
-        ? { year: attendanceSummary[0].year, month: attendanceSummary[0].month }
+      : attendanceSummaryResult?.[0]
+        ? {
+            year: attendanceSummaryResult[0].year,
+            month: attendanceSummaryResult[0].month,
+          }
         : null;
 
+  const attendanceSummary = attendanceSummaryResult;
+
   const attendanceDetail =
-    section === "attendance" && health && detailMonth
+    attendanceDetailFromParams ??
+    (section === "attendance" && health && detailMonth && !activeMonth
       ? await getStudentAttendanceMonthDetail(
           { tenantId, studentId, ...detailMonth },
           health,
         )
-      : null;
+      : null);
 
-  const finance =
-    section === "membership" ? await createInstructorFinanceDeps() : null;
+  // ─── Membership: balances + plan names in parallel ───────────────────────
   const memberships = finance
     ? await listCurrentMemberships(
         { tenantId, studentId, onDate: today },
@@ -132,28 +207,25 @@ export default async function StudentDetailPage({
       )
     : [];
 
-  // Use allSettled so a single failed balance request does not break the
-  // entire membership view. Failures silently fall back to 0.
   const balances: Record<string, number> = {};
+  const planNames: Record<string, string> = {};
+
   if (finance && memberships.length > 0) {
-    const results = await Promise.allSettled(
-      memberships.map((item) =>
-        getMembershipBalance({ tenantId, membershipId: item.id }, finance),
+    // balances and plan names are independent — fetch concurrently
+    const [balanceResults, plans] = await Promise.all([
+      Promise.allSettled(
+        memberships.map((item) =>
+          getMembershipBalance({ tenantId, membershipId: item.id }, finance),
+        ),
       ),
-    );
+      listMembershipPlans({ tenantId }, finance).catch(() => []),
+    ]);
+
     for (let i = 0; i < memberships.length; i++) {
-      const result = results[i];
+      const result = balanceResults[i];
       balances[memberships[i].id] =
         result.status === "fulfilled" ? result.value.balance : 0;
     }
-  }
-
-  // Load plan names so ChangeMembershipSheet can show the current plan name.
-  const planNames: Record<string, string> = {};
-  if (finance && memberships.length > 0) {
-    const plans = await listMembershipPlans({ tenantId }, finance).catch(
-      () => [],
-    );
     for (const plan of plans) {
       planNames[plan.id] = plan.name;
     }
@@ -234,6 +306,7 @@ export default async function StudentDetailPage({
                 ? [
                     ["membership", "Membresía"],
                     ["attendance", "Asistencia"],
+                    ["evolution", "Evolución"],
                     ["health", "Salud"],
                     ["privacy", "Privacidad"],
                   ]
@@ -256,73 +329,83 @@ export default async function StudentDetailPage({
         </nav>
 
         {section === "summary" ? (
-          <div className="grid min-w-0 gap-5 lg:grid-cols-2">
-            <Surface className="min-w-0">
-              <h3 className="text-lg font-semibold">Datos del alumno</h3>
-              <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">Nacimiento</dt>
-                  <dd className="mt-1 font-medium">
-                    {student.birthDate ?? "No registrado"}
-                  </dd>
+          <div className="space-y-5">
+            <div className="grid min-w-0 gap-5 lg:grid-cols-2">
+              <Surface className="min-w-0">
+                <h3 className="text-lg font-semibold">Datos del alumno</h3>
+                <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Nacimiento</dt>
+                    <dd className="mt-1 font-medium">
+                      {student.birthDate ?? "No registrado"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Género</dt>
+                    <dd className="mt-1 font-medium">
+                      {student.gender === "female"
+                        ? "Femenino"
+                        : student.gender === "male"
+                          ? "Masculino"
+                          : student.gender === "other"
+                            ? "Otro"
+                            : "Sin especificar"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Estatura</dt>
+                    <dd className="mt-1 font-medium">
+                      {student.heightCm === null
+                        ? "No registrada"
+                        : `${student.heightCm} cm`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Peso</dt>
+                    <dd className="mt-1 font-medium">
+                      {student.weightKg === null
+                        ? "No registrado"
+                        : `${student.weightKg} kg`}
+                    </dd>
+                  </div>
+                </dl>
+                <h3 className="mb-3 mt-6 font-semibold">Contacto principal</h3>
+                <StudentContact student={student} />
+              </Surface>
+              {canManage ? (
+                <div className="min-w-0 space-y-5">
+                  <Surface className="min-w-0">
+                    <h3 className="text-lg font-semibold">
+                      Contacto de emergencia
+                    </h3>
+                    <dl className="mt-4 grid gap-3 text-sm">
+                      {(
+                        [
+                          ["Nombre", student.emergencyContactName],
+                          ["Correo", student.emergencyContactEmail],
+                          ["Teléfono", student.emergencyContactPhone],
+                        ] as [string, string | null][]
+                      ).map(([label, value]) => (
+                        <div key={label}>
+                          <dt className="text-muted-foreground">{label}</dt>
+                          <dd className="break-all font-medium">
+                            {value ?? "No registrado"}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </Surface>
+                  <StudentPortalInviteButton studentId={studentId} />
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Género</dt>
-                  <dd className="mt-1 font-medium">
-                    {student.gender === "female"
-                      ? "Femenino"
-                      : student.gender === "male"
-                        ? "Masculino"
-                        : student.gender === "other"
-                          ? "Otro"
-                          : "Sin especificar"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Estatura</dt>
-                  <dd className="mt-1 font-medium">
-                    {student.heightCm === null
-                      ? "No registrada"
-                      : `${student.heightCm} cm`}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Peso</dt>
-                  <dd className="mt-1 font-medium">
-                    {student.weightKg === null
-                      ? "No registrado"
-                      : `${student.weightKg} kg`}
-                  </dd>
-                </div>
-              </dl>
-              <h3 className="mb-3 mt-6 font-semibold">Contacto principal</h3>
-              <StudentContact student={student} />
-            </Surface>
-            {canManage ? (
-              <div className="min-w-0 space-y-5">
-                <Surface className="min-w-0">
-                  <h3 className="text-lg font-semibold">
-                    Contacto de emergencia
-                  </h3>
-                  <dl className="mt-4 grid gap-3 text-sm">
-                    {(
-                      [
-                        ["Nombre", student.emergencyContactName],
-                        ["Correo", student.emergencyContactEmail],
-                        ["Teléfono", student.emergencyContactPhone],
-                      ] as [string, string | null][]
-                    ).map(([label, value]) => (
-                      <div key={label}>
-                        <dt className="text-muted-foreground">{label}</dt>
-                        <dd className="break-all font-medium">
-                          {value ?? "No registrado"}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </Surface>
-                <StudentPortalInviteButton studentId={studentId} />
-              </div>
+              ) : null}
+            </div>
+
+            {/* Evolution charts — only visible if there is recorded data */}
+            {summaryEvolutionDefs && summaryEvolutionHistory && canManage ? (
+              <StudentEvolutionCharts
+                definitions={summaryEvolutionDefs}
+                evaluations={summaryEvolutionHistory}
+              />
             ) : null}
           </div>
         ) : null}
@@ -359,6 +442,8 @@ export default async function StudentDetailPage({
                             planName: planNames[item.planId] ?? "Plan actual",
                             agreedPrice: item.agreedPrice,
                             currency: item.currency,
+                            billingCycle: item.billingCycle,
+                            startsOn: item.startsOn,
                             expiresOn: item.expiresOn,
                             status: item.status,
                           }}
@@ -518,6 +603,26 @@ export default async function StudentDetailPage({
                 </div>
               </div>
             )}
+          </section>
+        ) : null}
+
+        {section === "evolution" ? (
+          <section aria-labelledby="evolution-heading" className="space-y-5">
+            <div>
+              <h3 id="evolution-heading" className="text-xl font-semibold">
+                Evolución y evaluaciones físicas
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Composición corporal, fuerza, capacidad aeróbica y pruebas
+                personalizadas.
+              </p>
+            </div>
+            <StudentEvolutionHistory
+              studentId={studentId}
+              definitions={evolutionDefs ?? []}
+              evaluations={evolutionHistory ?? []}
+              todayStr={today}
+            />
           </section>
         ) : null}
 

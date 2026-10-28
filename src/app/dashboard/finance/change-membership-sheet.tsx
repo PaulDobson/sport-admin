@@ -8,19 +8,29 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { cycleEnd } from "@/domain/instructor-finance/dashboard";
+import type { PlanDifferential } from "@/domain/instructor-finance/membership";
 import { formatShortDate, localIsoDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import { BottomSheet } from "@/presentation/components/bottom-sheet";
-import { Button, StatusBadge, ToneBadge } from "@/presentation/components/primitives";
+import { MoneyInput } from "@/presentation/components/form-controls";
+import {
+  Button,
+  StatusBadge,
+  ToneBadge,
+} from "@/presentation/components/primitives";
 import {
   changeMembershipPlanAction,
+  previewPlanDifferentialAction,
   listAssignablePlansAction,
   type AssignablePlan,
   type ChangeMembershipPlanState,
+  type DifferentialPreview,
 } from "./actions";
 import { PlanForm } from "./plan-form";
 import { billingCycleLabels, billingCycleNouns } from "./plan-templates";
+import { paymentMethods } from "@/domain/instructor-finance/payment";
 
 export interface CurrentMembership {
   id: string;
@@ -28,6 +38,8 @@ export interface CurrentMembership {
   planName: string;
   agreedPrice: number;
   currency: string;
+  billingCycle: string;
+  startsOn: string;
   expiresOn: string;
   status: string;
 }
@@ -39,6 +51,13 @@ const fieldClass =
 
 const optionClass =
   "grid min-h-11 w-full gap-1 rounded-xl border border-border bg-surface-raised/50 p-3 text-left transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:bg-primary/10";
+
+const paymentMethodLabels: Record<string, string> = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  card: "Tarjeta",
+  other: "Otro",
+};
 
 function SummaryRow({
   label,
@@ -56,6 +75,8 @@ function SummaryRow({
     </div>
   );
 }
+
+// ─── Step 1: Pick a plan ──────────────────────────────────────────────────────
 
 function PlanPickerStep({
   currentPlanId,
@@ -138,7 +159,6 @@ function PlanPickerStep({
     );
   }
 
-  // Filter out the current plan so the user only sees plans they can switch to
   const otherPlans = plans.filter((p) => p.id !== currentPlanId);
 
   return (
@@ -162,7 +182,10 @@ function PlanPickerStep({
         </div>
       ) : (
         <>
-          <ul aria-label="Planes disponibles" className="grid gap-2 sm:grid-cols-2">
+          <ul
+            aria-label="Planes disponibles"
+            className="grid gap-2 sm:grid-cols-2"
+          >
             {otherPlans.map((plan) => (
               <li key={plan.id} className="min-w-0">
                 <button
@@ -206,12 +229,217 @@ function PlanPickerStep({
   );
 }
 
+// ─── Differential badge ───────────────────────────────────────────────────────
+
+function DifferentialBadge({
+  differential,
+  currency,
+}: {
+  differential: PlanDifferential;
+  currency: string;
+}) {
+  const isUpgrade = differential.differential > 0;
+  const isBreakEven = differential.differential === 0;
+  const isDowngrade = differential.differential < 0;
+
+  return (
+    <div
+      className={`grid gap-2 rounded-xl border p-3 text-sm ${
+        isUpgrade
+          ? "border-warning/40 bg-warning/5"
+          : isDowngrade
+            ? "border-success/40 bg-success/5"
+            : "border-border bg-surface-raised/40"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {isUpgrade ? (
+          <ArrowUp className="h-4 w-4 text-warning" aria-hidden="true" />
+        ) : isDowngrade ? (
+          <ArrowDown className="h-4 w-4 text-success" aria-hidden="true" />
+        ) : (
+          <Minus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+        )}
+        <span className="font-semibold text-foreground">
+          {isUpgrade
+            ? "Upgrade — cobro diferencial"
+            : isDowngrade
+              ? "Downgrade — crédito a favor"
+              : "Sin diferencia de precio"}
+        </span>
+      </div>
+
+      <dl className="grid gap-1">
+        <SummaryRow label="Días consumidos del plan actual">
+          {differential.elapsedDays} / {differential.cycleDays} días
+        </SummaryRow>
+        <SummaryRow label="Valor consumido">
+          {formatMoney(differential.consumedValue, currency)}
+        </SummaryRow>
+        <SummaryRow label="Crédito sin usar">
+          {formatMoney(differential.unusedCredit, currency)}
+        </SummaryRow>
+        <SummaryRow label="Nuevo plan (precio completo)">
+          {formatMoney(differential.newPlanPrice, currency)}
+        </SummaryRow>
+        <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-border pt-2">
+          <dt className="font-semibold text-foreground">
+            {isUpgrade
+              ? "Diferencial a cobrar"
+              : isDowngrade
+                ? "Crédito a favor del alumno"
+                : "Diferencial"}
+          </dt>
+          <dd
+            className={`metric-number text-right text-base font-bold ${
+              isUpgrade
+                ? "text-warning"
+                : isDowngrade
+                  ? "text-success"
+                  : "text-foreground"
+            }`}
+          >
+            {formatMoney(Math.abs(differential.differential), currency)}
+          </dd>
+        </div>
+      </dl>
+
+      {isDowngrade ? (
+        <p className="text-xs text-muted-foreground">
+          El alumno pagó más de lo que corresponde al nuevo plan. Puedes
+          registrar el crédito como descuento en el siguiente cobro.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Step 2: Preview differential ────────────────────────────────────────────
+
+function DifferentialStep({
+  currentMembership,
+  newPlan,
+  changeOn,
+  onContinue,
+  onChangePlan,
+}: {
+  currentMembership: CurrentMembership;
+  newPlan: AssignablePlan;
+  changeOn: string;
+  onContinue: (preview: DifferentialPreview) => void;
+  onChangePlan: () => void;
+}) {
+  const [preview, setPreview] = useState<DifferentialPreview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!changeOn) return;
+    let cancelled = false;
+    // Defer the initial setState calls out of the synchronous effect body so
+    // they run as a microtask — avoids the react-hooks/set-state-in-effect rule.
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+      previewPlanDifferentialAction({
+        currentMembershipId: currentMembership.id,
+        newPlanId: newPlan.id,
+        changeOn,
+      })
+        .then((result) => {
+          if (cancelled) return;
+          if (result.ok) {
+            setPreview(result.data);
+          } else {
+            setError(result.error);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setError("No se pudo calcular el diferencial.");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMembership.id, newPlan.id, changeOn]);
+
+  return (
+    <div className="grid gap-4">
+      {/* Plan comparison */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border border-border bg-surface-raised/50 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Plan actual
+          </p>
+          <p className="mt-1 font-semibold text-foreground">
+            {currentMembership.planName}
+          </p>
+          <p className="text-muted-foreground">
+            {formatMoney(
+              currentMembership.agreedPrice,
+              currentMembership.currency,
+            )}
+          </p>
+        </div>
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Nuevo plan
+          </p>
+          <p className="mt-1 font-semibold text-foreground">{newPlan.name}</p>
+          <p className="text-muted-foreground">
+            {formatMoney(newPlan.price, newPlan.currency)} /{" "}
+            {billingCycleNouns[newPlan.billingCycle]}
+          </p>
+        </div>
+      </div>
+
+      {/* Differential calculation */}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Calculando diferencial…</p>
+      ) : error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : preview ? (
+        <DifferentialBadge
+          differential={preview.differential}
+          currency={preview.currency}
+        />
+      ) : null}
+
+      <div className="flex gap-2">
+        <Button type="button" variant="quiet" onClick={onChangePlan}>
+          Cambiar plan
+        </Button>
+        {preview ? (
+          <Button
+            type="button"
+            variant="primary"
+            onClick={() => onContinue(preview)}
+          >
+            Continuar
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 3: Confirm and optionally collect differential ──────────────────────
+
 function ConfirmChangeStep({
   studentId,
   studentName,
   currentMembership,
   newPlan,
-  assignmentToken,
+  changeToken,
+  cancelOperationId,
+  changeOn,
+  preview,
   onChangePlan,
   onDone,
 }: {
@@ -219,38 +447,71 @@ function ConfirmChangeStep({
   studentName: string;
   currentMembership: CurrentMembership;
   newPlan: AssignablePlan;
-  assignmentToken: string;
+  changeToken: string;
+  cancelOperationId: string;
+  changeOn: string;
+  preview: DifferentialPreview;
   onChangePlan: () => void;
   onDone: () => void;
 }) {
-  const startsOnId = useId();
-  const [startsOn, setStartsOn] = useState(() => localIsoDate());
+  const paidOnId = useId();
+  const methodId = useId();
+  const referenceId = useId();
+  const [withPayment, setWithPayment] = useState(
+    preview.differential.differential > 0,
+  );
+  const [paidOn, setPaidOn] = useState(changeOn || localIsoDate());
 
   const [state, formAction, pending] = useActionState(
     changeMembershipPlanAction,
     initialState,
   );
 
-  const expiresOn = startsOn ? cycleEnd(startsOn, newPlan.billingCycle) : null;
+  const expiresOn = changeOn ? cycleEnd(changeOn, newPlan.billingCycle) : null;
+  const diff = preview.differential;
+  const currency = preview.currency;
 
-  if (state.status === "changed" && state.result) {
+  if (
+    (state.status === "changed" || state.status === "payment_failed") &&
+    state.result
+  ) {
     return (
       <div className="grid gap-4" role="status">
-        <div className="grid gap-2 rounded-xl border border-success/30 bg-success/10 p-4">
-          <ToneBadge tone="success">Plan actualizado</ToneBadge>
+        <div
+          className={`grid gap-2 rounded-xl border p-4 ${
+            state.status === "payment_failed"
+              ? "border-warning/40 bg-warning/10"
+              : "border-success/30 bg-success/10"
+          }`}
+        >
+          <ToneBadge
+            tone={state.status === "payment_failed" ? "warning" : "success"}
+          >
+            {state.status === "payment_failed"
+              ? "Plan cambiado (pago pendiente)"
+              : "Plan actualizado"}
+          </ToneBadge>
           <p className="text-base font-semibold text-foreground">
             {studentName} ahora tiene {newPlan.name}
           </p>
+          {state.status === "payment_failed" && state.error ? (
+            <p className="text-sm text-warning">{state.error}</p>
+          ) : null}
         </div>
         <dl className="grid gap-2 text-sm">
           <SummaryRow label="Nuevo plan">{newPlan.name}</SummaryRow>
           <SummaryRow label="Vence">
             {formatShortDate(state.result.expiresOn)}
           </SummaryRow>
-          <SummaryRow label="Precio">
+          <SummaryRow label="Precio del plan">
             {formatMoney(state.result.agreedPrice, state.result.currency)} /{" "}
             {billingCycleNouns[newPlan.billingCycle]}
           </SummaryRow>
+          {state.result.paidAmount > 0 ? (
+            <SummaryRow label="Diferencial cobrado">
+              {formatMoney(state.result.paidAmount, state.result.currency)}
+            </SummaryRow>
+          ) : null}
         </dl>
         <Button type="button" variant="primary" onClick={onDone}>
           Listo
@@ -261,31 +522,26 @@ function ConfirmChangeStep({
 
   return (
     <form action={formAction} className="grid gap-4">
-      <input type="hidden" name="currentMembershipId" value={currentMembership.id} />
+      <input
+        type="hidden"
+        name="currentMembershipId"
+        value={currentMembership.id}
+      />
       <input type="hidden" name="studentId" value={studentId} />
       <input type="hidden" name="newPlanId" value={newPlan.id} />
-      <input type="hidden" name="assignmentToken" value={assignmentToken} />
+      <input type="hidden" name="changeToken" value={changeToken} />
+      <input type="hidden" name="cancelOperationId" value={cancelOperationId} />
+      <input type="hidden" name="changeOn" value={changeOn} />
+      <input
+        type="hidden"
+        name="differentialAmount"
+        value={Math.abs(diff.differential)}
+      />
 
-      {/* Current plan summary */}
-      <div className="grid gap-2 rounded-xl border border-border bg-surface-raised/50 p-3 text-sm">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Plan actual
-        </p>
-        <div className="flex items-center justify-between gap-3">
-          <span className="font-semibold text-foreground">
-            {currentMembership.planName}
-          </span>
-          <StatusBadge tone={currentMembership.status === "past_due" ? "warning" : "success"}>
-            {currentMembership.status === "past_due" ? "En mora" : "Activa"}
-          </StatusBadge>
-        </div>
-        <p className="text-muted-foreground">
-          {formatMoney(currentMembership.agreedPrice, currentMembership.currency)} · vence{" "}
-          {formatShortDate(currentMembership.expiresOn)}
-        </p>
-      </div>
+      {/* Differential summary */}
+      <DifferentialBadge differential={diff} currency={currency} />
 
-      {/* New plan summary */}
+      {/* New plan details */}
       <dl className="grid gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
         <p className="text-xs font-semibold uppercase tracking-wider text-primary">
           Nuevo plan
@@ -305,33 +561,100 @@ function ConfirmChangeStep({
           {formatMoney(newPlan.price, newPlan.currency)} /{" "}
           {billingCycleNouns[newPlan.billingCycle]}
         </SummaryRow>
+        {expiresOn ? (
+          <SummaryRow label="Vence el">{formatShortDate(expiresOn)}</SummaryRow>
+        ) : null}
       </dl>
 
-      {/* Start date */}
-      <div className="grid gap-1">
-        <label htmlFor={startsOnId} className="text-sm text-muted-foreground">
-          Inicio del nuevo plan
-        </label>
-        <input
-          id={startsOnId}
-          type="date"
-          name="startsOn"
-          required
-          readOnly={pending}
-          value={startsOn}
-          onChange={(event) => setStartsOn(event.target.value)}
-          className={fieldClass}
-        />
-        {expiresOn ? (
-          <p className="text-xs text-muted-foreground">
-            Vence: {formatShortDate(expiresOn)}
-          </p>
-        ) : null}
-      </div>
+      {/* Collect differential now? (only for upgrades) */}
+      {diff.differential > 0 ? (
+        <div className="grid gap-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <input
+              type="checkbox"
+              name="withDifferentialPayment"
+              value="on"
+              checked={withPayment}
+              onChange={(e) => setWithPayment(e.target.checked)}
+              disabled={pending}
+              className="h-4 w-4 rounded border-input"
+            />
+            Cobrar diferencial ahora ({formatMoney(diff.differential, currency)}
+            )
+          </label>
+
+          {withPayment ? (
+            <div className="grid gap-3 rounded-xl border border-border bg-surface-raised/30 p-3">
+              <div className="grid gap-1">
+                <label
+                  htmlFor={paidOnId}
+                  className="text-sm text-muted-foreground"
+                >
+                  Fecha de pago
+                </label>
+                <input
+                  id={paidOnId}
+                  type="date"
+                  name="paidOn"
+                  required={withPayment}
+                  readOnly={pending}
+                  value={paidOn}
+                  onChange={(e) => setPaidOn(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              <div className="grid gap-1">
+                <label
+                  htmlFor={methodId}
+                  className="text-sm text-muted-foreground"
+                >
+                  Medio de pago
+                </label>
+                <select
+                  id={methodId}
+                  name="method"
+                  disabled={pending}
+                  defaultValue="cash"
+                  className={fieldClass}
+                >
+                  {paymentMethods.map((m) => (
+                    <option key={m} value={m}>
+                      {paymentMethodLabels[m]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-1">
+                <label
+                  htmlFor={referenceId}
+                  className="text-sm text-muted-foreground"
+                >
+                  Referencia (opcional)
+                </label>
+                <input
+                  id={referenceId}
+                  type="text"
+                  name="reference"
+                  disabled={pending}
+                  placeholder="Nº transferencia, comprobante…"
+                  className={fieldClass}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : diff.differential < 0 ? (
+        // Downgrade: inform that credit will be available
+        <p className="rounded-xl border border-success/40 bg-success/5 px-3 py-2 text-xs text-foreground">
+          El alumno tiene un crédito de{" "}
+          <strong>{formatMoney(Math.abs(diff.differential), currency)}</strong>.
+          Puedes aplicarlo como descuento en el próximo cobro desde{" "}
+          <strong>Finanzas → Cobros</strong>.
+        </p>
+      ) : null}
 
       <p className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground">
-        El plan actual se cancelará al confirmar el cambio. Registra cobros
-        pendientes antes de continuar.
+        El plan actual se cancelará al confirmar el cambio.
       </p>
 
       {state.status === "error" && state.error ? (
@@ -347,6 +670,10 @@ function ConfirmChangeStep({
   );
 }
 
+// ─── Main flow ────────────────────────────────────────────────────────────────
+
+type FlowStep = "pick-plan" | "preview-differential" | "confirm";
+
 function ChangeMembershipFlow({
   studentId,
   studentName,
@@ -358,8 +685,12 @@ function ChangeMembershipFlow({
   currentMembership: CurrentMembership;
   onDone: () => void;
 }) {
-  const [assignmentToken] = useState(() => crypto.randomUUID());
+  const [changeToken] = useState(() => crypto.randomUUID());
+  const [cancelOperationId] = useState(() => crypto.randomUUID());
+  const [changeOn] = useState(() => localIsoDate());
   const [newPlan, setNewPlan] = useState<AssignablePlan | null>(null);
+  const [preview, setPreview] = useState<DifferentialPreview | null>(null);
+  const [step, setStep] = useState<FlowStep>("pick-plan");
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -369,7 +700,13 @@ function ChangeMembershipFlow({
       return;
     }
     headingRef.current?.focus();
-  }, [newPlan]);
+  }, [step]);
+
+  const stepTitle: Record<FlowStep, string> = {
+    "pick-plan": "Elige el nuevo plan",
+    "preview-differential": "Diferencial del cambio",
+    confirm: "Revisa y confirma el cambio",
+  };
 
   return (
     <div className="grid gap-4">
@@ -378,28 +715,54 @@ function ChangeMembershipFlow({
         tabIndex={-1}
         className="text-base font-semibold text-foreground outline-none"
       >
-        {newPlan ? "Revisa y confirma el cambio" : "Elige el nuevo plan"}
+        {stepTitle[step]}
       </h3>
 
-      {newPlan ? (
+      {step === "pick-plan" ? (
+        <PlanPickerStep
+          currentPlanId={currentMembership.planId}
+          onSelect={(plan) => {
+            setNewPlan(plan);
+            setPreview(null);
+            setStep("preview-differential");
+          }}
+        />
+      ) : step === "preview-differential" && newPlan ? (
+        <DifferentialStep
+          currentMembership={currentMembership}
+          newPlan={newPlan}
+          changeOn={changeOn}
+          onContinue={(p) => {
+            setPreview(p);
+            setStep("confirm");
+          }}
+          onChangePlan={() => {
+            setNewPlan(null);
+            setStep("pick-plan");
+          }}
+        />
+      ) : step === "confirm" && newPlan && preview ? (
         <ConfirmChangeStep
           studentId={studentId}
           studentName={studentName}
           currentMembership={currentMembership}
           newPlan={newPlan}
-          assignmentToken={assignmentToken}
-          onChangePlan={() => setNewPlan(null)}
+          changeToken={changeToken}
+          cancelOperationId={cancelOperationId}
+          changeOn={changeOn}
+          preview={preview}
+          onChangePlan={() => {
+            setNewPlan(null);
+            setStep("pick-plan");
+          }}
           onDone={onDone}
         />
-      ) : (
-        <PlanPickerStep
-          currentPlanId={currentMembership.planId}
-          onSelect={setNewPlan}
-        />
-      )}
+      ) : null}
     </div>
   );
 }
+
+// ─── Public component ─────────────────────────────────────────────────────────
 
 /** Sheet to upgrade or downgrade a student's current membership plan. */
 export function ChangeMembershipSheet({
@@ -420,7 +783,7 @@ export function ChangeMembershipSheet({
   return (
     <BottomSheet
       title="Cambiar plan"
-      description={`Upgrade o downgrade del plan de ${studentName}. El plan actual se cancelará y se asignará el nuevo.`}
+      description={`Upgrade o downgrade del plan de ${studentName}. Se calcula el diferencial pro-rata del período en curso.`}
       trigger={trigger}
       triggerClassName={triggerClassName}
       open={open}

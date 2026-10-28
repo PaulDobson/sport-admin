@@ -3,8 +3,10 @@ import { parseWithSchema } from "@/application/shared/validation/parse-with-sche
 import {
   assertMembershipTransition,
   assertPlanAssignable,
+  calculatePlanDifferential,
   isMembershipCurrent,
   type MembershipTransition,
+  type PlanDifferential,
 } from "@/domain/instructor-finance/membership";
 import { ConflictError, NotFoundError } from "@/domain/shared/errors";
 import type { MembershipPayment } from "@/domain/instructor-finance/payment";
@@ -270,5 +272,165 @@ export async function listCurrentMemberships(
   );
   return memberships.filter((membership) =>
     isMembershipCurrent(membership, parsed.onDate),
+  );
+}
+
+// ─── Change membership plan with optional pro-rata differential payment ───────
+
+const changePlanSchema = z.object({
+  tenantId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  currentMembershipId: z.string().uuid(),
+  newPlanId: z.string().uuid(),
+  /** ISO date when the change takes effect and the new plan starts. */
+  changeOn: z.iso.date(),
+  actorMembershipId: z.string().uuid(),
+  /**
+   * Stable token for the whole change flow (idempotency).
+   * The cancel operation uses `cancelOperationId` and the assign step reuses
+   * `changeToken` as its assignmentToken.
+   */
+  changeToken: z.string().uuid(),
+  /** Separate idempotency key for the cancel sub-operation derived by the caller. */
+  cancelOperationId: z.string().uuid(),
+  /** When provided, the differential payment is recorded against the new membership. */
+  differentialPayment: z
+    .object({
+      amount: z.number().positive(),
+      method: z.enum(["cash", "transfer", "card", "other"]),
+      paidAt: z.date(),
+      reference: z.string().trim().min(1).optional(),
+      operationId: z.string().uuid(),
+    })
+    .optional(),
+});
+
+export interface ChangeMembershipPlanResult {
+  membership: StudentMembership;
+  payment: MembershipPayment | null;
+  differential: PlanDifferential | null;
+  paymentError?: string;
+}
+
+/**
+ * Atomically cancels the student's current membership and assigns a new plan.
+ * When `differentialPayment` is provided the pro-rata amount owed is recorded
+ * as a payment against the freshly created membership.
+ *
+ * The use-case is fully idempotent: retrying with the same `changeToken`
+ * will recover the existing membership without creating duplicates.
+ */
+export async function changeMembershipPlan(
+  input: z.input<typeof changePlanSchema>,
+  deps: {
+    memberships: MembershipRepositoryPort;
+    payments: PaymentRepositoryPort;
+  },
+): Promise<ChangeMembershipPlanResult> {
+  const parsed = parseWithSchema(changePlanSchema, input);
+
+  // Validate the new plan exists and is assignable
+  const newPlan = await deps.memberships.findPlanById(
+    parsed.tenantId,
+    parsed.newPlanId,
+  );
+  if (!newPlan) throw new NotFoundError("Membership plan", parsed.newPlanId);
+  assertPlanAssignable(newPlan);
+
+  // Load current membership to compute the differential
+  const current = await deps.memberships.findById(
+    parsed.tenantId,
+    parsed.currentMembershipId,
+  );
+
+  const differential = current
+    ? calculatePlanDifferential(
+        current.agreedPrice,
+        current.billingCycle,
+        current.startsOn,
+        parsed.changeOn,
+        newPlan.price,
+      )
+    : null;
+
+  // 1. Cancel the existing membership (idempotent: RPC ignores if already cancelled)
+  try {
+    await deps.memberships.transition({
+      tenantId: parsed.tenantId,
+      membershipId: parsed.currentMembershipId,
+      transition: "cancel",
+      effectiveOn: parsed.changeOn,
+      actorMembershipId: parsed.actorMembershipId,
+      operationId: parsed.cancelOperationId,
+    });
+  } catch (error) {
+    // Swallow if already cancelled (idempotency) — any other error re-throws
+    const msg = error instanceof Error ? error.message : String(error);
+    const alreadyCancelled = msg.includes("already cancelled");
+    if (!alreadyCancelled) throw error;
+  }
+
+  // 2. Assign the new plan
+  const membership = await activateOrRecover(
+    {
+      tenantId: parsed.tenantId,
+      studentId: parsed.studentId,
+      planId: parsed.newPlanId,
+      startsOn: parsed.changeOn,
+      actorMembershipId: parsed.actorMembershipId,
+      assignmentToken: parsed.changeToken,
+    },
+    deps.memberships,
+  );
+
+  // 3. Optionally record the differential payment
+  if (!parsed.differentialPayment) {
+    return { membership, payment: null, differential };
+  }
+
+  try {
+    const payment = await deps.payments.record({
+      tenantId: parsed.tenantId,
+      membershipId: membership.id,
+      amount: parsed.differentialPayment.amount,
+      currency: membership.currency,
+      method: parsed.differentialPayment.method,
+      paidAt: parsed.differentialPayment.paidAt,
+      reference: parsed.differentialPayment.reference,
+      actorMembershipId: parsed.actorMembershipId,
+      operationId: parsed.differentialPayment.operationId,
+      adjustments: [],
+    });
+    return { membership, payment, differential };
+  } catch (error) {
+    return {
+      membership,
+      payment: null,
+      differential,
+      paymentError:
+        error instanceof Error && error.message
+          ? error.message
+          : "No se pudo registrar el pago diferencial.",
+    };
+  }
+}
+
+/**
+ * Pure calculation — no I/O. Returns the pro-rata differential for the UI
+ * preview before the instructor confirms the change.
+ */
+export function previewPlanDifferential(input: {
+  currentAgreedPrice: number;
+  currentBillingCycle: Parameters<typeof calculatePlanDifferential>[1];
+  startsOn: string;
+  changeOn: string;
+  newPlanPrice: number;
+}): PlanDifferential {
+  return calculatePlanDifferential(
+    input.currentAgreedPrice,
+    input.currentBillingCycle,
+    input.startsOn,
+    input.changeOn,
+    input.newPlanPrice,
   );
 }
