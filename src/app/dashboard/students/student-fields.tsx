@@ -326,7 +326,8 @@ export function StudentFields({ student }: { student?: StudentBasicFields }) {
       >
         <IconField
           label="URL de foto"
-          icon={<Image className="h-3.5 w-3.5" />}
+          // eslint-disable-next-line jsx-a11y/alt-text
+          icon={<Image aria-hidden="true" className="h-3.5 w-3.5" />}
           name="photoUrl"
           type="url"
           placeholder="https://ejemplo.com/foto.jpg"

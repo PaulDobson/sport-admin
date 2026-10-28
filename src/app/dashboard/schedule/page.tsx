@@ -32,6 +32,7 @@ import {
   sessionCalendarState,
   sessionOccupiedCount,
 } from "./session-presentation";
+import { TodaySessionsStrip } from "./today-sessions-strip";
 
 const calendarPageSize = 500;
 
@@ -105,13 +106,13 @@ export default async function SchedulePage({
   const now = new Date();
   const date = params.date || operationalDateKey(now);
   const period =
-    params.period === "day" || params.period === "week"
+    params.period === "week" || params.period === "month"
       ? params.period
-      : "month";
+      : "day";
   const view =
-    params.view === "table" || params.view === "calendar"
+    params.view === "table" || params.view === "grid"
       ? params.view
-      : "grid";
+      : "calendar";
   const isCalendar = view === "calendar";
   const range = sessionPeriod(date, period);
   const periodTitle = sessionPeriodTitle(range, period);
@@ -333,7 +334,7 @@ export default async function SchedulePage({
     {
       label: isCalendar ? "En este período" : "En esta página",
       value: sessions.length,
-      detail: `${schedule.total} resultados · ${currentCount} en curso`,
+      detail: `${schedule.total} sesiones programadas · ${currentCount} en curso`,
       icon: CalendarDays,
     },
     {
@@ -403,6 +404,14 @@ export default async function SchedulePage({
           </Surface>
         ))}
       </section>
+
+      {/* Today's quick view — shown when the current period contains today and
+          we're not in calendar view (which already shows all days inline). 
+      {!isCalendar && range.from <= todayKey && todayKey <= range.through ? (
+        <TodaySessionsStrip sessions={sessions} now={now} todayKey={todayKey} />
+      ) : null}
+
+      */}
 
       <Surface
         aria-labelledby="session-filter-heading"

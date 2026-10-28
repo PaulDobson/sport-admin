@@ -5,6 +5,12 @@ export type MetricValueType =
   | "selection"
   | "object";
 
+export type MetricEvaluationType =
+  | "body_composition"
+  | "strength"
+  | "cardio"
+  | "custom";
+
 export type MetricValidationRules = {
   min?: number;
   max?: number;
@@ -18,9 +24,12 @@ export interface MetricDefinition {
   slug: string;
   name: string;
   category: string;
+  evaluationType: MetricEvaluationType;
   valueType: MetricValueType;
   unit?: string;
   validationRules: MetricValidationRules;
+  /** Only for custom rep-count evaluations (e.g. "flexiones en 60 seg") */
+  timeWindowSeconds?: number;
   status: "active" | "archived";
   createdAt: Date;
   updatedAt: Date;

@@ -5,10 +5,12 @@ import { revalidatePath } from "next/cache";
 import {
   assignMembership,
   cancelMembership,
+  changeMembershipPlan,
   createMembershipPlan,
   expireMembership,
   listMembershipPlans,
   pauseMembership,
+  previewPlanDifferential,
   renewMembership,
   setMembershipPlanStatus,
   updateMembershipPlan,
@@ -19,6 +21,7 @@ import {
 } from "@/application/instructor-finance/use-cases/manage-payment";
 import { listStudentsForAdministration } from "@/application/instructor-operations/use-cases/list-students-for-administration";
 import type { BillingCycle } from "@/domain/instructor-finance/membership";
+import type { PlanDifferential } from "@/domain/instructor-finance/membership";
 import {
   BusinessRuleViolationError,
   ConflictError,
@@ -423,7 +426,7 @@ export async function assignMembershipAction(
 }
 
 export interface ChangeMembershipPlanState {
-  status: "idle" | "error" | "changed";
+  status: "idle" | "error" | "changed" | "payment_failed";
   error: string | null;
   result?: {
     membershipId: string;
@@ -431,13 +434,16 @@ export interface ChangeMembershipPlanState {
     expiresOn: string;
     agreedPrice: number;
     currency: string;
+    differential: PlanDifferential | null;
+    paidAmount: number;
   };
 }
 
 /**
  * Cancels the student's current membership and assigns a new plan.
- * Both operations share the same server roundtrip. The cancellation uses
- * today's date as effectiveOn so there is no gap between the old and new plan.
+ * When `withDifferentialPayment` is "on" the instructor has agreed to collect
+ * the differential immediately; the amount, method and paid-on date must be
+ * included in the form data.
  */
 export async function changeMembershipPlanAction(
   _previousState: ChangeMembershipPlanState,
@@ -455,56 +461,121 @@ export async function changeMembershipPlanAction(
   const currentMembershipId = String(formData.get("currentMembershipId") ?? "");
   const studentId = String(formData.get("studentId") ?? "");
   const newPlanId = String(formData.get("newPlanId") ?? "");
-  const startsOn = String(formData.get("startsOn") ?? "");
-  const assignmentToken = String(formData.get("assignmentToken") ?? "");
-  const effectiveOn =
-    String(formData.get("effectiveOn") ?? "") ||
+  const changeOn =
+    String(formData.get("changeOn") ?? "") ||
     new Date().toISOString().slice(0, 10);
+  const changeToken = String(formData.get("changeToken") ?? "");
+  const cancelOperationId = String(formData.get("cancelOperationId") ?? "");
+  const withPayment = formData.get("withDifferentialPayment") === "on";
+  const paidOn = String(formData.get("paidOn") ?? "");
 
   const finance = await createInstructorFinanceDeps();
 
+  let result: Awaited<ReturnType<typeof changeMembershipPlan>>;
   try {
-    // 1. Cancel the existing membership
-    await cancelMembership(
-      {
-        tenantId: actor.tenantId,
-        membershipId: currentMembershipId,
-        effectiveOn,
-        actorMembershipId: actor.id,
-        operationId: randomUUID(),
-      },
-      finance,
-    );
-
-    // 2. Assign the new plan
-    const result = await assignMembership(
+    result = await changeMembershipPlan(
       {
         tenantId: actor.tenantId,
         studentId,
-        planId: newPlanId,
-        startsOn: startsOn || effectiveOn,
+        currentMembershipId,
+        newPlanId,
+        changeOn,
         actorMembershipId: actor.id,
-        assignmentToken,
+        changeToken,
+        cancelOperationId,
+        differentialPayment: withPayment
+          ? {
+              amount: Number(formData.get("differentialAmount")),
+              method: readPaymentMethod(formData),
+              paidAt: paidOn ? new Date(`${paidOn}T12:00:00Z`) : new Date(),
+              reference:
+                String(formData.get("reference") ?? "").trim() || undefined,
+              operationId: collectionOperationId([
+                actor.tenantId,
+                changeToken,
+                "differential-payment",
+              ]),
+            }
+          : undefined,
       },
       finance,
     );
-
-    revalidateFinance();
-    revalidatePath(`/dashboard/students/${studentId}`);
-    revalidatePath("/dashboard");
-
-    return {
-      status: "changed",
-      error: null,
-      result: {
-        membershipId: result.membership.id,
-        studentId: result.membership.studentId,
-        expiresOn: result.membership.expiresOn,
-        agreedPrice: result.membership.agreedPrice,
-        currency: result.membership.currency,
-      },
-    };
   } catch (error) {
     return { status: "error", error: formatActionError(error) };
+  }
+
+  revalidateFinance();
+  revalidatePath(`/dashboard/students/${studentId}`);
+  revalidatePath("/dashboard");
+
+  const summary = {
+    membershipId: result.membership.id,
+    studentId: result.membership.studentId,
+    expiresOn: result.membership.expiresOn,
+    agreedPrice: result.membership.agreedPrice,
+    currency: result.membership.currency,
+    differential: result.differential,
+    paidAmount: result.payment?.amount ?? 0,
+  };
+
+  if (result.paymentError) {
+    console.error(
+      "Differential payment failed on plan change",
+      result.paymentError,
+    );
+    return {
+      status: "payment_failed",
+      error:
+        "El plan cambió correctamente, pero el pago diferencial no se registró. El saldo quedó pendiente.",
+      result: summary,
+    };
+  }
+
+  return { status: "changed", error: null, result: summary };
+}
+
+// ─── Preview differential (server action callable from the UI) ────────────────
+
+export interface DifferentialPreview {
+  differential: PlanDifferential;
+  currency: string;
+}
+
+/**
+ * Returns the pro-rata differential for the UI preview step.
+ * Called after the instructor selects the new plan but before confirming.
+ */
+export async function previewPlanDifferentialAction(input: {
+  currentMembershipId: string;
+  newPlanId: string;
+  changeOn: string;
+}): Promise<
+  { ok: true; data: DifferentialPreview } | { ok: false; error: string }
+> {
+  const actor = await requireOperationalMembership();
+  if (actor.role === "assistant") {
+    return { ok: false, error: "Sin permiso para calcular diferenciales." };
+  }
+  try {
+    const finance = await createInstructorFinanceDeps();
+    const [current, newPlan] = await Promise.all([
+      finance.memberships.findById(actor.tenantId, input.currentMembershipId),
+      finance.memberships.findPlanById(actor.tenantId, input.newPlanId),
+    ]);
+    if (!current)
+      return { ok: false, error: "Membresía actual no encontrada." };
+    if (!newPlan) return { ok: false, error: "Plan destino no encontrado." };
+
+    const differential = previewPlanDifferential({
+      currentAgreedPrice: current.agreedPrice,
+      currentBillingCycle: current.billingCycle,
+      startsOn: current.startsOn,
+      changeOn: input.changeOn,
+      newPlanPrice: newPlan.price,
+    });
+
+    return { ok: true, data: { differential, currency: current.currency } };
+  } catch (error) {
+    return { ok: false, error: formatActionError(error) };
   }
 }

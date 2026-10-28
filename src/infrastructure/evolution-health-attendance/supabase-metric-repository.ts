@@ -3,12 +3,14 @@ import type { Json } from "@/infrastructure/supabase/database.types";
 import type {
   MetricDefinition,
   MetricEvaluation,
+  MetricEvaluationType,
   MetricValidationRules,
   MetricValueType,
 } from "@/domain/evolution-health-attendance/metric";
 import type {
   CreateMetricDefinitionInput,
   CreateMetricEvaluationInput,
+  UpdateMetricEvaluationInput,
   MetricRepositoryPort,
 } from "@/application/evolution-health-attendance/ports/metric-repository-port";
 
@@ -18,9 +20,11 @@ interface MetricDefinitionRow {
   slug: string;
   name: string;
   category: string;
+  evaluation_type: MetricEvaluationType;
   value_type: MetricValueType;
   unit: string | null;
   validation_rules: MetricValidationRules;
+  time_window_seconds: number | null;
   status: "active" | "archived";
   created_at: string;
   updated_at: string;
@@ -57,9 +61,11 @@ function toDefinition(row: MetricDefinitionRow): MetricDefinition {
     slug: row.slug,
     name: row.name,
     category: row.category,
+    evaluationType: row.evaluation_type ?? "custom",
     valueType: row.value_type,
     unit: row.unit ?? undefined,
     validationRules: row.validation_rules,
+    timeWindowSeconds: row.time_window_seconds ?? undefined,
     status: row.status,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
@@ -70,17 +76,21 @@ export class SupabaseMetricRepository implements MetricRepositoryPort {
   constructor(private readonly client: SupabaseDatabaseClient) {}
 
   async createDefinition(input: CreateMetricDefinitionInput) {
+    const insertPayload: any = {
+      tenant_id: input.tenantId,
+      slug: input.slug,
+      name: input.name,
+      category: input.category,
+      value_type: input.valueType,
+      unit: input.unit,
+      validation_rules: input.validationRules,
+      // Columns added in migration 0058 — not yet in generated Supabase types
+      evaluation_type: input.evaluationType ?? "custom",
+      time_window_seconds: input.timeWindowSeconds ?? null,
+    };
     const { data, error } = await this.client
       .from("metric_definitions")
-      .insert({
-        tenant_id: input.tenantId,
-        slug: input.slug,
-        name: input.name,
-        category: input.category,
-        value_type: input.valueType,
-        unit: input.unit,
-        validation_rules: input.validationRules,
-      })
+      .insert(insertPayload)
       .select()
       .single();
     if (error || !data)
@@ -95,6 +105,19 @@ export class SupabaseMetricRepository implements MetricRepositoryPort {
       .eq("tenant_id", tenantId)
       .eq("status", "active")
       .in("slug", slugs);
+    if (error) throw error;
+    return (data as MetricDefinitionRow[]).map(toDefinition);
+  }
+
+  async listAllActiveDefinitions(tenantId: string) {
+    const { data, error } = await this.client
+      .from("metric_definitions")
+      .select()
+      .eq("tenant_id", tenantId)
+      .eq("status", "active")
+      .order("evaluation_type", { ascending: true })
+      .order("category", { ascending: true })
+      .order("name", { ascending: true });
     if (error) throw error;
     return (data as MetricDefinitionRow[]).map(toDefinition);
   }
@@ -127,5 +150,41 @@ export class SupabaseMetricRepository implements MetricRepositoryPort {
       .order("created_at", { ascending: false });
     if (error) throw error;
     return (data as MetricEvaluationRow[]).map(toEvaluation);
+  }
+
+  async seedDefaultDefinitions(tenantId: string) {
+    // seed_default_metric_definitions is added in migration 0058 — not yet in generated types
+    // Cast the whole client so the rpc call stays bound and `rest` is accessible
+    const { error } = await (this.client as any).rpc(
+      "seed_default_metric_definitions",
+      { p_tenant_id: tenantId },
+    );
+    if (error) throw error;
+  }
+
+  async deleteEvaluation(tenantId: string, evaluationId: string) {
+    const { error } = await this.client
+      .from("metric_evaluations")
+      .delete()
+      .eq("tenant_id", tenantId)
+      .eq("id", evaluationId);
+    if (error) throw error;
+  }
+
+  async updateEvaluation(input: UpdateMetricEvaluationInput) {
+    const { data, error } = await this.client
+      .from("metric_evaluations")
+      .update({
+        evaluated_at: input.evaluatedAt.toISOString(),
+        values: input.values as Json,
+        notes: input.notes ?? null,
+      })
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.evaluationId)
+      .select()
+      .single();
+    if (error || !data)
+      throw error ?? new Error("Failed to update metric evaluation");
+    return toEvaluation(data as MetricEvaluationRow);
   }
 }

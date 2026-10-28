@@ -15,6 +15,13 @@ const rangeRulesSchema = z
     "Minimum cannot exceed maximum",
   );
 
+const evaluationTypeSchema = z.enum([
+  "body_composition",
+  "strength",
+  "cardio",
+  "custom",
+]);
+
 const baseFields = {
   tenantId: z.string().uuid(),
   slug: z
@@ -23,7 +30,9 @@ const baseFields = {
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   name: z.string().trim().min(1),
   category: z.string().trim().min(1),
+  evaluationType: evaluationTypeSchema.default("custom"),
   unit: z.string().trim().min(1).optional(),
+  timeWindowSeconds: z.number().int().positive().optional(),
 };
 
 const schema = z.discriminatedUnion("valueType", [
