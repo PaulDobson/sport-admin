@@ -54,14 +54,25 @@ export function useTimerSound() {
   /**
    * Creates the AudioContext and fetches + decodes all buffers in parallel.
    * Safe to call multiple times — subsequent calls are no-ops.
+   *
+   * Mobile fix: the AudioContext is created AND resumed synchronously before
+   * any async work. iOS Safari only grants audio permission when both happen
+   * inside the synchronous portion of a user-gesture handler. Doing either
+   * inside a .then() / await chain (after a network fetch) puts them outside
+   * the gesture frame and leaves the context permanently suspended.
    */
   const preload = useCallback(async (): Promise<void> => {
     if (ctxRef.current || loadingRef.current) return;
     loadingRef.current = true;
 
     try {
+      // Create and resume the context synchronously — still inside the gesture
+      // microtask frame. iOS Safari requires both steps before any await.
       const ctx = new AudioContext();
       ctxRef.current = ctx;
+      // resume() is awaited here but we are still in the first microtask
+      // checkpoint, which iOS treats as part of the original user gesture.
+      await ctx.resume();
 
       await Promise.all(
         (Object.entries(SOUNDS) as [SoundKey, string][]).map(
@@ -88,15 +99,25 @@ export function useTimerSound() {
    * Plays a preloaded buffer.
    * Creates a fresh AudioBufferSourceNode each time — this is the correct
    * pattern for the Web Audio API. Nodes are single-use and GC'd automatically.
+   *
+   * Mobile fix: resume() is awaited before source.start() so the context is
+   * actually running when playback is attempted. The previous fire-and-forget
+   * resume() left the context suspended on iOS when start() was called.
    */
-  const play = useCallback((key: SoundKey) => {
+  const play = useCallback(async (key: SoundKey) => {
     const ctx = ctxRef.current;
     const buffer = buffersRef.current[key];
     if (!ctx || !buffer) return;
 
-    // Resume the context if suspended (browser autoplay policy)
+    // Wait for the context to be running before attempting playback.
+    // On iOS Safari a fire-and-forget resume() is not enough — start() called
+    // while the context is still "suspended" produces silence.
     if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      try {
+        await ctx.resume();
+      } catch {
+        return;
+      }
     }
 
     try {

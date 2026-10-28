@@ -34,7 +34,7 @@ export interface UseStimulusSoundReturn {
    * Reproduce el buffer del path dado, si está precargado.
    * No-op silencioso si el buffer no existe todavía.
    */
-  playPath: (path: string) => void;
+  playPath: (path: string) => Promise<void>;
 
   /**
    * Devuelve el AudioBuffer del path si está cargado, null si no.
@@ -44,7 +44,7 @@ export interface UseStimulusSoundReturn {
 }
 
 export function useStimulusSound(): UseStimulusSoundReturn {
-  const ctxRef     = useRef<AudioContext | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
   const buffersRef = useRef<Map<string, AudioBuffer>>(new Map());
   const loadingRef = useRef<Set<string>>(new Set());
 
@@ -57,57 +57,70 @@ export function useStimulusSound(): UseStimulusSoundReturn {
 
   /**
    * Inicializa el AudioContext si no existe (seguro dentro de handlers de usuario).
+   *
+   * Mobile fix: resume() is called and awaited synchronously here so that iOS
+   * Safari sees both the context creation and the resume inside the same
+   * user-gesture microtask frame.
    */
-  const ensureContext = useCallback((): AudioContext => {
+  const ensureContext = useCallback(async (): Promise<AudioContext> => {
     if (!ctxRef.current) {
       ctxRef.current = new AudioContext();
     }
     if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume().catch(() => {});
+      await ctxRef.current.resume().catch(() => {});
     }
     return ctxRef.current;
   }, []);
 
-  const preloadPaths = useCallback(async (paths: string[]): Promise<void> => {
-    const ctx = ensureContext();
+  const preloadPaths = useCallback(
+    async (paths: string[]): Promise<void> => {
+      const ctx = await ensureContext();
 
-    // Solo cargar los paths que aún no están en caché ni en vuelo
-    const pending = paths.filter(
-      (p) => !buffersRef.current.has(p) && !loadingRef.current.has(p),
-    );
-    if (pending.length === 0) return;
+      // Solo cargar los paths que aún no están en caché ni en vuelo
+      const pending = paths.filter(
+        (p) => !buffersRef.current.has(p) && !loadingRef.current.has(p),
+      );
+      if (pending.length === 0) return;
 
-    // Marcar como en vuelo antes del fetch para evitar cargas duplicadas
-    // si preloadPaths se llama dos veces antes de que el fetch termine
-    pending.forEach((p) => loadingRef.current.add(p));
+      // Marcar como en vuelo antes del fetch para evitar cargas duplicadas
+      // si preloadPaths se llama dos veces antes de que el fetch termine
+      pending.forEach((p) => loadingRef.current.add(p));
 
-    await Promise.all(
-      pending.map(async (path) => {
-        try {
-          const res         = await fetch(path);
-          const arrayBuffer = await res.arrayBuffer();
-          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-          buffersRef.current.set(path, audioBuffer);
-        } catch {
-          // Fallo individual no bloquea los demás sonidos
-        } finally {
-          loadingRef.current.delete(path);
-        }
-      }),
-    );
-  }, [ensureContext]);
+      await Promise.all(
+        pending.map(async (path) => {
+          try {
+            const res = await fetch(path);
+            const arrayBuffer = await res.arrayBuffer();
+            const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+            buffersRef.current.set(path, audioBuffer);
+          } catch {
+            // Fallo individual no bloquea los demás sonidos
+          } finally {
+            loadingRef.current.delete(path);
+          }
+        }),
+      );
+    },
+    [ensureContext],
+  );
 
-  const playPath = useCallback((path: string) => {
-    const ctx    = ctxRef.current;
+  const playPath = useCallback(async (path: string) => {
+    const ctx = ctxRef.current;
     const buffer = buffersRef.current.get(path);
     if (!ctx || !buffer) return;
 
+    // Mobile fix: await resume() before start() so the context is actually
+    // running when playback is attempted — fire-and-forget is not enough on iOS.
     if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
+      try {
+        await ctx.resume();
+      } catch {
+        return;
+      }
     }
 
     try {
-      const source  = ctx.createBufferSource();
+      const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
       source.start(0);
