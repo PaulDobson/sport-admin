@@ -13,7 +13,13 @@ import {
   type ReactNode,
 } from "react";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { ChevronDown, Dumbbell, MoreHorizontal, X } from "lucide-react";
+import {
+  ChevronDown,
+  Dumbbell,
+  MoreHorizontal,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 import { useSidebarCollapsed } from "./app-shell";
 import {
@@ -25,6 +31,7 @@ import {
   trainingSectionsForRole,
   moreDestinationsForRole,
   isDisciplinesActive,
+  isClassesActive,
   activeFinanceSection,
   financeSectionsForRole,
   type NavigationDestination,
@@ -208,6 +215,12 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                           href: "/dashboard/disciplines",
                           icon: Dumbbell,
                         },
+                        {
+                          id: "classes" as const,
+                          label: "Clases",
+                          href: "/dashboard/class",
+                          icon: Dumbbell,
+                        },
                       ]
                     : [];
 
@@ -388,6 +401,22 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
 // Mobile bottom sheet ("Más")
 // ---------------------------------------------------------------------------
 
+// Submenu items for destinations that have children in the "Más" sheet.
+const GYM_SUBMENU_ITEMS: ReadonlyArray<{
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}> = [
+  {
+    id: "disciplines",
+    label: "Disciplinas",
+    href: "/dashboard/disciplines",
+    icon: Dumbbell,
+  },
+  { id: "classes", label: "Clases", href: "/dashboard/class", icon: Dumbbell },
+];
+
 function MobileMoreSheet({
   role,
   onClose,
@@ -398,6 +427,25 @@ function MobileMoreSheet({
   const pathname = usePathname();
   const sheetRef = useRef<HTMLDivElement>(null);
   const destinations = useMemo(() => moreDestinationsForRole(role), [role]);
+  const financeSubmenuItems = useMemo(
+    () => financeSectionsForRole(role),
+    [role],
+  );
+
+  const disciplinesActive = useMemo(
+    () => isDisciplinesActive(pathname),
+    [pathname],
+  );
+  const classesActive = useMemo(() => isClassesActive(pathname), [pathname]);
+  const gymChildActive = disciplinesActive || classesActive;
+  const financeChildActive = useMemo(
+    () => activeFinanceSection(pathname) !== null,
+    [pathname],
+  );
+
+  // Expanded state — auto-open the submenu when a child route is already active.
+  const [gymExpanded, setGymExpanded] = useState(gymChildActive);
+  const [financeExpanded, setFinanceExpanded] = useState(financeChildActive);
 
   // Close on outside click
   useEffect(() => {
@@ -446,6 +494,94 @@ function MobileMoreSheet({
             {destinations.map((destination) => {
               const active = isDestinationActive(destination, pathname);
               const Icon = destination.icon;
+              const isGym = destination.id === "gym";
+              const isFinance = destination.id === "finance";
+              const hasSubmenu = isGym || isFinance;
+
+              if (hasSubmenu) {
+                const expanded = isGym ? gymExpanded : financeExpanded;
+                const toggle = isGym
+                  ? () => setGymExpanded((v) => !v)
+                  : () => setFinanceExpanded((v) => !v);
+                const submenuItems = isGym
+                  ? GYM_SUBMENU_ITEMS
+                  : financeSubmenuItems;
+                const parentActive = isGym
+                  ? gymChildActive
+                  : financeChildActive;
+
+                return (
+                  <li key={destination.id}>
+                    {/* Parent row — tapping toggles the submenu */}
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      onClick={toggle}
+                      className={`flex w-full min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                        active || parentActive
+                          ? "bg-navigation-active text-primary"
+                          : "text-foreground hover:bg-surface-raised"
+                      }`}
+                    >
+                      <span
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+                          active || parentActive
+                            ? "bg-primary/12 text-primary"
+                            : "bg-surface-raised text-muted-foreground"
+                        }`}
+                      >
+                        <Icon
+                          size={18}
+                          strokeWidth={active || parentActive ? 2.2 : 1.8}
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <span className="flex-1 text-left">
+                        {destination.label}
+                      </span>
+                      <ChevronDown
+                        size={16}
+                        aria-hidden="true"
+                        className={`text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${
+                          expanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                    {/* Submenu items */}
+                    {expanded ? (
+                      <ul className="ml-11 mt-0.5 space-y-0.5 border-l border-border pl-3 pb-1">
+                        {submenuItems.map((item) => {
+                          const itemActive = pathname === item.href;
+                          const ItemIcon = item.icon;
+                          return (
+                            <li key={item.id}>
+                              <Link
+                                href={item.href}
+                                onClick={onClose}
+                                aria-current={itemActive ? "page" : undefined}
+                                className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                                  itemActive
+                                    ? "bg-primary/5 font-semibold text-primary"
+                                    : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"
+                                }`}
+                              >
+                                <ItemIcon
+                                  size={16}
+                                  strokeWidth={itemActive ? 2.2 : 1.8}
+                                  aria-hidden="true"
+                                />
+                                {item.label}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                  </li>
+                );
+              }
+
+              // Regular (no submenu) destination
               return (
                 <li key={destination.id}>
                   <Link

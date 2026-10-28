@@ -154,6 +154,14 @@ export function isDisciplinesActive(pathname: string): boolean {
   return pathname === "/dashboard/disciplines";
 }
 
+/**
+ * Whether the current path is under the Class section.
+ * Used to mark the gym destination as active when Class is open.
+ */
+export function isClassesActive(pathname: string): boolean {
+  return pathname === "/dashboard/class";
+}
+
 // ---------------------------------------------------------------------------
 // Finance submenu
 // ---------------------------------------------------------------------------
