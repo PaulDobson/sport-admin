@@ -30,6 +30,8 @@ export interface FullscreenSeriesMeta {
   currentSeries: number;
   totalSeries: number;
   phase: "work" | "rest";
+  /** Label shown before the counter: "Serie" (default) or "Paso" (pyramid). */
+  label?: string;
 }
 
 export interface FullscreenDisplayProps {
@@ -367,16 +369,36 @@ const SeriesBadge = memo(
       : "border-warning/40 bg-warning/15 text-warning";
 
     return (
-      <div className="relative flex items-center gap-4">
+      <div className="relative flex flex-col items-center gap-3 sm:gap-5">
+        {/* Phase badge — enlarged for gym TV projection */}
         <span
-          className={`inline-flex items-center gap-2 rounded-full border px-5 py-2 text-lg font-bold transition-all duration-500 ${colorClass}`}
+          className={`inline-flex items-center gap-2.5 rounded-full border px-6 py-2.5 text-xl font-bold transition-all duration-500 sm:text-2xl ${colorClass}`}
         >
-          <Icon aria-hidden="true" className="h-5 w-5" />
+          <Icon aria-hidden="true" className="h-5 w-5 sm:h-6 sm:w-6" />
           {label}
         </span>
-        <span className="metric-number text-2xl font-bold text-white/60">
-          Serie {meta.currentSeries} / {meta.totalSeries}
-        </span>
+
+        {/* Series counter — enlarged so students can identify the current
+            series from a distance when projected on a gym TV. The current
+            series number is the dominant element; the total stays smaller to
+            maintain clear visual hierarchy below the central timer. */}
+        <div className="flex items-baseline gap-2 sm:gap-4">
+          <span className="text-base font-bold uppercase tracking-[0.2em] text-white/50 sm:text-lg">
+            {meta.label ?? "Serie"}
+          </span>
+          <span
+            className="metric-number font-bold leading-none text-white"
+            style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+          >
+            {meta.currentSeries}
+          </span>
+          <span
+            className="metric-number font-bold leading-none text-white/40"
+            style={{ fontSize: "clamp(1.5rem, 4.5vw, 3.5rem)" }}
+          >
+            / {meta.totalSeries}
+          </span>
+        </div>
       </div>
     );
   },
@@ -396,8 +418,8 @@ const SeriesProgressDots = memo(
   function SeriesProgressDots({ meta }: { meta: FullscreenSeriesMeta }) {
     return (
       <div
-        aria-label={`Serie ${meta.currentSeries} de ${meta.totalSeries}`}
-        className="relative flex items-center gap-2"
+        aria-label={`${meta.label ?? "Serie"} ${meta.currentSeries} de ${meta.totalSeries}`}
+        className="relative flex items-center gap-2.5 sm:gap-3"
       >
         {Array.from({ length: meta.totalSeries }, (_, i) => {
           const n = i + 1;
@@ -409,7 +431,7 @@ const SeriesProgressDots = memo(
             <div
               key={i}
               aria-hidden="true"
-              className={`h-3 w-3 rounded-full transition-all duration-500 ${
+              className={`h-4 w-4 rounded-full transition-all duration-500 sm:h-5 sm:w-5 ${
                 completed
                   ? "bg-primary/70"
                   : current && !isRest
@@ -504,7 +526,7 @@ const OverlayContent = memo(function OverlayContent({
       ref={containerRef}
       role="region"
       aria-label="Temporizador en pantalla completa"
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-8 bg-[#181c2a] px-6 py-8"
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-[#181c2a] px-6 py-8 sm:gap-8"
     >
       {/* Background image — sits below all content via absolute positioning */}
       {!isPreparing && <BackgroundImage src={bgSrc} phase={phase} />}
@@ -533,7 +555,7 @@ const OverlayContent = memo(function OverlayContent({
           {seriesMeta && !isDone && <SeriesBadge meta={seriesMeta} />}
 
           {isDone && (
-            <span className="relative rounded-full border border-success/40 bg-success/15 px-8 py-2.5 text-2xl font-bold text-success">
+            <span className="relative rounded-full border border-success/40 bg-success/15 px-8 py-3 text-2xl font-bold text-success sm:text-3xl">
               ¡Completado!
             </span>
           )}

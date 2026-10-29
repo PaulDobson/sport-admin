@@ -16,6 +16,7 @@ import { Tooltip } from "@base-ui/react/tooltip";
 import {
   ChevronDown,
   Dumbbell,
+  MapPin,
   MoreHorizontal,
   X,
   type LucideIcon,
@@ -32,6 +33,7 @@ import {
   moreDestinationsForRole,
   isDisciplinesActive,
   isClassesActive,
+  isLocationsActive,
   activeFinanceSection,
   financeSectionsForRole,
   type NavigationDestination,
@@ -143,6 +145,10 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
     () => isDisciplinesActive(pathname),
     [pathname],
   );
+  const locationsActive = useMemo(
+    () => isLocationsActive(pathname),
+    [pathname],
+  );
   const activeFinance = useMemo(
     () => activeFinanceSection(pathname),
     [pathname],
@@ -152,8 +158,10 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
     scheduleSubmenuOverride ?? activeSchedule !== null;
   const trainingsSubmenuOpen =
     trainingsSubmenuOverride ?? activeTraining !== null;
-  // Gym submenu opens automatically when Disciplines is the active route.
-  const gymSubmenuOpen = gymSubmenuOverride ?? disciplinesActive;
+  // Gym submenu opens automatically when a gym sub-section is the active
+  // route (Disciplines, Classes, or Locations).
+  const gymSubmenuOpen =
+    gymSubmenuOverride ?? (disciplinesActive || locationsActive);
   // Finance submenu opens automatically when a finance sub-route is active.
   const financeSubmenuOpen = financeSubmenuOverride ?? activeFinance !== null;
 
@@ -206,7 +214,8 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                         ? gymSubmenuId
                         : financeSubmenuId;
 
-                  // Gym submenu: Disciplinas link (static, not role-filtered)
+                  // Gym submenu: Disciplinas, Clases and Ubicaciones links
+                  // (static, not role-filtered)
                   const gymSubmenuItems = isGym
                     ? [
                         {
@@ -220,6 +229,12 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                           label: "Clases",
                           href: "/dashboard/class",
                           icon: Dumbbell,
+                        },
+                        {
+                          id: "locations" as const,
+                          label: "Ubicaciones",
+                          href: "/dashboard/locations",
+                          icon: MapPin,
                         },
                       ]
                     : [];
@@ -240,9 +255,11 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                       ? activeTraining
                       : isGym && disciplinesActive
                         ? "disciplines"
-                        : isFinance
-                          ? activeFinance
-                          : null;
+                        : isGym && locationsActive
+                          ? "locations"
+                          : isFinance
+                            ? activeFinance
+                            : null;
 
                   const toggleSubmenu = isSchedule
                     ? () => setScheduleSubmenuOverride(!scheduleSubmenuOpen)
@@ -415,6 +432,12 @@ const GYM_SUBMENU_ITEMS: ReadonlyArray<{
     icon: Dumbbell,
   },
   { id: "classes", label: "Clases", href: "/dashboard/class", icon: Dumbbell },
+  {
+    id: "locations",
+    label: "Ubicaciones",
+    href: "/dashboard/locations",
+    icon: MapPin,
+  },
 ];
 
 function MobileMoreSheet({
@@ -437,7 +460,11 @@ function MobileMoreSheet({
     [pathname],
   );
   const classesActive = useMemo(() => isClassesActive(pathname), [pathname]);
-  const gymChildActive = disciplinesActive || classesActive;
+  const locationsActive = useMemo(
+    () => isLocationsActive(pathname),
+    [pathname],
+  );
+  const gymChildActive = disciplinesActive || classesActive || locationsActive;
   const financeChildActive = useMemo(
     () => activeFinanceSection(pathname) !== null,
     [pathname],

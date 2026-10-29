@@ -72,7 +72,7 @@ export function QuickActionMenu({ role }: { role: TenantMembershipRole }) {
           {/* 1. Tomar asistencia — always available for roles that can take it.
               Navigates to sessions list so the instructor picks today's session.
               Previously this relied on currentSessionId (never passed → never shown). */}
-          {canTakeAttendance ? (
+          {/*canTakeAttendance ? (
             <Link
               href="/dashboard/schedule"
               role="menuitem"
@@ -82,7 +82,7 @@ export function QuickActionMenu({ role }: { role: TenantMembershipRole }) {
               <Check className="h-4 w-4 text-primary" aria-hidden="true" />
               Tomar asistencia
             </Link>
-          ) : null}
+          ) : null*/}
 
           {/* 2. Nuevo alumno */}
           {canManageStudents ? (

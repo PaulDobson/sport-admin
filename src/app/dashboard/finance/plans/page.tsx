@@ -1,7 +1,5 @@
 import { Suspense } from "react";
-import {
-  listMembershipPlans,
-} from "@/application/instructor-finance/use-cases/manage-membership";
+import { listMembershipPlans } from "@/application/instructor-finance/use-cases/manage-membership";
 import {
   summarizePlanPerformance,
   type PlanPerformance,
@@ -20,7 +18,10 @@ async function loadPlanPerformance(
   period: string,
 ): Promise<PlanPerformance[]> {
   try {
-    const month = await finance.financialProjections.loadMonth(tenantId, period);
+    const month = await finance.financialProjections.loadMonth(
+      tenantId,
+      period,
+    );
     return summarizePlanPerformance(month.memberships, period);
   } catch {
     return [];
@@ -41,8 +42,14 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
 
   const finance = await createInstructorFinanceDeps();
   const [activePlans, archivedPlans, performance] = await Promise.all([
-    listMembershipPlans({ tenantId: membership.tenantId, status: "active" }, finance),
-    listMembershipPlans({ tenantId: membership.tenantId, status: "archived" }, finance),
+    listMembershipPlans(
+      { tenantId: membership.tenantId, status: "active" },
+      finance,
+    ),
+    listMembershipPlans(
+      { tenantId: membership.tenantId, status: "archived" },
+      finance,
+    ),
     loadPlanPerformance(finance, membership.tenantId, currentPeriod),
   ]);
 
@@ -57,12 +64,16 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Mantención de planes</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Define y administra los planes de membresía que ofreces a tus alumnos.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Planes de membresía
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Define y administra los planes que ofreces a tus alumnos.
+          </p>
+        </div>
       </div>
 
       <LinkTabs
