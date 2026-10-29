@@ -162,6 +162,14 @@ export function isClassesActive(pathname: string): boolean {
   return pathname === "/dashboard/class";
 }
 
+/**
+ * Whether the current path is under the Locations (Ubicaciones) section.
+ * Used to mark the gym destination as active when locations is open.
+ */
+export function isLocationsActive(pathname: string): boolean {
+  return pathname === "/dashboard/locations";
+}
+
 // ---------------------------------------------------------------------------
 // Finance submenu
 // ---------------------------------------------------------------------------
@@ -301,8 +309,15 @@ export function isDestinationActive(
     return true;
   if (destination.id === "trainings" && activeTrainingSection(pathname))
     return true;
-  // Gym is also active when navigating disciplines (its sub-section).
-  if (destination.id === "gym" && isDisciplinesActive(pathname)) return true;
+  // Gym is also active when navigating its sub-sections (disciplines, classes,
+  // locations) — they live under "Mi gimnasio" in the sidebar.
+  if (
+    destination.id === "gym" &&
+    (isDisciplinesActive(pathname) ||
+      isClassesActive(pathname) ||
+      isLocationsActive(pathname))
+  )
+    return true;
   // Finance is also active on its sub-routes (collections, plans).
   if (destination.id === "finance" && activeFinanceSection(pathname))
     return true;

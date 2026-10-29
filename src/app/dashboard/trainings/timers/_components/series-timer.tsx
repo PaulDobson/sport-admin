@@ -95,7 +95,7 @@ function PhaseIndicator({
   return (
     <div className="flex items-center justify-center gap-3">
       <span
-        className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition-all duration-500 ${
+        className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition-all duration-500 sm:text-base ${
           status === "done"
             ? "border-success/30 bg-success/10 text-success"
             : bgClass
@@ -111,7 +111,7 @@ function PhaseIndicator({
         )}
       </span>
       {status !== "done" && (
-        <span className="metric-number text-sm font-bold text-muted-foreground">
+        <span className="metric-number text-sm font-bold text-muted-foreground sm:text-base">
           Serie {currentSeries} / {totalSeries}
         </span>
       )}

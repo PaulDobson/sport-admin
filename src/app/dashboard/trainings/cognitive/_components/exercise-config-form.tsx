@@ -401,6 +401,100 @@ function SavedExercisesList({
   );
 }
 
+// ─── Control buttons (shared between desktop and mobile layouts) ────────────
+
+function ControlButtons({
+  status,
+  canStartWithStimuli,
+  onStart,
+  onPause,
+  onResume,
+  onStop,
+  onRestart,
+  buttonClassName,
+}: {
+  status: CognitiveStatus;
+  canStartWithStimuli: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  onStop: () => void;
+  onRestart: () => void;
+  buttonClassName: string;
+}) {
+  return (
+    <>
+      {(status === "idle" || status === "done") && (
+        <Button
+          variant="primary"
+          onClick={onStart}
+          disabled={!canStartWithStimuli}
+          className={`${buttonClassName} gap-2`}
+          aria-label="Iniciar ejercicio cognitivo en pantalla completa"
+        >
+          <Maximize2 aria-hidden="true" className="h-5 w-5" />
+          Iniciar ejercicio
+        </Button>
+      )}
+      {status === "paused" && (
+        <>
+          <Button
+            variant="primary"
+            onClick={onStart}
+            className={`${buttonClassName} gap-2`}
+            aria-label="Proyectar en pantalla completa"
+          >
+            <Maximize2 aria-hidden="true" className="h-5 w-5" />
+            Proyectar
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={onResume}
+            className={`${buttonClassName} gap-2`}
+            aria-label="Reanudar ejercicio"
+          >
+            <Play aria-hidden="true" className="h-5 w-5 fill-current" />
+            Reanudar
+          </Button>
+        </>
+      )}
+      {status === "running" && (
+        <Button
+          variant="secondary"
+          onClick={onPause}
+          className={`${buttonClassName} gap-2`}
+          aria-label="Pausar ejercicio"
+        >
+          <Pause aria-hidden="true" className="h-5 w-5 fill-current" />
+          Pausar
+        </Button>
+      )}
+      {status !== "idle" && (
+        <Button
+          variant="danger"
+          onClick={status === "done" ? onRestart : onStop}
+          className={`${buttonClassName} gap-2`}
+          aria-label={
+            status === "done" ? "Reiniciar ejercicio" : "Detener ejercicio"
+          }
+        >
+          {status === "done" ? (
+            <>
+              <RotateCcw aria-hidden="true" className="h-5 w-5" />
+              Reiniciar
+            </>
+          ) : (
+            <>
+              <Square aria-hidden="true" className="h-5 w-5 fill-current" />
+              Detener
+            </>
+          )}
+        </Button>
+      )}
+    </>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ExerciseConfigForm({
@@ -431,6 +525,10 @@ export function ExerciseConfigForm({
   const [isPending, startTransition] = useTransition();
 
   const canStartWithStimuli = canStart && selectedIds.length > 0;
+
+  // Work-time label for the mobile sticky bar summary
+  const workSecs = phaseDuration(seriesConfig, "work");
+  const workTimeLabel = `${Math.floor(workSecs / 60)}:${String(workSecs % 60).padStart(2, "0")}`;
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = useCallback(() => {
@@ -697,77 +795,74 @@ export function ExerciseConfigForm({
         />
       </CardShell>
 
-      {/* ── Controles — botones grandes, cómodos de pulsar desde lejos ────── */}
-      <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-        {(status === "idle" || status === "done") && (
-          <Button
-            variant="primary"
-            onClick={onStart}
-            disabled={!canStartWithStimuli}
-            className="h-14 min-w-52 gap-3 text-base font-bold"
-          >
-            <Maximize2 aria-hidden="true" className="h-5 w-5" />
-            Iniciar ejercicio
-          </Button>
-        )}
-        {status === "paused" && (
-          <>
-            <Button
-              variant="primary"
-              onClick={onStart}
-              className="h-14 min-w-44 gap-3 text-base font-bold"
-            >
-              <Maximize2 aria-hidden="true" className="h-5 w-5" />
-              Proyectar
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={onResume}
-              className="h-14 gap-3 px-6 text-base font-bold"
-            >
-              <Play aria-hidden="true" className="h-5 w-5 fill-current" />
-              Reanudar
-            </Button>
-          </>
-        )}
-        {status === "running" && (
-          <Button
-            variant="secondary"
-            onClick={onPause}
-            className="h-14 min-w-44 gap-3 text-base font-bold"
-          >
-            <Pause aria-hidden="true" className="h-5 w-5 fill-current" />
-            Pausar
-          </Button>
-        )}
-        {status !== "idle" && (
-          <Button
-            variant="danger"
-            onClick={status === "done" ? onRestart : onStop}
-            className="h-14 gap-3 px-6 text-base font-bold"
-          >
-            {status === "done" ? (
-              <>
-                <RotateCcw aria-hidden="true" className="h-5 w-5" />
-                Reiniciar
-              </>
-            ) : (
-              <>
-                <Square aria-hidden="true" className="h-5 w-5 fill-current" />
-                Detener
-              </>
-            )}
-          </Button>
-        )}
+      {/* ── Controles ─────────────────────────────────────────────────── */}
+      {/* Desktop (sm+): botones al pie del formulario */}
+      <div className="hidden flex-wrap items-center justify-center gap-4 pt-2 sm:flex">
+        <ControlButtons
+          status={status}
+          canStartWithStimuli={canStartWithStimuli}
+          onStart={onStart}
+          onPause={onPause}
+          onResume={onResume}
+          onStop={onStop}
+          onRestart={onRestart}
+          buttonClassName="h-14 min-w-52 text-base font-bold"
+        />
       </div>
 
       {!canStartWithStimuli && status === "idle" && (
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="hidden text-center text-sm text-muted-foreground sm:block">
           {phaseDuration(seriesConfig, "work") === 0
             ? "Define un tiempo de trabajo para iniciar."
             : "Selecciona al menos un estímulo para iniciar."}
         </p>
       )}
+
+      {/* Mobile (< sm): sticky action bar — siempre visible durante el scroll */}
+      <div className="sticky bottom-0 z-10 border-t border-border/50 bg-card/95 py-3 backdrop-blur-md sm:hidden">
+        {/* Resumen de configuración */}
+        {canStartWithStimuli && (status === "idle" || status === "done") && (
+          <div className="mb-2.5 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground">
+            <span>
+              <strong className="text-foreground">{selectedIds.length}</strong>{" "}
+              estímulos
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <strong className="text-foreground">
+                {seriesConfig.totalSeries}
+              </strong>{" "}
+              series
+            </span>
+            <span className="text-border">·</span>
+            <span>
+              <strong className="text-foreground">{workTimeLabel}</strong>{" "}
+              trabajo
+            </span>
+          </div>
+        )}
+        {/* Mensaje de validación */}
+        {!canStartWithStimuli && status === "idle" && (
+          <p className="mb-2 text-center text-xs font-semibold text-muted-foreground">
+            {phaseDuration(seriesConfig, "work") === 0
+              ? "Define un tiempo de trabajo para iniciar."
+              : "Selecciona al menos un estímulo."}
+          </p>
+        )}
+        {/* Botones */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <ControlButtons
+            status={status}
+            canStartWithStimuli={canStartWithStimuli}
+            onStart={onStart}
+            onPause={onPause}
+            onResume={onResume}
+            onStop={onStop}
+            onRestart={onRestart}
+            buttonClassName="h-12 min-w-40 text-sm font-bold"
+          />
+        </div>
+      </div>
     </div>
   );
 }

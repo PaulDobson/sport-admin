@@ -150,6 +150,7 @@ export async function createLocationAction(
     );
     revalidatePath("/dashboard/schedule/programming");
     revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/locations");
     return {
       error: null,
       message: "Ubicación creada.",
@@ -195,6 +196,7 @@ export async function saveLocationAction(
     }
     revalidatePath("/dashboard/schedule/programming");
     revalidatePath("/dashboard/schedule");
+    revalidatePath("/dashboard/locations");
     return {
       error: null,
       message:

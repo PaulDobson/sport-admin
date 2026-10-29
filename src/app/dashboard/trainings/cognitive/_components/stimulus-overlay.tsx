@@ -319,88 +319,102 @@ const SeriesHeader = memo(
     const dotDone = isWork ? "bg-primary/45" : "bg-warning/40";
 
     return (
-      <div className="relative z-10 flex w-full items-center justify-between gap-4 px-5 pt-7">
-        {/* ── Chip compacto ─────────────────────────────────────────────── */}
+      <div className="relative z-10 flex w-full items-start justify-between gap-3 px-4 pt-6 sm:items-center sm:gap-4 sm:px-5 sm:pt-7">
+        {/* ── Chip ──────────────────────────────────────────────────────── */}
         {isDone ? (
-          /* Estado completado */
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-success/30 bg-[rgba(20,24,40,0.80)] px-5 py-2.5 shadow-[0_0_28px_rgba(52,211,153,0.15)] backdrop-blur-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/20 shadow-[0_0_12px_rgba(52,211,153,0.4)]">
-              <Dumbbell aria-hidden="true" className="h-5 w-5 text-success" />
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-success/30 bg-[rgba(20,24,40,0.80)] px-4 py-2.5 shadow-[0_0_28px_rgba(52,211,153,0.15)] backdrop-blur-md sm:px-5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/20 shadow-[0_0_12px_rgba(52,211,153,0.4)] sm:h-11 sm:w-11">
+              <Dumbbell
+                aria-hidden="true"
+                className="h-5 w-5 text-success sm:h-6 sm:w-6"
+              />
             </div>
-            <span className="text-lg font-black tracking-wide text-success sm:text-xl">
+            <span className="text-lg font-black tracking-wide text-success sm:text-2xl">
               ¡Completado!
             </span>
           </div>
         ) : (
           <div
-            className={`relative inline-flex items-stretch overflow-hidden rounded-2xl border bg-[rgba(20,24,40,0.80)] backdrop-blur-md ${chipBorder} ${chipGlow}`}
+            className={`relative overflow-hidden rounded-2xl border bg-[rgba(20,24,40,0.80)] backdrop-blur-md ${chipBorder} ${chipGlow}
+              flex flex-col sm:inline-flex sm:flex-row sm:items-stretch`}
           >
-            {/* Línea superior con gradiente del color de fase */}
+            {/* Línea superior */}
             <div
               aria-hidden="true"
               className={`pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent ${topEdge} to-transparent`}
             />
 
-            {/* Sección 1 — Ícono + Fase */}
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconGlow}`}
-              >
-                <Icon aria-hidden="true" className={`h-5 w-5 ${phaseText}`} />
+            {/* ── Fila superior (mobile) / columna izquierda (desktop) ── */}
+            <div className="flex items-center gap-0 sm:contents">
+              {/* Sección 1 — Ícono + Fase */}
+              <div className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${iconGlow}`}
+                >
+                  <Icon
+                    aria-hidden="true"
+                    className={`h-4 w-4 sm:h-6 sm:w-6 ${phaseText}`}
+                  />
+                </div>
+                <span
+                  className={`text-base font-black uppercase tracking-[0.12em] sm:text-xl ${phaseText}`}
+                >
+                  {phaseLabel}
+                </span>
               </div>
-              <span
-                className={`text-lg font-black uppercase tracking-[0.12em] ${phaseText}`}
+
+              {/* Divisor vertical */}
+              <div
+                aria-hidden="true"
+                className="w-px self-stretch bg-white/[0.07]"
+              />
+
+              {/* Sección 2 — Serie N / M */}
+              <div
+                className="flex items-center gap-1.5 px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3"
+                aria-label={`Serie ${currentSeries} de ${totalSeries}`}
               >
-                {phaseLabel}
-              </span>
+                <span className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-white/30 sm:text-sm">
+                  Serie
+                </span>
+                <span
+                  className={`metric-number font-black leading-none ${countText} ${countGlow}`}
+                  style={{ fontSize: "clamp(1.75rem, 8vw, 5.5rem)" }}
+                >
+                  {currentSeries}
+                </span>
+                <span className="text-xs font-bold text-white/20 sm:text-base">
+                  /
+                </span>
+                <span
+                  className="metric-number font-bold leading-none text-white/35"
+                  style={{ fontSize: "clamp(1.1rem, 5vw, 3rem)" }}
+                >
+                  {totalSeries}
+                </span>
+              </div>
             </div>
 
-            {/* Divisor */}
+            {/* Divisor — horizontal en mobile, vertical en desktop */}
             <div
               aria-hidden="true"
-              className="w-px self-stretch bg-white/[0.07]"
+              className="h-px w-full bg-white/[0.07] sm:h-auto sm:w-px sm:self-stretch"
             />
 
-            {/* Sección 2 — Contador N / M */}
-            <div
-              className="flex items-center gap-2 px-4 py-3"
-              aria-label={`Serie ${currentSeries} de ${totalSeries}`}
-            >
-              <span className="text-[1.5rem] font-black uppercase tracking-[0.14em] text-white/30">
-                Serie
-              </span>
-              <span
-                className={`metric-number text-[3.5rem] font-black leading-none ${countText} ${countGlow}`}
-              >
-                {currentSeries}
-              </span>
-              <span className="text-base font-bold text-white/20">/</span>
-              <span className="metric-number text-[3rem] font-bold leading-none text-white/35">
-                {totalSeries}
-              </span>
-            </div>
-
-            {/* Divisor */}
+            {/* Sección 3 — Dots: fila completa en mobile, columna en desktop */}
             <div
               aria-hidden="true"
-              className="w-px self-stretch bg-white/[0.07]"
-            />
-
-            {/* Sección 3 — Dots de progreso como píldoras */}
-            <div
-              aria-hidden="true"
-              className="flex items-center gap-1.5 px-4 py-3"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 sm:gap-2 sm:px-4 sm:py-3"
             >
               {Array.from({ length: totalSeries }, (_, i) => {
                 const n = i + 1;
                 const completed = n < currentSeries;
                 const current = n === currentSeries;
-
                 if (current) {
                   return (
                     <div
                       key={i}
-                      className={`h-2.5 w-6 rounded-sm transition-all duration-500 ${dotActive}`}
+                      className={`h-2.5 w-6 rounded-sm transition-all duration-500 sm:h-3.5 sm:w-8 ${dotActive}`}
                     />
                   );
                 }
@@ -408,14 +422,14 @@ const SeriesHeader = memo(
                   return (
                     <div
                       key={i}
-                      className={`h-2.5 w-2.5 rounded-sm transition-all duration-500 ${dotDone}`}
+                      className={`h-2.5 w-2.5 rounded-sm transition-all duration-500 sm:h-3.5 sm:w-3.5 ${dotDone}`}
                     />
                   );
                 }
                 return (
                   <div
                     key={i}
-                    className="h-2.5 w-2.5 rounded-sm bg-white/12 transition-all duration-500"
+                    className="h-2.5 w-2.5 rounded-sm bg-white/12 transition-all duration-500 sm:h-3.5 sm:w-3.5"
                   />
                 );
               })}
@@ -428,9 +442,9 @@ const SeriesHeader = memo(
           type="button"
           onClick={onExitFullscreen}
           aria-label="Salir de pantalla completa"
-          className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/6 px-4 py-2 text-sm font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/12 bg-white/6 px-3 py-2 text-xs font-semibold text-white/50 transition-colors hover:bg-white/10 hover:text-white/80 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
         >
-          <Minimize2 aria-hidden="true" className="h-4 w-4" />
+          <Minimize2 aria-hidden="true" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           Salir
         </button>
       </div>

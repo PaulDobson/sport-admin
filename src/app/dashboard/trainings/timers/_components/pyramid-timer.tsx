@@ -615,6 +615,7 @@ export function PyramidTimer() {
             currentSeries: runtime.stepIndex + 1,
             totalSeries: sequence.length,
             phase: runtime.phase,
+            label: "Paso" as const,
           }
         : undefined,
     [status, runtime.stepIndex, runtime.phase, sequence.length],

@@ -193,7 +193,7 @@ function PeriodSelector({
           <ul
             role="listbox"
             aria-label="Seleccionar período"
-            className="absolute right-0 top-full z-20 mt-1.5 min-w-[7.5rem] overflow-hidden rounded-xl border border-white/10 bg-surface-overlay py-1 shadow-xl"
+            className="absolute right-0 top-full z-20 mt-1.5 min-w-30 overflow-hidden rounded-xl border border-white/10 bg-surface-overlay py-1 shadow-xl"
           >
             {PERIODS.map((p) => (
               <li key={p.value}>
