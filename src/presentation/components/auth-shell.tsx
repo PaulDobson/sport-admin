@@ -29,8 +29,8 @@ export function AuthShell({
   children,
 }: AuthShellProps) {
   return (
-    <main className="min-h-screen bg-[#0c1215] lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(28rem,0.85fr)]">
-      <section className="relative min-h-64 overflow-hidden border-0 p-0 lg:min-h-screen lg:rounded-none">
+    <main className="flex min-h-dvh flex-col bg-[#0c1215] lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(28rem,0.85fr)]">
+      <section className="relative min-h-64 overflow-hidden lg:min-h-dvh">
         <Image
           src="/sport-admin-login.jpg"
           alt="Entrenadores y deportistas gestionando su academia con Sport Admin"
@@ -41,7 +41,7 @@ export function AuthShell({
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,12,16,0.2)_0%,rgba(5,12,16,0.42)_42%,rgba(5,12,16,0.94)_100%)]" />
 
-        <div className="relative flex min-h-64 flex-col justify-between p-5 sm:p-8 lg:min-h-screen lg:p-12">
+        <div className="relative flex min-h-64 flex-col justify-between px-5 pb-5 pt-[calc(1.25rem+var(--safe-area-top))] sm:px-8 sm:pb-8 sm:pt-[calc(2rem+var(--safe-area-top))] lg:min-h-dvh lg:px-12 lg:pb-12 lg:pt-[calc(3rem+var(--safe-area-top))]">
           <Link
             href="/"
             aria-label="Ir al inicio de Sport Admin"
@@ -76,7 +76,7 @@ export function AuthShell({
         </div>
       </section>
 
-      <section className="flex min-h-[calc(100vh-16rem)] items-center border-0 bg-[#11181b] px-5 py-10 sm:px-10 lg:min-h-screen lg:rounded-none lg:px-14 xl:px-20">
+      <section className="flex flex-1 items-center bg-[#11181b] px-5 pt-10 pb-[calc(2.5rem+var(--safe-area-bottom))] sm:px-10 lg:min-h-dvh lg:flex-none lg:px-14 lg:pb-10 xl:px-20">
         <div className="mx-auto w-full max-w-md">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             {eyebrow}

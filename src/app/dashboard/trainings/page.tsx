@@ -9,6 +9,7 @@ import {
   Layers,
   ArrowRight,
   Zap,
+  Clock,
 } from "lucide-react";
 
 const tools = [

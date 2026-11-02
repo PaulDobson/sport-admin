@@ -14,6 +14,7 @@ import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { financeHref } from "./finance-href";
 import { LinkTabs } from "./link-tabs";
 import { FinanceSummary } from "./summary/finance-summary";
+import { PageHeader } from "@/presentation/components/page-header";
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -59,27 +60,22 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Resumen financiero
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Indicadores del período, movimientos recientes y rendimiento por
-            plan.
-          </p>
-        </div>
-        {canManage ? (
-          <Link
-            href={financeHref(linkParams, { assign: "1" })}
-            scroll={false}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <CreditCard className="size-4" aria-hidden />
-            Asignar plan
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Resumen financiero"
+        description="Indicadores del período, movimientos recientes y rendimiento por plan."
+        action={
+          canManage ? (
+            <Link
+              href={financeHref(linkParams, { assign: "1" })}
+              scroll={false}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <CreditCard className="size-4" aria-hidden />
+              Asignar plan
+            </Link>
+          ) : undefined
+        }
+      />
 
       {/* Quick-access cards to sub-sections */}
       <nav

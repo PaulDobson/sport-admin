@@ -18,7 +18,6 @@ import {
   ChevronDown,
   Dumbbell,
   LayoutGrid,
-  LayoutList,
   Pencil,
   Plus,
   Search,
@@ -38,7 +37,6 @@ import {
   Button,
   FieldControl,
   Surface,
-  StatusBadge,
 } from "@/presentation/components/primitives";
 import {
   saveClassTemplateAction,
@@ -79,7 +77,6 @@ const accentBarClass: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 type ViewMode = "cards" | "table";
-type EditorOperation = "create" | "update" | "delete";
 
 type ClassEditor =
   | { operation: "create" }
@@ -87,8 +84,6 @@ type ClassEditor =
       operation: "update" | "delete";
       template: ClassTemplateAdministrationRow;
     };
-
-type DisciplineEditorState = { mode: "hidden" } | { mode: "visible" };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -138,7 +133,6 @@ const DisciplineInlineForm = memo(function DisciplineInlineForm({
     { error: null, message: null },
   );
 
-  // Auto-focus the input when the drawer opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
   }, [open]);
@@ -149,7 +143,7 @@ const DisciplineInlineForm = memo(function DisciplineInlineForm({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
       >
         <span className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -265,51 +259,35 @@ const DisciplineInlineForm = memo(function DisciplineInlineForm({
 });
 
 // ---------------------------------------------------------------------------
-// ClassCreationForm — inline form to create a class
+// ClassCreationDialog — modal dialog to create a new class
 // ---------------------------------------------------------------------------
 
-const ClassCreationForm = memo(function ClassCreationForm({
+function ClassCreationDialog({
   disciplines,
   existingClassNames,
-  open,
-  onToggle,
+  onClose,
   onCreated,
   onNeedDiscipline,
+  opener,
 }: {
   disciplines: DisciplineOption[];
   existingClassNames: string[];
-  open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
   onCreated: (value: ClassTemplateOption) => void;
   onNeedDiscipline: () => void;
+  opener: RefObject<HTMLButtonElement | null>;
 }) {
   const [disciplineId, setDisciplineId] = useState(disciplines[0]?.id ?? "");
   const [name, setName] = useState("");
-  const [capacity, setCapacity] = useState("16");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [capacity, setCapacity] = useState("10");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   const isDuplicate = existingClassNames.some(
     (n) => normalise(n) === normalise(name),
   );
 
-  // Keep disciplineId in sync when disciplines list changes.
-  // Uses the "adjust state during render" pattern to avoid calling setState
-  // synchronously inside an effect body (react-hooks/set-state-in-effect).
-  const [prevDisciplines, setPrevDisciplines] = useState(disciplines);
-  if (
-    prevDisciplines !== disciplines &&
-    disciplines.length > 0 &&
-    !disciplines.find((d) => d.id === disciplineId)
-  ) {
-    setPrevDisciplines(disciplines);
-    setDisciplineId(disciplines[0]?.id ?? "");
-  } else if (prevDisciplines !== disciplines) {
-    setPrevDisciplines(disciplines);
-  }
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 60);
-  }, [open]);
+  const noDisciplines = disciplines.length === 0;
 
   const [state, action, pending] = useActionState(
     async (previous: ProgrammingActionState, data: FormData) => {
@@ -321,63 +299,75 @@ const ClassCreationForm = memo(function ClassCreationForm({
             disciplines.find((d) => d.id === disciplineId)?.name ?? "",
           capacity: Number(capacity),
         });
-        setName("");
-        setCapacity("16");
+        onClose();
       }
       return result;
     },
     { error: null, message: null },
   );
 
-  const noDisciplines = disciplines.length === 0;
-
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card transition-all">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
-      >
-        <span className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Dumbbell aria-hidden="true" className="h-4 w-4" />
-          </span>
-          <span>
-            <span className="block text-sm font-semibold text-foreground">
-              Nueva clase
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !pending) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-60 bg-black/65 backdrop-blur-sm" />
+        <Dialog.Popup
+          initialFocus={noDisciplines ? cancelRef : nameRef}
+          finalFocus={opener}
+          className="fixed left-1/2 top-1/2 z-70 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl"
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Dumbbell aria-hidden="true" className="h-5 w-5" />
             </span>
-            <span className="block text-xs text-muted-foreground">
-              Define nombre, disciplina y cupos
-            </span>
-          </span>
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
+            <Button
+              variant="quiet"
+              aria-label="Cerrar"
+              disabled={pending}
+              onClick={onClose}
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+            </Button>
+          </div>
 
-      {open ? (
-        <div className="border-t border-border px-4 pb-4 pt-3">
+          <Dialog.Title className="mt-3 text-lg font-bold tracking-tight">
+            Nueva clase
+          </Dialog.Title>
+          <Dialog.Description className="mt-1.5 text-sm leading-6 text-muted-foreground">
+            Define el nombre, disciplina y capacidad de la clase.
+          </Dialog.Description>
+
           {noDisciplines ? (
-            <div className="rounded-lg border border-warning/30 bg-warning/8 px-3 py-2.5">
+            <div className="mt-5 rounded-lg border border-warning/30 bg-warning/8 px-3 py-3">
               <p className="text-xs font-semibold text-warning">
                 Necesitas al menos una disciplina.
               </p>
               <button
                 type="button"
-                onClick={onNeedDiscipline}
+                onClick={() => {
+                  onClose();
+                  onNeedDiscipline();
+                }}
                 className="mt-1 text-xs font-semibold text-primary underline underline-offset-2 hover:no-underline"
               >
                 Crear una disciplina ahora →
               </button>
+              <div className="mt-4 flex justify-end">
+                <Button ref={cancelRef} onClick={onClose}>
+                  Cerrar
+                </Button>
+              </div>
             </div>
           ) : (
-            <form action={action} className="space-y-3">
+            <form action={action} className="mt-5 space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* Discipline */}
-                <label className="flex flex-col gap-1.5 text-xs font-semibold">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   <span>Disciplina</span>
                   <select
                     name="disciplineId"
@@ -385,7 +375,7 @@ const ClassCreationForm = memo(function ClassCreationForm({
                     value={disciplineId}
                     onChange={(e) => setDisciplineId(e.target.value)}
                     disabled={pending}
-                    className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-45"
+                    className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-45"
                   >
                     <option value="">Selecciona…</option>
                     {disciplines.map((d) => (
@@ -397,7 +387,7 @@ const ClassCreationForm = memo(function ClassCreationForm({
                 </label>
 
                 {/* Capacity */}
-                <label className="flex flex-col gap-1.5 text-xs font-semibold">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
                   <span>Capacidad</span>
                   <input
                     name="capacity"
@@ -409,17 +399,17 @@ const ClassCreationForm = memo(function ClassCreationForm({
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
                     disabled={pending}
-                    className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-45"
+                    className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-45"
                   />
                 </label>
               </div>
 
               {/* Name */}
-              <label className="flex flex-col gap-1.5 text-xs font-semibold">
+              <label className="flex flex-col gap-1.5 text-sm font-semibold">
                 <span>Nombre de la clase</span>
                 <div className="relative">
-                  <input
-                    ref={inputRef}
+                  <FieldControl
+                    ref={nameRef}
                     name="className"
                     required
                     maxLength={100}
@@ -427,7 +417,7 @@ const ClassCreationForm = memo(function ClassCreationForm({
                     onChange={(e) => setName(e.target.value)}
                     disabled={pending}
                     placeholder="Yoga inicial, Boxeo avanzado…"
-                    className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-45"
+                    autoComplete="off"
                   />
                   {isDuplicate && name.trim() ? (
                     <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-warning">
@@ -438,32 +428,34 @@ const ClassCreationForm = memo(function ClassCreationForm({
               </label>
 
               {state.error ? (
-                <p role="alert" className="text-xs text-destructive">
+                <p
+                  role="alert"
+                  className="rounded-lg border border-destructive/25 bg-destructive/10 p-2.5 text-xs text-destructive"
+                >
                   {state.error}
-                </p>
-              ) : state.message ? (
-                <p role="status" className="text-xs text-success">
-                  {state.message}
                 </p>
               ) : null}
 
-              <Button
-                type="submit"
-                variant="primary"
-                isLoading={pending}
-                disabled={!name.trim() || isDuplicate || !disciplineId}
-                className="w-full sm:w-auto"
-              >
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                Crear clase
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2.5 border-t border-border pt-4">
+                <Button onClick={onClose} disabled={pending}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={pending}
+                  disabled={!name.trim() || isDuplicate || !disciplineId}
+                >
+                  {pending ? "Creando…" : "Crear clase"}
+                </Button>
+              </div>
             </form>
           )}
-        </div>
-      ) : null}
-    </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
-});
+}
 
 // ---------------------------------------------------------------------------
 // ClassCard — memoized card view item
@@ -643,7 +635,7 @@ const ClassTableRow = memo(function ClassTableRow({
 });
 
 // ---------------------------------------------------------------------------
-// ClassEditor — dialog for edit / delete
+// ClassEditorDialog — dialog for edit / delete
 // ---------------------------------------------------------------------------
 
 function ClassEditorDialog({
@@ -654,30 +646,27 @@ function ClassEditorDialog({
   fallbackFocus,
   existingClassNames,
 }: {
-  editor: ClassEditor;
+  editor: ClassEditor & { operation: "update" | "delete" };
   onClose: () => void;
   onSaved: (message: string) => void;
   opener: RefObject<HTMLButtonElement | null>;
   fallbackFocus: RefObject<HTMLElement | null>;
   existingClassNames: string[];
 }) {
-  const template = editor.operation === "create" ? null : editor.template;
+  const template = editor.template;
   const deleting = editor.operation === "delete";
 
-  const [name, setName] = useState(template?.name ?? "");
-  const [capacity, setCapacity] = useState(
-    template ? String(template.capacity) : "16",
-  );
+  const [name, setName] = useState(template.name);
+  const [capacity, setCapacity] = useState(String(template.capacity));
   const [discarding, setDiscarding] = useState(false);
 
   const dirty =
     !deleting &&
-    editor.operation !== "create" &&
-    (name !== template?.name || capacity !== String(template?.capacity));
+    (name !== template.name || capacity !== String(template.capacity));
 
   const isDuplicate =
     !deleting &&
-    name.trim() !== template?.name &&
+    name.trim() !== template.name &&
     existingClassNames.some((n) => normalise(n) === normalise(name));
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -722,11 +711,11 @@ function ClassEditorDialog({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-[60] bg-black/65 backdrop-blur-sm" />
+        <Dialog.Backdrop className="fixed inset-0 z-60 bg-black/65 backdrop-blur-sm" />
         <Dialog.Popup
           initialFocus={deleting ? cancelRef : nameRef}
           finalFocus={getFinalFocus}
-          className="fixed left-1/2 top-1/2 z-[70] max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl"
+          className="fixed left-1/2 top-1/2 z-70 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl"
         >
           {/* Header */}
           <div className="flex items-start justify-between gap-4">
@@ -760,8 +749,8 @@ function ClassEditorDialog({
             {discarding
               ? "Tienes cambios sin guardar. ¿Continúas editando o los descartas?"
               : deleting
-                ? `Vas a eliminar "${template?.name}". Esta acción es definitiva.`
-                : `Actualiza "${template?.name}". Su disciplina se mantiene para conservar el historial.`}
+                ? `Vas a eliminar "${template.name}". Esta acción es definitiva.`
+                : `Actualiza "${template.name}". Su disciplina se mantiene para conservar el historial.`}
           </Dialog.Description>
 
           {discarding ? (
@@ -776,9 +765,7 @@ function ClassEditorDialog({
           ) : (
             <form action={action} className="mt-5 space-y-4">
               <input type="hidden" name="operation" value={editor.operation} />
-              {template ? (
-                <input type="hidden" name="id" value={template.id} />
-              ) : null}
+              <input type="hidden" name="id" value={template.id} />
 
               {!deleting ? (
                 <>
@@ -869,17 +856,25 @@ function ClassEditorDialog({
 
 function ClassCatalog({
   classes,
+  disciplines,
   onAddClass,
+  onNeedDiscipline,
 }: {
   classes: ClassTemplateAdministrationRow[];
-  onAddClass: () => void;
+  disciplines: DisciplineOption[];
+  onAddClass: (value: ClassTemplateOption) => void;
+  onNeedDiscipline: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
-  const [editor, setEditor] = useState<ClassEditor | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [editor, setEditor] = useState<
+    (ClassEditor & { operation: "update" | "delete" }) | null
+  >(null);
+  const [creationOpen, setCreationOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
+  const addButtonRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const catalogRef = useRef<HTMLElement | null>(null);
 
@@ -933,11 +928,18 @@ function ClassCatalog({
     [],
   );
 
-  const handleClose = useCallback(() => setEditor(null), []);
-  const handleSaved = useCallback((msg: string) => {
+  const handleEditorClose = useCallback(() => setEditor(null), []);
+  const handleEditorSaved = useCallback((msg: string) => {
     setEditor(null);
     setMessage(msg);
   }, []);
+
+  const handleCreationOpen = useCallback((button?: HTMLButtonElement) => {
+    if (button) addButtonRef.current = button;
+    setCreationOpen(true);
+  }, []);
+
+  const handleCreationClose = useCallback(() => setCreationOpen(false), []);
 
   const clearSearch = useCallback(() => {
     setSearch("");
@@ -946,223 +948,248 @@ function ClassCatalog({
   }, []);
 
   return (
-    <Surface
-      aria-label="Catálogo de clases"
-      className="overflow-hidden border-border/80 bg-surface-raised p-0"
-    >
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/8 bg-muted/40 px-4 py-3 sm:px-5">
-        {/* Search */}
-        <label className="relative flex-1" style={{ minWidth: 180 }}>
-          <span className="sr-only">Buscar clase o disciplina</span>
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <FieldControl
-            ref={searchRef}
-            type="search"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Buscar clase o disciplina…"
-            className="h-9 border-border/60 bg-background/70 pl-9 text-sm"
-          />
-        </label>
+    <div ref={catalogRef as React.RefObject<HTMLDivElement>}>
+      <Surface
+        aria-label="Catálogo de clases"
+        className="overflow-hidden border-border/80 bg-surface-raised p-0"
+      >
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-white/8 bg-muted/40 px-4 py-3 sm:px-5">
+          {/* Search */}
+          <label className="relative flex-1" style={{ minWidth: 180 }}>
+            <span className="sr-only">Buscar clase o disciplina</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <FieldControl
+              ref={searchRef}
+              type="search"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Buscar clase o disciplina…"
+              className="h-9 border-border/60 bg-background/70 pl-9 text-sm"
+            />
+          </label>
 
-        {/* View toggle */}
-        <div
-          role="group"
-          aria-label="Vista"
-          className="flex overflow-hidden rounded-lg border border-border"
-        >
-          <button
-            type="button"
-            aria-pressed={viewMode === "cards"}
-            aria-label="Vista en tarjetas"
-            onClick={() => setViewMode("cards")}
-            className={`inline-flex h-9 w-9 items-center justify-center transition-colors ${viewMode === "cards" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-surface-raised"}`}
+          {/* View toggle */}
+          <div
+            role="group"
+            aria-label="Vista"
+            className="flex overflow-hidden rounded-lg border border-border"
           >
-            <LayoutGrid aria-hidden="true" className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-pressed={viewMode === "table"}
-            aria-label="Vista en tabla"
-            onClick={() => setViewMode("table")}
-            className={`inline-flex h-9 w-9 items-center justify-center border-l border-border transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-surface-raised"}`}
+            <button
+              type="button"
+              aria-pressed={viewMode === "cards"}
+              aria-label="Vista en tarjetas"
+              onClick={() => setViewMode("cards")}
+              className={`inline-flex h-9 w-9 items-center justify-center transition-colors ${viewMode === "cards" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-surface-raised"}`}
+            >
+              <LayoutGrid aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-pressed={viewMode === "table"}
+              aria-label="Vista en tabla"
+              onClick={() => setViewMode("table")}
+              className={`inline-flex h-9 w-9 items-center justify-center border-l border-border transition-colors ${viewMode === "table" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-surface-raised"}`}
+            >
+              <Table2 aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Add class button */}
+          <Button
+            ref={addButtonRef}
+            variant="primary"
+            onClick={(e) => handleCreationOpen(e.currentTarget)}
+            className="h-9 shrink-0 text-sm"
           >
-            <Table2 aria-hidden="true" className="h-4 w-4" />
-          </button>
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            <span className="hidden sm:inline">Nueva clase</span>
+          </Button>
         </div>
 
-        {/* Add class shortcut */}
-        <Button
-          variant="primary"
-          onClick={onAddClass}
-          className="h-9 shrink-0 text-sm"
-        >
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          <span className="hidden sm:inline">Nueva clase</span>
-        </Button>
-      </div>
-
-      {/* Meta + success message */}
-      <div className="px-4 pt-3 sm:px-5">
-        {message ? (
-          <p
-            role="status"
-            className="mb-3 flex items-center gap-2 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs text-success"
-          >
-            <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-            {message}
-          </p>
-        ) : null}
-        <p aria-live="polite" className="text-xs text-muted-foreground">
-          {filtered.length === classes.length
-            ? `${classes.length} ${classes.length === 1 ? "clase" : "clases"}`
-            : `${filtered.length} de ${classes.length} clases`}
-          {totalPages > 1 ? ` · Página ${currentPage} / ${totalPages}` : ""}
-        </p>
-      </div>
-
-      {/* Content */}
-      <div
-        className="p-4 sm:p-5"
-        ref={catalogRef as React.RefObject<HTMLDivElement>}
-      >
-        {rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/30 px-6 py-10 text-center">
-            <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Dumbbell aria-hidden="true" className="h-6 w-6" />
-            </span>
-            <h3 className="font-semibold">
-              {classes.length > 0 ? "Sin resultados" : "Aún no hay clases"}
-            </h3>
-            <p className="max-w-xs text-sm text-muted-foreground">
-              {classes.length > 0
-                ? "Prueba otro nombre o disciplina."
-                : "Crea tu primera clase con el formulario de arriba."}
+        {/* Meta + success message */}
+        <div className="px-4 pt-3 sm:px-5">
+          {message ? (
+            <p
+              role="status"
+              className="mb-3 flex items-center gap-2 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs text-success"
+            >
+              <Check aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              {message}
             </p>
-            {search ? (
-              <Button onClick={clearSearch} className="bg-muted/50">
-                Limpiar búsqueda
-              </Button>
-            ) : (
-              <Button variant="primary" onClick={onAddClass}>
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                Nueva clase
-              </Button>
-            )}
-          </div>
-        ) : viewMode === "cards" ? (
-          <ul
-            aria-label="Clases"
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
-          >
-            {rows.map((template) => (
-              <li key={template.id} className="min-w-0">
-                <ClassCard
-                  template={template}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-sm">
-              <caption className="sr-only">Clases creadas</caption>
-              <thead>
-                <tr className="border-b border-white/8">
-                  <th
-                    scope="col"
-                    className="py-2.5 pl-4 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    Clase
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    Disciplina
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    <span title="Capacidad máxima por sesión">Cupos</span>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    Horarios
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  >
-                    Sesiones
-                  </th>
-                  <th scope="col" className="py-2.5 pl-3 pr-4">
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((template) => (
-                  <ClassTableRow
-                    key={template.id}
+          ) : null}
+          <p aria-live="polite" className="text-xs text-muted-foreground">
+            {filtered.length === classes.length
+              ? `${classes.length} ${classes.length === 1 ? "clase" : "clases"}`
+              : `${filtered.length} de ${classes.length} clases`}
+            {totalPages > 1 ? ` · Página ${currentPage} / ${totalPages}` : ""}
+          </p>
+        </div>
+
+        {/* Content */}
+        <div
+          className="p-4 sm:p-5"
+          ref={catalogRef as React.RefObject<HTMLDivElement>}
+        >
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/30 px-6 py-10 text-center">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Dumbbell aria-hidden="true" className="h-6 w-6" />
+              </span>
+              <h3 className="font-semibold">
+                {classes.length > 0 ? "Sin resultados" : "Aún no hay clases"}
+              </h3>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                {classes.length > 0
+                  ? "Prueba otro nombre o disciplina."
+                  : "Crea tu primera clase con el botón de arriba."}
+              </p>
+              {search ? (
+                <Button onClick={clearSearch} className="bg-muted/50">
+                  Limpiar búsqueda
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={(e) => handleCreationOpen(e.currentTarget)}
+                >
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                  Nueva clase
+                </Button>
+              )}
+            </div>
+          ) : viewMode === "cards" ? (
+            <ul
+              aria-label="Clases"
+              className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            >
+              {rows.map((template) => (
+                <li key={template.id} className="min-w-0">
+                  <ClassCard
                     template={template}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <caption className="sr-only">Clases creadas</caption>
+                <thead>
+                  <tr className="border-b border-white/8">
+                    <th
+                      scope="col"
+                      className="py-2.5 pl-4 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      Clase
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      Disciplina
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      <span title="Capacidad máxima por sesión">Cupos</span>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      Horarios
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      Sesiones
+                    </th>
+                    <th scope="col" className="py-2.5 pl-3 pr-4">
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((template) => (
+                    <ClassTableRow
+                      key={template.id}
+                      template={template}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        {/* Pagination */}
-        {totalPages > 1 ? (
-          <nav
-            aria-label="Paginación de clases"
-            className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-4"
-          >
-            <Button
-              disabled={currentPage === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="bg-muted/50"
+          {/* Pagination */}
+          {totalPages > 1 ? (
+            <nav
+              aria-label="Paginación de clases"
+              className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-4"
             >
-              ← Anterior
-            </Button>
-            <span className="rounded-md bg-muted px-3 py-1.5 text-sm font-semibold tabular-nums">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              disabled={currentPage === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="bg-muted/50"
-            >
-              Siguiente →
-            </Button>
-          </nav>
+              <Button
+                disabled={currentPage === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="bg-muted/50"
+              >
+                ← Anterior
+              </Button>
+              <span className="rounded-md bg-muted px-3 py-1.5 text-sm font-semibold tabular-nums">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                disabled={currentPage === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="bg-muted/50"
+              >
+                Siguiente →
+              </Button>
+            </nav>
+          ) : null}
+        </div>
+
+        {/* Creation dialog */}
+        {creationOpen ? (
+          <ClassCreationDialog
+            disciplines={disciplines}
+            existingClassNames={existingNames}
+            onClose={handleCreationClose}
+            onCreated={(value) => {
+              onAddClass(value);
+              handleCreationClose();
+              setMessage(`Clase "${value.name}" creada correctamente.`);
+            }}
+            onNeedDiscipline={() => {
+              handleCreationClose();
+              onNeedDiscipline();
+            }}
+            opener={addButtonRef}
+          />
         ) : null}
-      </div>
 
-      {/* Editor dialog */}
-      {editor ? (
-        <ClassEditorDialog
-          editor={editor}
-          onClose={handleClose}
-          onSaved={handleSaved}
-          opener={opener}
-          fallbackFocus={catalogRef as RefObject<HTMLElement | null>}
-          existingClassNames={existingNames}
-        />
-      ) : null}
-    </Surface>
+        {/* Editor dialog */}
+        {editor ? (
+          <ClassEditorDialog
+            editor={editor}
+            onClose={handleEditorClose}
+            onSaved={handleEditorSaved}
+            opener={opener}
+            fallbackFocus={catalogRef}
+            existingClassNames={existingNames}
+          />
+        ) : null}
+      </Surface>
+    </div>
   );
 }
 
@@ -1184,7 +1211,6 @@ export function ClassWorkspace({
     [],
   );
   const [disciplineOpen, setDisciplineOpen] = useState(false);
-  const [classOpen, setClassOpen] = useState(classes.length === 0);
 
   const allDisciplines = useMemo(
     () => mergeCreated(disciplines, createdDisciplines),
@@ -1204,11 +1230,6 @@ export function ClassWorkspace({
     [classes, createdClasses],
   );
 
-  const allClassNames = useMemo(
-    () => allClasses.map((c) => c.name),
-    [allClasses],
-  );
-
   const allDisciplineNames = useMemo(
     () => allDisciplines.map((d) => d.name),
     [allDisciplines],
@@ -1216,9 +1237,7 @@ export function ClassWorkspace({
 
   const onDisciplineCreated = useCallback((value: DisciplineOption) => {
     setCreatedDisciplines((prev) => mergeCreated(prev, [value]));
-    // Auto-close discipline drawer and open class drawer after creating first discipline
     setDisciplineOpen(false);
-    setClassOpen(true);
   }, []);
 
   const onClassCreated = useCallback((value: ClassTemplateOption) => {
@@ -1227,7 +1246,6 @@ export function ClassWorkspace({
 
   const openDisciplineDrawer = useCallback(() => {
     setDisciplineOpen(true);
-    setClassOpen(false);
   }, []);
 
   // Stats derived
@@ -1238,6 +1256,8 @@ export function ClassWorkspace({
     }
     return map;
   }, [allClasses]);
+
+  void byDiscipline; // consumed by future features
 
   return (
     <div className="space-y-4">
@@ -1281,28 +1301,22 @@ export function ClassWorkspace({
         ))}
       </div>
 
-      {/* Creation drawers */}
-      <div className="space-y-2">
+      {/* Discipline drawer (for adding disciplines on the fly) */}
+      {disciplineOpen ? (
         <DisciplineInlineForm
           open={disciplineOpen}
           onToggle={() => setDisciplineOpen((v) => !v)}
           onCreated={onDisciplineCreated}
           existingNames={allDisciplineNames}
         />
-        <ClassCreationForm
-          disciplines={allDisciplines}
-          existingClassNames={allClassNames}
-          open={classOpen}
-          onToggle={() => setClassOpen((v) => !v)}
-          onCreated={onClassCreated}
-          onNeedDiscipline={openDisciplineDrawer}
-        />
-      </div>
+      ) : null}
 
-      {/* Catalog */}
+      {/* Catalog with integrated creation modal */}
       <ClassCatalog
         classes={allClasses}
-        onAddClass={() => setClassOpen(true)}
+        disciplines={allDisciplines}
+        onAddClass={onClassCreated}
+        onNeedDiscipline={openDisciplineDrawer}
       />
     </div>
   );

@@ -9,6 +9,7 @@ import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { LinkTabs } from "../link-tabs";
 import { PlanCatalog } from "../plan-catalog";
 import { AssignPlanFromUrl } from "../assign-plan-from-url";
+import { PageHeader } from "@/presentation/components/page-header";
 
 type FinanceDeps = Awaited<ReturnType<typeof createInstructorFinanceDeps>>;
 
@@ -65,16 +66,10 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Planes de membresía
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Define y administra los planes que ofreces a tus alumnos.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Planes de membresía"
+        description="Define y administra los planes que ofreces a tus alumnos."
+      />
 
       <LinkTabs
         label="Estado de los planes"

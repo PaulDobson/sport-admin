@@ -249,6 +249,76 @@ section:nth-child(4) {
   }
 }
 
+/* ── Gym name shimmer: soft breathing glow for the clock's academy label ── */
+@keyframes gym-name-shimmer {
+  0%, 100% {
+    opacity: 0.55;
+    text-shadow:
+      0 0 12px rgba(255, 255, 255, 0.10),
+      0 0 32px rgba(255, 255, 255, 0.05);
+    letter-spacing: 0.22em;
+  }
+  50% {
+    opacity: 0.90;
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.45),
+      0 0 40px rgba(255, 255, 255, 0.18),
+      0 0 72px rgba(255, 255, 255, 0.07);
+    letter-spacing: 0.24em;
+  }
+}
+
+.animate-gym-name {
+  animation: gym-name-shimmer 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gym-name {
+    animation: none;
+    opacity: 0.80;
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.35),
+      0 0 40px rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* ── Neon-pulse-cyan: for clock fullscreen button (dark projection context) ── */
+@keyframes neon-pulse-cyan {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(0, 255, 200, 0.35),
+      0 0 10px 0px rgba(0, 255, 200, 0.15);
+    border-color: rgba(0, 255, 200, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(0, 255, 200, 0.75),
+      0 0 24px 6px rgba(0, 255, 200, 0.35),
+      0 0 48px 14px rgba(0, 255, 200, 0.12);
+    border-color: rgba(0, 255, 200, 0.95);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(0, 255, 200, 0.35),
+      0 0 10px 0px rgba(0, 255, 200, 0.15);
+    border-color: rgba(0, 255, 200, 0.45);
+  }
+}
+
+.animate-neon-cyan {
+  animation: neon-pulse-cyan 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-neon-cyan {
+    animation: none;
+    box-shadow:
+      0 0 0 2px rgba(0, 255, 200, 0.65),
+      0 0 18px 4px rgba(0, 255, 200, 0.25);
+    border-color: rgba(0, 255, 200, 0.85);
+  }
+}
+
 /* ── Utility: hide scrollbar while keeping scrollability ── */
 .no-scrollbar {
   -ms-overflow-style: none;

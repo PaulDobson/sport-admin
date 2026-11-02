@@ -2,6 +2,7 @@ import { requireOperationalMembership } from "@/app/_lib/operational-context";
 import { listDisciplines } from "@/application/instructor-operations/use-cases/manage-disciplines";
 import { createDisciplineAdministrationDeps } from "@/infrastructure/composition/discipline-administration-composition";
 import { DisciplinesWorkspace } from "./disciplines-workspace";
+import { PageHeader } from "@/presentation/components/page-header";
 
 function positiveInteger(
   value: string | undefined,
@@ -48,6 +49,10 @@ export default async function DisciplinesPage({
   // "Configuración · Mi gimnasio > Disciplinas" so no inline section nav needed.
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="Disciplinas"
+        description="Gestiona el catálogo de disciplinas de tu gimnasio."
+      />
       <DisciplinesWorkspace
         disciplines={disciplines}
         search={search}

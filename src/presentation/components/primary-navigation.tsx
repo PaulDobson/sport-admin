@@ -13,14 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { Tooltip } from "@base-ui/react/tooltip";
-import {
-  ChevronDown,
-  Dumbbell,
-  MapPin,
-  MoreHorizontal,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, MoreHorizontal, X } from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 import { useSidebarCollapsed } from "./app-shell";
 import {
@@ -31,9 +24,8 @@ import {
   activeTrainingSection,
   trainingSectionsForRole,
   moreDestinationsForRole,
-  isDisciplinesActive,
-  isClassesActive,
-  isLocationsActive,
+  activeGymSection,
+  gymSectionsForRole,
   activeFinanceSection,
   financeSectionsForRole,
   type NavigationDestination,
@@ -127,6 +119,7 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
     () => trainingSectionsForRole(role),
     [role],
   );
+  const gymSubmenuItems = useMemo(() => gymSectionsForRole(role), [role]);
   const financeSubmenuItems = useMemo(
     () => financeSectionsForRole(role),
     [role],
@@ -141,14 +134,7 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
     () => activeTrainingSection(pathname),
     [pathname],
   );
-  const disciplinesActive = useMemo(
-    () => isDisciplinesActive(pathname),
-    [pathname],
-  );
-  const locationsActive = useMemo(
-    () => isLocationsActive(pathname),
-    [pathname],
-  );
+  const activeGym = useMemo(() => activeGymSection(pathname), [pathname]);
   const activeFinance = useMemo(
     () => activeFinanceSection(pathname),
     [pathname],
@@ -158,10 +144,8 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
     scheduleSubmenuOverride ?? activeSchedule !== null;
   const trainingsSubmenuOpen =
     trainingsSubmenuOverride ?? activeTraining !== null;
-  // Gym submenu opens automatically when a gym sub-section is the active
-  // route (Disciplines, Classes, or Locations).
-  const gymSubmenuOpen =
-    gymSubmenuOverride ?? (disciplinesActive || locationsActive);
+  // Gym submenu opens automatically when a gym sub-section is the active route.
+  const gymSubmenuOpen = gymSubmenuOverride ?? activeGym !== null;
   // Finance submenu opens automatically when a finance sub-route is active.
   const financeSubmenuOpen = financeSubmenuOverride ?? activeFinance !== null;
 
@@ -214,30 +198,7 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                         ? gymSubmenuId
                         : financeSubmenuId;
 
-                  // Gym submenu: Disciplinas, Clases and Ubicaciones links
-                  // (static, not role-filtered)
-                  const gymSubmenuItems = isGym
-                    ? [
-                        {
-                          id: "disciplines" as const,
-                          label: "Disciplinas",
-                          href: "/dashboard/disciplines",
-                          icon: Dumbbell,
-                        },
-                        {
-                          id: "classes" as const,
-                          label: "Clases",
-                          href: "/dashboard/class",
-                          icon: Dumbbell,
-                        },
-                        {
-                          id: "locations" as const,
-                          label: "Ubicaciones",
-                          href: "/dashboard/locations",
-                          icon: MapPin,
-                        },
-                      ]
-                    : [];
+                  // gymSubmenuItems now comes from gymSectionsForRole (memoized above).
 
                   const submenuItems = isSchedule
                     ? scheduleSubmenuItems
@@ -253,13 +214,11 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                     ? activeSchedule
                     : isTrainings
                       ? activeTraining
-                      : isGym && disciplinesActive
-                        ? "disciplines"
-                        : isGym && locationsActive
-                          ? "locations"
-                          : isFinance
-                            ? activeFinance
-                            : null;
+                      : isGym
+                        ? activeGym
+                        : isFinance
+                          ? activeFinance
+                          : null;
 
                   const toggleSubmenu = isSchedule
                     ? () => setScheduleSubmenuOverride(!scheduleSubmenuOpen)
@@ -275,53 +234,10 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                   return (
                     <div key={destination.id}>
                       <div className="relative">
-                        <DesktopNavigationLink
-                          label={destination.label}
-                          href={destination.href}
-                          aria-current={
-                            // For destinations with a submenu, still mark the
-                            // parent link as current when the route matches it
-                            // directly (e.g. /dashboard/gym) so assistive
-                            // technologies and tests can detect the active page.
-                            // Only suppress aria-current when a child section
-                            // is the active leaf (e.g. /dashboard/disciplines).
-                            active &&
-                            (!hasSubmenu || activeSubmenuSection === null)
-                              ? "page"
-                              : undefined
-                          }
-                          className={`group relative flex min-h-11 items-center gap-2.5 rounded-lg px-3 transition-colors ${
-                            hasSubmenu && !collapsed ? "pr-12" : ""
-                          } focus-visible:outline-2 focus-visible:outline-primary ${
-                            active
-                              ? "bg-navigation-active font-semibold text-primary"
-                              : "text-muted-foreground hover:bg-white/4 hover:text-foreground"
-                          }`}
-                        >
-                          {active ? (
-                            <span
-                              className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary"
-                              aria-hidden="true"
-                            />
-                          ) : null}
-                          <span
-                            className={
-                              active
-                                ? "grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/12 text-primary"
-                                : "grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors group-hover:text-foreground"
-                            }
-                          >
-                            <Icon
-                              size={18}
-                              strokeWidth={active ? 2.2 : 1.8}
-                              aria-hidden="true"
-                            />
-                          </span>
-                          <span className={collapsed ? "sr-only" : undefined}>
-                            {destination.label}
-                          </span>
-                        </DesktopNavigationLink>
-                        {hasSubmenu && !collapsed ? (
+                        {/* Finance and Gym use a toggle button as the parent row (no
+                            direct navigation — use the "Resumen"/"Información" subitem).
+                            All other destinations keep the link + chevron pattern. */}
+                        {(isFinance || isGym) && !collapsed ? (
                           <button
                             type="button"
                             aria-expanded={submenuOpen}
@@ -331,25 +247,134 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                                 ? `Ocultar submenú de ${destination.label}`
                                 : `Mostrar submenú de ${destination.label}`
                             }
-                            title={
-                              submenuOpen
-                                ? "Ocultar submenú"
-                                : "Mostrar submenú"
-                            }
                             onClick={toggleSubmenu}
-                            className={`absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-colors hover:bg-white/8 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary ${
-                              active ? "text-primary" : "text-muted-foreground"
+                            className={`group relative flex w-full min-h-11 items-center gap-2.5 rounded-lg px-3 pr-12 transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
+                              active
+                                ? "bg-navigation-active font-semibold text-primary"
+                                : "text-muted-foreground hover:bg-white/4 hover:text-foreground"
                             }`}
                           >
-                            <ChevronDown
-                              size={16}
-                              aria-hidden="true"
-                              className={`transition-transform duration-200 motion-reduce:transition-none ${
-                                submenuOpen ? "rotate-180" : ""
+                            {active ? (
+                              <span
+                                className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                            <span
+                              className={
+                                active
+                                  ? "grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/12 text-primary"
+                                  : "grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors group-hover:text-foreground"
+                              }
+                            >
+                              <Icon
+                                size={18}
+                                strokeWidth={active ? 2.2 : 1.8}
+                                aria-hidden="true"
+                              />
+                            </span>
+                            <span className="flex-1 text-left">
+                              {destination.label}
+                            </span>
+                            <span
+                              className={`absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md ${
+                                active
+                                  ? "text-primary"
+                                  : "text-muted-foreground"
                               }`}
-                            />
+                            >
+                              <ChevronDown
+                                size={16}
+                                aria-hidden="true"
+                                className={`transition-transform duration-200 motion-reduce:transition-none ${
+                                  submenuOpen ? "rotate-180" : ""
+                                }`}
+                              />
+                            </span>
                           </button>
-                        ) : null}
+                        ) : (
+                          <>
+                            <DesktopNavigationLink
+                              label={destination.label}
+                              href={destination.href}
+                              aria-current={
+                                // For destinations with a submenu, still mark the
+                                // parent link as current when the route matches it
+                                // directly (e.g. /dashboard/gym) so assistive
+                                // technologies and tests can detect the active page.
+                                // Only suppress aria-current when a child section
+                                // is the active leaf (e.g. /dashboard/disciplines).
+                                active &&
+                                (!hasSubmenu || activeSubmenuSection === null)
+                                  ? "page"
+                                  : undefined
+                              }
+                              className={`group relative flex min-h-11 items-center gap-2.5 rounded-lg px-3 transition-colors ${
+                                hasSubmenu && !collapsed ? "pr-12" : ""
+                              } focus-visible:outline-2 focus-visible:outline-primary ${
+                                active
+                                  ? "bg-navigation-active font-semibold text-primary"
+                                  : "text-muted-foreground hover:bg-white/4 hover:text-foreground"
+                              }`}
+                            >
+                              {active ? (
+                                <span
+                                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary"
+                                  aria-hidden="true"
+                                />
+                              ) : null}
+                              <span
+                                className={
+                                  active
+                                    ? "grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primary/12 text-primary"
+                                    : "grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors group-hover:text-foreground"
+                                }
+                              >
+                                <Icon
+                                  size={18}
+                                  strokeWidth={active ? 2.2 : 1.8}
+                                  aria-hidden="true"
+                                />
+                              </span>
+                              <span
+                                className={collapsed ? "sr-only" : undefined}
+                              >
+                                {destination.label}
+                              </span>
+                            </DesktopNavigationLink>
+                            {hasSubmenu && !collapsed ? (
+                              <button
+                                type="button"
+                                aria-expanded={submenuOpen}
+                                aria-controls={submenuId}
+                                aria-label={
+                                  submenuOpen
+                                    ? `Ocultar submenú de ${destination.label}`
+                                    : `Mostrar submenú de ${destination.label}`
+                                }
+                                title={
+                                  submenuOpen
+                                    ? "Ocultar submenú"
+                                    : "Mostrar submenú"
+                                }
+                                onClick={toggleSubmenu}
+                                className={`absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md transition-colors hover:bg-white/8 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary ${
+                                  active
+                                    ? "text-primary"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                <ChevronDown
+                                  size={16}
+                                  aria-hidden="true"
+                                  className={`transition-transform duration-200 motion-reduce:transition-none ${
+                                    submenuOpen ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </button>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                       {submenuVisible ? (
                         <ul
@@ -418,28 +443,6 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
 // Mobile bottom sheet ("Más")
 // ---------------------------------------------------------------------------
 
-// Submenu items for destinations that have children in the "Más" sheet.
-const GYM_SUBMENU_ITEMS: ReadonlyArray<{
-  id: string;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}> = [
-  {
-    id: "disciplines",
-    label: "Disciplinas",
-    href: "/dashboard/disciplines",
-    icon: Dumbbell,
-  },
-  { id: "classes", label: "Clases", href: "/dashboard/class", icon: Dumbbell },
-  {
-    id: "locations",
-    label: "Ubicaciones",
-    href: "/dashboard/locations",
-    icon: MapPin,
-  },
-];
-
 function MobileMoreSheet({
   role,
   onClose,
@@ -450,21 +453,16 @@ function MobileMoreSheet({
   const pathname = usePathname();
   const sheetRef = useRef<HTMLDivElement>(null);
   const destinations = useMemo(() => moreDestinationsForRole(role), [role]);
+  const gymSubmenuItems = useMemo(() => gymSectionsForRole(role), [role]);
   const financeSubmenuItems = useMemo(
     () => financeSectionsForRole(role),
     [role],
   );
 
-  const disciplinesActive = useMemo(
-    () => isDisciplinesActive(pathname),
+  const gymChildActive = useMemo(
+    () => activeGymSection(pathname) !== null,
     [pathname],
   );
-  const classesActive = useMemo(() => isClassesActive(pathname), [pathname]);
-  const locationsActive = useMemo(
-    () => isLocationsActive(pathname),
-    [pathname],
-  );
-  const gymChildActive = disciplinesActive || classesActive || locationsActive;
   const financeChildActive = useMemo(
     () => activeFinanceSection(pathname) !== null,
     [pathname],
@@ -531,7 +529,7 @@ function MobileMoreSheet({
                   ? () => setGymExpanded((v) => !v)
                   : () => setFinanceExpanded((v) => !v);
                 const submenuItems = isGym
-                  ? GYM_SUBMENU_ITEMS
+                  ? gymSubmenuItems
                   : financeSubmenuItems;
                 const parentActive = isGym
                   ? gymChildActive
