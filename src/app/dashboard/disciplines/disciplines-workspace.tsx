@@ -410,7 +410,7 @@ export function DisciplinesWorkspace({
 }) {
   const [editor, setEditor] = useState<EditorMode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const opener = useRef<HTMLButtonElement | null>(null);
 
   const totalPages = Math.max(
@@ -570,7 +570,7 @@ export function DisciplinesWorkspace({
             </Button>
           </form>
 
-          {/* View toggle */}
+          {/* View toggle 
           <div
             role="group"
             aria-label="Vista"
@@ -595,7 +595,7 @@ export function DisciplinesWorkspace({
               <Table2 aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
-
+*/}
           {createButton}
         </div>
 

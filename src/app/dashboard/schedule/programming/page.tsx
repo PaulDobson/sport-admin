@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createInstructorSchedulingDeps } from "@/infrastructure/composition/instructor-scheduling-composition";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
-import { ScheduleNavigation } from "@/presentation/components/schedule-navigation";
 import { ProgrammingWorkspace } from "../programming-workspace";
+import { PageHeader } from "@/presentation/components/page-header";
 
 const defaultTimezone = "America/Santiago";
 
@@ -38,10 +38,9 @@ export default async function ScheduleProgrammingPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <ScheduleNavigation
-        role={membership.role}
-        activeSection="programming"
-        compact
+      <PageHeader
+        title="Programación de sesiones"
+        description="Elige qué, dónde y cuándo. Revisa antes de publicar."
       />
       <ProgrammingWorkspace
         disciplines={disciplines}

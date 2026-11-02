@@ -2,12 +2,13 @@
 
 import {
   useActionState,
+  useCallback,
   useId,
   useState,
   type ComponentProps,
   type ReactNode,
 } from "react";
-import { ChevronDown, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, type LucideIcon } from "lucide-react";
 import type {
   DisciplineOption,
   ClassTemplateOption,
@@ -156,8 +157,10 @@ const DISCIPLINE_PRESETS = [
 
 export function DisciplineCreationForm({
   onCreated,
+  existingDisciplines = [],
 }: {
   onCreated: (value: DisciplineOption) => void;
+  existingDisciplines?: DisciplineOption[];
 }) {
   const [name, setName] = useState("");
   const [state, action, pending] = useActionState(
@@ -170,6 +173,25 @@ export function DisciplineCreationForm({
       return result;
     },
     initialState,
+  );
+
+  const existingNames = existingDisciplines.map((d) => d.name);
+
+  function normalise(s: string) {
+    return s.trim().toLocaleLowerCase("es");
+  }
+
+  const handlePresetClick = useCallback(
+    (preset: string) => {
+      const alreadyExists = existingNames.some(
+        (n) => normalise(n) === normalise(preset),
+      );
+      if (alreadyExists) return;
+      setName((current) =>
+        normalise(current) === normalise(preset) ? "" : preset,
+      );
+    },
+    [existingNames],
   );
 
   return (
@@ -185,24 +207,36 @@ export function DisciplineCreationForm({
           className="mt-2 flex flex-wrap gap-2"
         >
           {DISCIPLINE_PRESETS.map((preset) => {
-            const isSelected = name === preset;
+            const isSelected = normalise(name) === normalise(preset);
+            const alreadyExists = existingNames.some(
+              (n) => normalise(n) === normalise(preset),
+            );
             return (
               <button
                 key={preset}
                 type="button"
-                disabled={pending}
+                disabled={pending || alreadyExists}
                 aria-pressed={isSelected}
-                onClick={() => setName(isSelected ? "" : preset)}
+                title={alreadyExists ? "Ya existe esta disciplina" : undefined}
+                onClick={() => handlePresetClick(preset)}
                 className={[
                   "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                  "disabled:pointer-events-none disabled:opacity-50",
+                  "disabled:pointer-events-none disabled:opacity-60",
                   isSelected
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface-raised text-foreground hover:border-primary/50 hover:bg-primary/8 hover:text-primary",
+                    : alreadyExists
+                      ? "border-border bg-muted text-muted-foreground line-through"
+                      : "border-border bg-surface-raised text-foreground hover:border-primary/50 hover:bg-primary/8 hover:text-primary",
                 ].join(" ")}
               >
                 {preset}
+                {alreadyExists ? (
+                  <Check
+                    aria-hidden="true"
+                    className="ml-1.5 h-3 w-3 text-success"
+                  />
+                ) : null}
               </button>
             );
           })}

@@ -8,6 +8,7 @@ import { LinkTabs } from "../link-tabs";
 import { Suspense } from "react";
 import Link from "next/link";
 import { CreditCard } from "lucide-react";
+import { PageHeader } from "@/presentation/components/page-header";
 
 const collectionStatuses = [
   { id: "active", label: "Al día" },
@@ -29,7 +30,9 @@ function collectionsHref(overrides: Record<string, string | undefined>) {
     if (v) params.set(k, v);
   }
   const q = params.toString();
-  return q ? `/dashboard/finance/collections?${q}` : "/dashboard/finance/collections";
+  return q
+    ? `/dashboard/finance/collections?${q}`
+    : "/dashboard/finance/collections";
 }
 
 interface CollectionsPageProps {
@@ -64,24 +67,22 @@ export default async function CollectionsPage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cobros</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Membresías con saldo pendiente ordenadas por urgencia.
-          </p>
-        </div>
-        {canManage ? (
-          <Link
-            href={`/dashboard/finance/collections?assign=1`}
-            scroll={false}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            <CreditCard className="size-4" aria-hidden />
-            Asignar plan
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Cobros"
+        description="Membresías con saldo pendiente ordenadas por urgencia."
+        action={
+          canManage ? (
+            <Link
+              href={`/dashboard/finance/collections?assign=1`}
+              scroll={false}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <CreditCard className="size-4" aria-hidden />
+              Asignar plan
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <LinkTabs
@@ -106,14 +107,20 @@ export default async function CollectionsPage({
             })),
           ]}
         />
-        <CollectionDateFilter from={from} to={to} status={status} action="/dashboard/finance/collections" />
+        <CollectionDateFilter
+          from={from}
+          to={to}
+          status={status}
+          action="/dashboard/finance/collections"
+        />
       </div>
 
       <section aria-labelledby="collections-heading">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 id="collections-heading" className="text-xl font-semibold">
             {status
-              ? (collectionStatuses.find((s) => s.id === status)?.label ?? "Cobros")
+              ? (collectionStatuses.find((s) => s.id === status)?.label ??
+                "Cobros")
               : "Todos los cobros"}
           </h2>
           <span className="text-sm text-muted-foreground">

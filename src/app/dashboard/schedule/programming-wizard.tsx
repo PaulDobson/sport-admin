@@ -536,22 +536,6 @@ export function ProgrammingWizard({
   return (
     <div className="space-y-4" aria-labelledby="programming-wizard-heading">
       {/* Compact page header */}
-      <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
-          <CalendarDays aria-hidden="true" className="h-5 w-5" />
-        </span>
-        <div>
-          <h2
-            id="programming-wizard-heading"
-            className="text-lg font-bold leading-tight"
-          >
-            Programar clase
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Elige qué, dónde y cuándo. Revisa antes de publicar.
-          </p>
-        </div>
-      </div>
 
       {/* Step indicator — icon-only on mobile, icon+label on sm+ */}
       <ol
@@ -1550,7 +1534,7 @@ export function ProgrammingWizard({
         </Surface>
 
         {/* ── RIGHT: summary + catalog panels ─────────────────────────── */}
-        <div className="space-y-4">
+        <div className="hidden space-y-4 lg:block">
           {/* Summary card — always visible on desktop */}
           <Surface aria-label="Resumen de la programación">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-bold">
@@ -1577,6 +1561,7 @@ export function ProgrammingWizard({
                 }
               >
                 <DisciplineCreationForm
+                  existingDisciplines={disciplines}
                   onCreated={(value) => {
                     onDisciplineCreated(value);
                     setDiscipline(value.name);
@@ -1649,6 +1634,7 @@ export function ProgrammingWizard({
             onToggle={(event) => setDisciplineOpen(event.currentTarget.open)}
           >
             <DisciplineCreationForm
+              existingDisciplines={disciplines}
               onCreated={(value) => {
                 onDisciplineCreated(value);
                 setDiscipline(value.name);

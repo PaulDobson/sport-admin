@@ -7,9 +7,11 @@ import {
   CreditCard,
   Dumbbell,
   House,
+  MapPin,
   Repeat2,
   UsersRound,
   Brain,
+  Clock,
   Layers,
   Timer,
   Swords,
@@ -42,9 +44,11 @@ export interface NavigationDestination {
 
 export type ScheduleSection = "sessions" | "programming" | "schedules";
 
-export type TrainingSection = "cognitive" | "combinations" | "timers";
+export type TrainingSection = "cognitive" | "combinations" | "timers" | "clock";
 
-export type FinanceSection = "collections" | "plans";
+export type GymSection = "info" | "disciplines" | "classes" | "locations";
+
+export type FinanceSection = "summary" | "collections" | "plans";
 
 // Pre-compiled at module load — never re-created on hot paths.
 const SESSION_ATTENDANCE_RE = /^\/dashboard\/sessions\/[^/]+\/attendance\/?$/;
@@ -128,6 +132,12 @@ const trainingSections: ReadonlyArray<{
     href: "/dashboard/trainings/timers",
     icon: Timer,
   },
+  {
+    id: "clock",
+    label: "Hora",
+    href: "/dashboard/trainings/clock",
+    icon: Clock,
+  },
 ];
 
 export function trainingSectionsForRole(role: TenantMembershipRole) {
@@ -143,6 +153,7 @@ export function activeTrainingSection(
   if (pathname.startsWith("/dashboard/trainings/combinations"))
     return "combinations";
   if (pathname.startsWith("/dashboard/trainings/timers")) return "timers";
+  if (pathname.startsWith("/dashboard/trainings/clock")) return "clock";
   return null;
 }
 
@@ -171,6 +182,54 @@ export function isLocationsActive(pathname: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Gym submenu
+// ---------------------------------------------------------------------------
+
+const gymSections: ReadonlyArray<{
+  id: GymSection;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+}> = [
+  {
+    id: "info",
+    label: "Información",
+    href: "/dashboard/gym",
+    icon: Building2,
+  },
+  {
+    id: "disciplines",
+    label: "Disciplinas",
+    href: "/dashboard/disciplines",
+    icon: Dumbbell,
+  },
+  {
+    id: "classes",
+    label: "Clases",
+    href: "/dashboard/class",
+    icon: Dumbbell,
+  },
+  {
+    id: "locations",
+    label: "Ubicaciones",
+    href: "/dashboard/locations",
+    icon: MapPin,
+  },
+];
+
+export function gymSectionsForRole(_role: TenantMembershipRole) {
+  return gymSections;
+}
+
+export function activeGymSection(pathname: string): GymSection | null {
+  if (pathname === "/dashboard/gym") return "info";
+  if (pathname === "/dashboard/disciplines") return "disciplines";
+  if (pathname === "/dashboard/class") return "classes";
+  if (pathname === "/dashboard/locations") return "locations";
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Finance submenu
 // ---------------------------------------------------------------------------
 
@@ -180,6 +239,12 @@ const financeSections: ReadonlyArray<{
   href: string;
   icon: LucideIcon;
 }> = [
+  {
+    id: "summary",
+    label: "Resumen",
+    href: "/dashboard/finance",
+    icon: CircleDollarSign,
+  },
   {
     id: "collections",
     label: "Cobros",
@@ -204,6 +269,7 @@ export function activeFinanceSection(pathname: string): FinanceSection | null {
   if (pathname.startsWith("/dashboard/finance/collections"))
     return "collections";
   if (pathname.startsWith("/dashboard/finance/plans")) return "plans";
+  if (pathname === "/dashboard/finance") return "summary";
   return null;
 }
 
@@ -311,12 +377,7 @@ export function isDestinationActive(
     return true;
   // Gym is also active when navigating its sub-sections (disciplines, classes,
   // locations) — they live under "Mi gimnasio" in the sidebar.
-  if (
-    destination.id === "gym" &&
-    (isDisciplinesActive(pathname) ||
-      isClassesActive(pathname) ||
-      isLocationsActive(pathname))
-  )
+  if (destination.id === "gym" && activeGymSection(pathname) !== null)
     return true;
   // Finance is also active on its sub-routes (collections, plans).
   if (destination.id === "finance" && activeFinanceSection(pathname))

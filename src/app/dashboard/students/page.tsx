@@ -15,6 +15,7 @@ import {
 } from "@/presentation/navigation/student-navigation";
 import { StudentList } from "./student-list";
 import { StudentWorkspace } from "./student-workspace";
+import { PageHeader } from "@/presentation/components/page-header";
 
 // Module-level constants — not recreated per request.
 const STATUS_OPTIONS = [
@@ -87,14 +88,10 @@ export default async function StudentsPage({
   return (
     <StudentWorkspace>
       <div className="mx-auto max-w-7xl space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Alumnos</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Organiza sus datos y accede a cada ficha.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Alumnos"
+          description="Organiza sus datos y accede a cada ficha."
+        />
 
         <section
           aria-label="Filtros de alumnos"
