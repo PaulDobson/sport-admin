@@ -4,7 +4,7 @@ import "@fontsource-variable/manrope";
 import "@/presentation/styles/globals.css";
 import { NavigationProgressBar } from "@/presentation/components/navigation-progress-bar";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
-
+import { Analytics } from "@vercel/analytics/next";
 export const metadata: Metadata = {
   title: "Sport Admin",
   description:
@@ -29,6 +29,7 @@ export default function RootLayout({
         <NavigationProgressBar />
         <ServiceWorkerRegistration />
         {children}
+        <Analytics />
       </body>
     </html>
   );

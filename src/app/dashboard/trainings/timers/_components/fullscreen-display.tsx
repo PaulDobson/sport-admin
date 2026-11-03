@@ -58,6 +58,14 @@ const WORK_IMAGES = [
   "/timers/entrenamiento_g_3.jpg",
   "/timers/entrenamiento_g_4.jpg",
   "/timers/entrenamiento_g_5.jpg",
+  "/timers/clock_1.jpg",
+  "/timers/clock_2.jpg",
+  "/timers/clock_3.jpg",
+  "/timers/clock_4.jpg",
+  "/timers/clock_5.jpg",
+  "/timers/clock_6.jpg",
+  "/timers/clock_7.jpg",
+  "/timers/clock_8.jpg",
 ] as const;
 
 const REST_IMAGES = [
@@ -69,7 +77,7 @@ const REST_IMAGES = [
 // ─── Static lookup tables (module-level — zero allocation per render) ─────────
 
 const toneColors: Record<FullscreenTone, string> = {
-  primary: "text-primary",
+  primary: "text-white",
   warning: "text-warning",
   success: "text-success",
 };
@@ -215,12 +223,12 @@ const BackgroundImage = memo(function BackgroundImage({
           state.visible ? "opacity-100" : "opacity-0"
         } ${
           phase === "work"
-            ? "mix-blend-luminosity opacity-[0.18]"
-            : "mix-blend-luminosity opacity-[0.12]"
+            ? "mix-blend-luminosity opacity-[0.28]"
+            : "mix-blend-luminosity opacity-[0.18]"
         }`}
       />
-      {/* Gradient overlay so digits always contrast against the image */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#181c2a]/80 via-[#181c2a]/40 to-[#181c2a]/60" />
+      {/* Gradient overlay — strong enough for high-contrast digit readability at distance */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/60" />
     </div>
   );
 });
@@ -246,7 +254,7 @@ const FullscreenDigits = memo(function FullscreenDigits({
     <div
       aria-live="polite"
       aria-atomic="true"
-      className={`metric-number relative select-none text-center font-bold leading-none tracking-tight transition-colors duration-500 ${toneColors[tone]}`}
+      className={`metric-number relative select-none text-center font-bold leading-none tracking-tight transition-colors duration-500 drop-shadow-[0_4px_48px_rgba(0,0,0,1)] ${toneColors[tone]}`}
       style={{ fontSize: "clamp(7rem, 28vw, 22rem)" }}
     >
       <span aria-label={`${mm} minutos`}>{mm}</span>
@@ -345,7 +353,7 @@ const FullscreenProgressBar = memo(function FullscreenProgressBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label="Progreso de la fase actual"
-      className="relative h-2 w-full max-w-3xl overflow-hidden rounded-full bg-white/10"
+      className="relative h-3 w-full max-w-3xl overflow-hidden rounded-full bg-white/15"
     >
       <div
         className={`h-full rounded-full transition-all duration-300 ${toneBar[tone]}`}
