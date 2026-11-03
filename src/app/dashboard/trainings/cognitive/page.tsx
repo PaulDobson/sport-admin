@@ -1,7 +1,22 @@
 import { Brain } from "lucide-react";
 import { CognitivePanel } from "./_components/cognitive-panel";
+import { listExercisesAction } from "./actions";
 
-export default function CognitivePage() {
+/**
+ * CognitivePage — Server Component
+ *
+ * Loads saved exercises on the server so CognitivePanel receives them as a
+ * prop instead of fetching them on the client after mount. Benefits:
+ * - Eliminates the empty-list flash in the "Mis ejercicios" tab.
+ * - Removes one client-side waterfall (mount → server action → setState).
+ * - The data is already serialized and sent with the initial HTML payload.
+ *
+ * On error the page still renders with an empty list; the form shows the
+ * empty-state UI. No hard failure.
+ */
+export default async function CognitivePage() {
+  const { exercises: initialExercises } = await listExercisesAction();
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 pb-12">
       {/* ── Page header ──────────────────────────────────────────────────── */}
@@ -25,7 +40,7 @@ export default function CognitivePage() {
         aria-label="Panel de entrenamiento cognitivo"
         className="rounded-2xl border border-white/6 bg-card p-4 shadow-lg shadow-black/10 sm:p-6"
       >
-        <CognitivePanel />
+        <CognitivePanel initialExercises={initialExercises} />
       </section>
     </div>
   );

@@ -48,7 +48,7 @@ export class SupabaseBillingIssuer implements BillingIssuerPort {
   async save(input: SaveBillingIssuerInput) {
     const { data, error } = await this.client.rpc("save_saas_billing_issuer", {
       operation_id: input.operationId,
-      expected_version: input.expectedVersionId ?? undefined,
+      expected_version: input.expectedVersionId as string,
       legal_name: input.legalName,
       tax_id: input.taxId,
       address: input.address,

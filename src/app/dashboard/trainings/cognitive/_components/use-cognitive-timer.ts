@@ -159,19 +159,58 @@ export function buildExecutionPlan(
 /**
  * Given the current elapsed time within a work phase and the plan for that
  * phase, returns the stimulus that should currently be visible (or null).
+ *
+ * Performance: binary search on the pre-sorted stimuli array (sorted by
+ * startOffsetMs ascending, which buildExecutionPlan guarantees). This brings
+ * the hot-path cost from O(N) to O(log N) — called 10×/second during every
+ * work phase.
  */
 export function getActiveStimulusForOffset(
   plan: WorkPhasePlan,
   elapsedMs: number,
   displayDurationMs: number,
 ): Stimulus | null {
-  for (const entry of plan.stimuli) {
-    const endMs = entry.startOffsetMs + displayDurationMs;
-    if (elapsedMs >= entry.startOffsetMs && elapsedMs < endMs) {
-      return entry.stimulus;
+  const stimuli = plan.stimuli;
+  let lo = 0;
+  let hi = stimuli.length - 1;
+
+  // Binary search for the last entry whose startOffsetMs <= elapsedMs
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (stimuli[mid].startOffsetMs <= elapsedMs) {
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
     }
   }
-  return null;
+
+  // hi now points to the last entry that could be active
+  if (hi < 0) return null;
+  const candidate = stimuli[hi];
+  const endMs = candidate.startOffsetMs + displayDurationMs;
+  return elapsedMs < endMs ? candidate.stimulus : null;
+}
+
+// ─── REST image paths (same pool as stimulus-overlay.tsx) ────────────────────
+
+const REST_IMAGE_PATHS = [
+  "/rest/descanso_1.jpg",
+  "/rest/descanso_2.jpg",
+  "/rest/descanso_3.jpg",
+] as const;
+
+/**
+ * Imperatively preload a list of image URLs into the browser cache so they
+ * are available before the first rest phase begins. Non-blocking: runs only
+ * in the browser and ignores errors (the overlay handles missing images
+ * gracefully via Next/Image).
+ */
+function preloadImages(paths: readonly string[]): void {
+  if (typeof window === "undefined") return;
+  for (const path of paths) {
+    const img = new Image();
+    img.src = path;
+  }
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -253,6 +292,11 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
   // Active stimulus shown on screen
   const [activeStimulus, setActiveStimulus] = useState<Stimulus | null>(null);
 
+  // Progress bar percentage — updated every 3 ticks (300 ms) instead of every
+  // tick. The TopProgressBar has a `transition-all duration-300` CSS animation,
+  // so updating faster produces no visible improvement and wastes diff work.
+  const [progressPercent, setProgressPercent] = useState(0);
+
   // ── Pre-computed execution plan (built on Start) ───────────────────────────
   const executionPlanRef = useRef<WorkPhasePlan[]>([]);
 
@@ -272,11 +316,17 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
   const currentPhaseRef = useRef<Phase>("work");
   const runtimeRef = useRef<CognitiveRuntimeState>(runtime);
   const stimulusTimingRef = useRef(stimulusTiming);
+  // Throttle: only update progressPercent every 3 ticks (300 ms).
+  // The progress bar has a 300 ms CSS transition, so updating faster is wasted
+  // work that triggers extra React state diffs with no visible benefit.
+  const tickCountRef = useRef(0);
 
-  // Sync refs on each render
+  // Sync runtimeRef so the interval always reads the latest value without
+  // introducing it as a dependency.
   useEffect(() => {
     runtimeRef.current = runtime;
   });
+
   useEffect(() => {
     stimulusTimingRef.current = stimulusTiming;
   }, [stimulusTiming]);
@@ -337,6 +387,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
     }
     const t = setTimeout(() => {
       setActiveStimulus(null);
+      setProgressPercent(0);
       setRuntime(initialRuntime(seriesConfig));
       setStatus("idle");
     }, 600);
@@ -398,6 +449,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
       endTimeRef.current = Date.now() + secondsLeft * 1000;
       lastBeepSecondRef.current = -1;
       currentPhaseRef.current = fromRuntime.phase;
+      tickCountRef.current = 0;
 
       // Record work phase start for stimulus scheduling
       if (fromRuntime.phase === "work") {
@@ -410,9 +462,13 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
       intervalRef.current = setInterval(() => {
         if (endTimeRef.current === null) return;
 
+        // Throttle: count ticks so stimulus + remaining update every tick,
+        // but the newSeries sound guard runs on every tick regardless.
+        tickCountRef.current += 1;
+
         const left = Math.round((endTimeRef.current - Date.now()) / 1000);
 
-        // Update stimulus during work phase
+        // Update stimulus during work phase (every tick — needs ms precision)
         if (
           currentPhaseRef.current === "work" &&
           workPhaseStartTimeRef.current !== null
@@ -423,6 +479,21 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
 
         if (left > 0) {
           setRuntime((prev) => ({ ...prev, remaining: left }));
+
+          // Throttle progressPercent update to every 3 ticks (300 ms).
+          // The progress bar CSS transition is 300 ms, so finer updates
+          // produce no visible change and just waste React diffing.
+          if (tickCountRef.current % 3 === 0) {
+            const phaseDur =
+              currentPhaseRef.current === "work"
+                ? phaseDuration(cfg, "work")
+                : phaseDuration(cfg, "rest");
+            if (phaseDur > 0) {
+              setProgressPercent(
+                Math.round(((phaseDur - left) / phaseDur) * 100),
+              );
+            }
+          }
 
           if (
             left === 5 &&
@@ -462,6 +533,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
               lastBeepSecondRef.current = -1;
               currentPhaseRef.current = "work";
               workPhaseStartTimeRef.current = Date.now();
+              tickCountRef.current = 0;
               soundRef.current.playWork();
               return {
                 currentSeries: nextSeries,
@@ -475,6 +547,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
             newSeriesAlertedRef.current = false;
             currentPhaseRef.current = "rest";
             workPhaseStartTimeRef.current = null;
+            tickCountRef.current = 0;
             setActiveStimulus(null);
             soundRef.current.playRest();
             return { ...prev, phase: "rest", remaining: restDuration };
@@ -486,6 +559,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
             lastBeepSecondRef.current = -1;
             currentPhaseRef.current = "work";
             workPhaseStartTimeRef.current = Date.now();
+            tickCountRef.current = 0;
             soundRef.current.playWork();
             return {
               currentSeries: nextSeries,
@@ -494,7 +568,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
             };
           }
         });
-      }, 100); // 100 ms tick for smoother stimulus transitions
+      }, 100); // 100 ms tick — needed for sub-second stimulus accuracy
     },
     [clearTick, updateStimulus],
   );
@@ -529,7 +603,9 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
     const workDuration = phaseDuration(seriesConfig, "work");
     if (workDuration === 0 || seriesConfig.totalSeries === 0) return;
 
-    // Build execution plan fresh on every start
+    // Build execution plan fresh on every start.
+    // All randomness (Fisher-Yates shuffle) runs here — the run loop is
+    // pure O(log N) lookups with no Math.random() calls during execution.
     const stimuli = resolveStimuli(selectedStimulusIdsRef.current);
     executionPlanRef.current = buildExecutionPlan(
       stimuli,
@@ -543,6 +619,13 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
       .map((s) => (s as { soundPath: string }).soundPath);
     if (soundPaths.length > 0) {
       preloadPaths(soundPaths).catch(() => {});
+    }
+
+    // Preload REST background images so they are in the browser cache before
+    // the first rest phase begins. Runs only when there is at least one rest
+    // phase (restDuration > 0) to avoid unnecessary requests.
+    if (phaseDuration(seriesConfig, "rest") > 0) {
+      preloadImages(REST_IMAGE_PATHS);
     }
 
     if (!isFullscreen) enterFullscreen();
@@ -579,6 +662,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
     pausedRuntimeRef.current = null;
     workPhaseStartTimeRef.current = null;
     setActiveStimulus(null);
+    setProgressPercent(0);
     setRuntime(initialRuntime(seriesConfig));
     setStatus("idle");
     if (isFullscreen) exitFullscreen();
@@ -598,7 +682,7 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
   const handleRestart = useCallback(() => {
     cancelPrepare();
     clearTick();
-    // Rebuild execution plan on restart
+    // Rebuild execution plan on restart — all randomness pre-computed here
     const stimuli = resolveStimuli(selectedStimulusIdsRef.current);
     executionPlanRef.current = buildExecutionPlan(
       stimuli,
@@ -611,6 +695,10 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
       .map((s) => (s as { soundPath: string }).soundPath);
     if (soundPaths.length > 0) {
       preloadPaths(soundPaths).catch(() => {});
+    }
+    // Re-preload REST images (cache hit if already loaded, no extra request)
+    if (phaseDuration(seriesConfig, "rest") > 0) {
+      preloadImages(REST_IMAGE_PATHS);
     }
     const fresh = initialRuntime(seriesConfig);
     const secondsLeft = phaseDuration(seriesConfig, fresh.phase);
@@ -716,18 +804,9 @@ export function useCognitiveTimer(): UseCognitiveTimerReturn {
   const displayMm = status === "idle" ? idleWorkTime.mm : mm;
   const displaySs = status === "idle" ? idleWorkTime.ss : ss;
 
-  const currentPhaseDuration =
-    status === "idle"
-      ? phaseDuration(seriesConfig, "work")
-      : phaseDuration(seriesConfig, runtime.phase);
-
-  const progressPercent =
-    currentPhaseDuration > 0
-      ? Math.round(
-          ((currentPhaseDuration - runtime.remaining) / currentPhaseDuration) *
-            100,
-        )
-      : 0;
+  // progressPercent is managed as state updated inside the tick (every 3 ticks)
+  // to avoid recomputing it on every render and avoid prop-drilling a derived
+  // value that changes 10×/s. During idle it is always 0.
 
   const isConfigDisabled =
     isPreparing || status === "running" || status === "paused";

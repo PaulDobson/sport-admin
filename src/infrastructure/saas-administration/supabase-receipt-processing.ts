@@ -72,11 +72,11 @@ export class SupabaseReceiptProcessing implements ReceiptProcessingPort {
       target_job: job.id,
       target_lease: job.leaseToken,
       outcome: outcome.status,
-      document_path: outcome.document?.path ?? undefined,
-      document_hash: outcome.document?.hash ?? undefined,
-      document_size: outcome.document?.size ?? undefined,
-      provider_id: outcome.providerId ?? undefined,
-      error_code: outcome.errorCode ?? undefined,
+      document_path: outcome.document?.path as string,
+      document_hash: outcome.document?.hash as string,
+      document_size: outcome.document?.size as number,
+      provider_id: outcome.providerId as string,
+      error_code: outcome.errorCode as string,
     });
     if (error) throw error;
     parseBillingContract(

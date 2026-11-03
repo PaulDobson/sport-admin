@@ -82,7 +82,7 @@ export class SupabaseBillingPayments
         expected_amount: input.amount,
         paid_on: input.paidOn,
         payment_method: input.method,
-        payment_reference: input.reference ?? undefined,
+        payment_reference: input.reference as string,
         operation_id: input.operationId,
         change_reason: input.reason,
       },
@@ -208,7 +208,7 @@ export class SupabaseBillingPayments
       "reconcile_saas_receipt_delivery",
       {
         target_delivery: input.deliveryId,
-        confirmed_provider_id: input.providerId ?? undefined,
+        confirmed_provider_id: input.providerId as string,
         confirmed_not_sent: input.notSent,
         change_reason: input.reason,
       },

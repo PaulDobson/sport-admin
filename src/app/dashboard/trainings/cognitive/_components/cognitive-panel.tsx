@@ -1,36 +1,52 @@
 /**
  * CognitivePanel
  *
- * The root client component for the cognitive exercises section.
+ * Root client component for the cognitive exercises section.
  * Orchestrates:
- * - The cognitive timer hook (series state machine + stimulus scheduling)
- * - The StimulusOverlay (fullscreen projection portal)
- * - The ExerciseConfigForm (all configuration UI + save/load)
+ * - useCognitiveTimer hook (series state machine + stimulus scheduling)
+ * - StimulusOverlay (fullscreen projection portal)
+ * - ExerciseConfigForm (all configuration UI + save/load)
  *
- * State that must span both the form and the timer hook:
- * - selectedStimulusIds — passed down to form for display, pushed into hook
- *   via _setSelectedStimulusIds when changed
- * - savedExercises — loaded on mount via listExercisesAction, mutated locally
- *   when save/delete actions complete (optimistic updates)
- * - currentExerciseId — tracks which saved exercise is active
+ * Performance notes:
+ * - `initialExercises` is loaded by the parent RSC (page.tsx) and passed as a
+ *   prop, eliminating the client-side mount → server-action → setState waterfall
+ *   that caused an empty-list flash in the "Mis ejercicios" tab.
+ * - `handleSelectedIdsChange` and `handleLoadExercise` depend on the *stable*
+ *   individual callbacks extracted from the timer hook, NOT on the hook's
+ *   return object. The hook return is a new object reference every render
+ *   (because useCognitiveTimer calls formatTime inline, etc.), so depending
+ *   on `timer` directly would recreate both handlers every 100 ms tick and
+ *   propagate unnecessary re-renders to ExerciseConfigForm.
+ * - ExerciseConfigForm is wrapped in React.memo (see its own file). All
+ *   callback props passed to it must be stable references.
  */
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useCognitiveTimer } from "./use-cognitive-timer";
 import { StimulusOverlay } from "./stimulus-overlay";
 import { ExerciseConfigForm } from "./exercise-config-form";
-import { listExercisesAction } from "../actions";
 import type { CognitiveExercise } from "@/domain/cognitive-training/cognitive-exercise";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CognitivePanel() {
+interface CognitivePanelProps {
+  /** Pre-fetched by the parent RSC — avoids the client-side fetch waterfall. */
+  initialExercises: CognitiveExercise[];
+}
+
+export function CognitivePanel({ initialExercises }: CognitivePanelProps) {
   // ── Timer hook (owns all timer + stimulus state) ───────────────────────────
   const timer = useCognitiveTimer() as ReturnType<typeof useCognitiveTimer> & {
     _setSelectedStimulusIds: (ids: string[]) => void;
   };
+
+  // Destructure the stable callbacks before using them as useCallback deps.
+  // `loadConfig` and `_setSelectedStimulusIds` are stable (useCallback with
+  // empty deps inside the hook), so this is safe and avoids depending on the
+  // whole `timer` object — which would create a new reference every 100 ms.
+  const { loadConfig, _setSelectedStimulusIds: setTimerStimulusIds } = timer;
 
   // ── Stimulus selection (mirrored between form and hook) ────────────────────
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -38,32 +54,26 @@ export function CognitivePanel() {
   const handleSelectedIdsChange = useCallback(
     (ids: string[]) => {
       setSelectedIds(ids);
-      timer._setSelectedStimulusIds(ids);
+      setTimerStimulusIds(ids);
     },
-    [timer],
+    [setTimerStimulusIds],
   );
 
-  // ── Saved exercises ────────────────────────────────────────────────────────
-  const [savedExercises, setSavedExercises] = useState<CognitiveExercise[]>([]);
-  const [currentExerciseId, setCurrentExerciseId] = useState<string | null>(null);
-
-  // Load saved exercises on mount
-  useEffect(() => {
-    listExercisesAction().then((result) => {
-      if (!result.error) {
-        setSavedExercises(result.exercises);
-      }
-    });
-  }, []);
+  // ── Saved exercises — initialized from RSC prop, mutated optimistically ────
+  const [savedExercises, setSavedExercises] =
+    useState<CognitiveExercise[]>(initialExercises);
+  const [currentExerciseId, setCurrentExerciseId] = useState<string | null>(
+    null,
+  );
 
   // ── Load a saved exercise ──────────────────────────────────────────────────
   const handleLoadExercise = useCallback(
     (exercise: CognitiveExercise) => {
-      timer.loadConfig(exercise.config);
+      loadConfig(exercise.config);
       setSelectedIds(exercise.config.selectedStimulusIds);
-      timer._setSelectedStimulusIds(exercise.config.selectedStimulusIds);
+      setTimerStimulusIds(exercise.config.selectedStimulusIds);
     },
-    [timer],
+    [loadConfig, setTimerStimulusIds],
   );
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -90,7 +100,7 @@ export function CognitivePanel() {
         onExitFullscreen={timer.handleExitFullscreen}
       />
 
-      {/* Configuration form */}
+      {/* Configuration form — memoized; only re-renders when its props change */}
       <ExerciseConfigForm
         seriesConfig={timer.seriesConfig}
         stimulusTiming={timer.stimulusTiming}
