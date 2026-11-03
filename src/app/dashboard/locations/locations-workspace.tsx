@@ -227,7 +227,6 @@ function LocationFormDialog({
             disabled={pending}
             className={programmingFieldClass}
             placeholder="Parque Norte"
-            // eslint-disable-next-line jsx-a11y/no-autofocus
             autoFocus
           />
         </label>

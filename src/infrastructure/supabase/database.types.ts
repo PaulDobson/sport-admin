@@ -1060,11 +1060,13 @@ export type Database = {
         Row: {
           category: string;
           created_at: string;
+          evaluation_type: string;
           id: string;
           name: string;
           slug: string;
           status: string;
           tenant_id: string;
+          time_window_seconds: number | null;
           unit: string | null;
           updated_at: string;
           validation_rules: Json;
@@ -1073,11 +1075,13 @@ export type Database = {
         Insert: {
           category: string;
           created_at?: string;
+          evaluation_type?: string;
           id?: string;
           name: string;
           slug: string;
           status?: string;
           tenant_id: string;
+          time_window_seconds?: number | null;
           unit?: string | null;
           updated_at?: string;
           validation_rules?: Json;
@@ -1086,11 +1090,13 @@ export type Database = {
         Update: {
           category?: string;
           created_at?: string;
+          evaluation_type?: string;
           id?: string;
           name?: string;
           slug?: string;
           status?: string;
           tenant_id?: string;
+          time_window_seconds?: number | null;
           unit?: string | null;
           updated_at?: string;
           validation_rules?: Json;
@@ -3978,12 +3984,12 @@ export type Database = {
       };
       finish_saas_billing_job: {
         Args: {
-          document_hash: string | undefined;
-          document_path: string | undefined;
-          document_size: number | undefined;
-          error_code: string | undefined;
+          document_hash: string;
+          document_path: string;
+          document_size: number;
+          error_code: string;
           outcome: string;
-          provider_id: string | undefined;
+          provider_id: string;
           target_job: string;
           target_lease: string;
         };
@@ -4129,6 +4135,18 @@ export type Database = {
           reason: string;
         }[];
       };
+      get_student_attendance_monthly_summary: {
+        Args: { target_student_id: string; target_tenant_id: string };
+        Returns: {
+          absent: number;
+          excused: number;
+          late: number;
+          mo: number;
+          present: number;
+          total: number;
+          yr: number;
+        }[];
+      };
       get_tenant_details: {
         Args: { target_tenant: string };
         Returns: {
@@ -4194,15 +4212,15 @@ export type Database = {
       list_my_student_portal_attendance: {
         Args: { target_student_id: string };
         Returns: {
-          session_id: string;
-          tenant_id: string;
-          student_id: string;
+          attendance_status: string;
           class_name: string;
-          location_name: string;
-          starts_at: string;
           ends_at: string;
+          location_name: string;
+          session_id: string;
+          starts_at: string;
+          student_id: string;
+          tenant_id: string;
           timezone: string;
-          attendance_status: string | null;
         }[];
       };
       list_my_student_portal_sessions: {
@@ -4412,7 +4430,7 @@ export type Database = {
         Args: {
           change_reason: string;
           confirmed_not_sent: boolean;
-          confirmed_provider_id: string | undefined;
+          confirmed_provider_id: string;
           target_delivery: string;
         };
         Returns: Json;
@@ -4439,7 +4457,7 @@ export type Database = {
           operation_id: string;
           paid_on: string;
           payment_method: string;
-          payment_reference: string | undefined;
+          payment_reference: string;
           target_invoice: string;
         };
         Returns: Json;
@@ -4542,7 +4560,7 @@ export type Database = {
           address: string;
           change_reason: string;
           email: string;
-          expected_version: string | undefined;
+          expected_version: string;
           legal_name: string;
           operation_id: string;
           tax_id: string;
@@ -4633,18 +4651,6 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      get_student_attendance_monthly_summary: {
-        Args: { target_tenant_id: string; target_student_id: string };
-        Returns: {
-          yr: number;
-          mo: number;
-          present: number;
-          late: number;
-          absent: number;
-          excused: number;
-          total: number;
-        }[];
-      };
       search_attendance_students: {
         Args: {
           page_number?: number;
@@ -4656,6 +4662,10 @@ export type Database = {
           student_name: string;
           total_count: number;
         }[];
+      };
+      seed_default_metric_definitions: {
+        Args: { p_tenant_id: string };
+        Returns: undefined;
       };
       transition_saas_tenant_status: {
         Args: {
