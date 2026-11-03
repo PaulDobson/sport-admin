@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useId, useMemo, useState } from "react";
-import { LayoutGrid, List, Search } from "lucide-react";
+import { CreditCard, LayoutGrid, List, Pencil, Search } from "lucide-react";
 import type { MembershipPlan } from "@/domain/instructor-finance/membership";
 import { formatMoney } from "@/lib/format-money";
 import { Button, ToneBadge } from "@/presentation/components/primitives";
@@ -73,12 +73,12 @@ function PlanActions({
 
   if (compact) {
     return (
-      <div className="flex items-center justify-end gap-0.5">
+      <div className="flex items-center justify-end gap-1">
         {plan.status === "active" ? (
           <AssignMembershipSheet
-            trigger="Asignar"
-            triggerLabel={`Asignar ${plan.name}`}
-            triggerClassName={`${iconAction} text-xs font-semibold hover:text-primary`}
+            trigger={<CreditCard aria-hidden="true" className="h-4 w-4" />}
+            triggerLabel={`Asignar plan ${plan.name}`}
+            triggerClassName={iconAction}
             initialPlan={{
               id: plan.id,
               name: plan.name,
@@ -92,11 +92,12 @@ function PlanActions({
         ) : null}
         <BottomSheet
           title={`Editar ${plan.name}`}
-          trigger="Editar"
+          trigger={<Pencil aria-hidden="true" className="h-4 w-4" />}
+          triggerLabel={`Editar plan ${plan.name}`}
           description="Los cambios aplican solo a nuevas membresías."
           variant="side"
           size="wide"
-          triggerClassName={`${iconAction} text-xs font-semibold hover:text-primary`}
+          triggerClassName={iconAction}
         >
           <div className="grid gap-4">
             <PlanForm plan={plan} />
