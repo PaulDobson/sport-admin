@@ -5,6 +5,8 @@ import "@/presentation/styles/globals.css";
 import { NavigationProgressBar } from "@/presentation/components/navigation-progress-bar";
 import { ServiceWorkerRegistration } from "./service-worker-registration";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 export const metadata: Metadata = {
   title: "Sport Admin",
   description:
@@ -30,6 +32,7 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
