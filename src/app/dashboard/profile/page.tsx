@@ -1,10 +1,12 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
+import { createOwnerBillingDeps } from "@/infrastructure/composition/owner-billing-composition";
+import { createSaasAdministrationDeps } from "@/infrastructure/composition/saas-administration-composition";
 import { requireOperationalMembership } from "@/app/_lib/operational-context";
-import { Surface } from "@/presentation/components/primitives";
-import { ProfileForm } from "./profile-form";
-import { ProfileMaintenancePanels } from "./profile-maintenance-panels";
+import { Avatar } from "@/presentation/components/primitives";
+import { ProfileTabs } from "./profile-tabs";
+import type { SaasCatalogPlan } from "@/domain/saas-administration/plan-catalog";
+import type { OwnerBilling } from "@/domain/saas-administration/owner-billing";
 
 function roleLabel(role: string) {
   return role === "owner"
@@ -21,39 +23,62 @@ export default async function ProfilePage() {
   const auth = await createAuthDeps();
   const userId = await auth.auth.getCurrentUserId();
   if (!userId) redirect("/log-in");
+
   const [profile, tenants] = await Promise.all([
     auth.profiles.findByUserId(userId),
     auth.tenants.findOperationalByUser(userId),
   ]);
+
   const label = roleLabel(membership.role);
   const name = profile?.fullName || "Tu cuenta";
   const organizationName =
-    tenants.find((tenant) => tenant.id === membership.tenantId)?.name ??
+    tenants.find((t) => t.id === membership.tenantId)?.name ??
     "Organización activa";
 
+  const isOwner = membership.role === "owner";
+
+  let billing: OwnerBilling | null = null;
+  let catalogPlans: SaasCatalogPlan[] = [];
+
+  if (isOwner) {
+    try {
+      const [billingDeps, saasDeps] = await Promise.all([
+        createOwnerBillingDeps(),
+        createSaasAdministrationDeps(),
+      ]);
+      [billing, catalogPlans] = await Promise.all([
+        billingDeps.ownerBilling.get(membership.tenantId, 1),
+        saasDeps.planCatalog.list(),
+      ]);
+    } catch {
+      // Non-fatal: panels render with empty state
+    }
+  }
+
   return (
-    <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.65fr)]">
-      <Surface className="p-5 sm:p-6">
-        <div className="mb-5 border-b border-border/70 pb-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-            Datos personales
-          </p>
-          <h2 className="mt-2 text-xl font-medium tracking-tight">
-            Tu identidad en Sport Admin
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* ── Identity hero ── 
+      <div className="mb-6 flex items-center gap-4 border-b border-border/50 pb-6">
+        <Avatar name={name} src={profile?.avatarUrl} size="lg" />
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            {name}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Estos datos se muestran en el menú de cuenta y en las superficies
-            autenticadas.
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {label} · {organizationName}
           </p>
         </div>
-        <ProfileForm
-          fullName={profile?.fullName ?? ""}
-          avatarUrl={profile?.avatarUrl ?? null}
-        />
-      </Surface>
-      <ProfileMaintenancePanels
-        organizationName={organizationName}
-        roleLabel={label}
+      </div>
+*/}
+      {/* ── Tabbed sections ── */}
+      <ProfileTabs
+        fullName={profile?.fullName ?? ""}
+        avatarUrl={profile?.avatarUrl ?? null}
+        email={profile?.email ?? null}
+        phone={profile?.phone ?? null}
+        isOwner={isOwner}
+        billing={billing}
+        catalogPlans={catalogPlans}
       />
     </div>
   );

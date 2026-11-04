@@ -30,6 +30,8 @@ export default async function BackofficeProfilePage() {
           <ProfileForm
             fullName={profile?.fullName ?? ""}
             avatarUrl={profile?.avatarUrl ?? null}
+            email={profile?.email ?? null}
+            phone={profile?.phone ?? null}
           />
         </Surface>
       </div>

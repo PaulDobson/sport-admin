@@ -4,8 +4,10 @@ import {
   selectFinanceCurrency,
 } from "@/application/instructor-finance/use-cases/get-finance-dashboard";
 import { getInstructorDay } from "@/application/instructor-operations/use-cases/get-instructor-day";
+import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
 import { createInstructorFinanceDeps } from "@/infrastructure/composition/instructor-finance-composition";
 import { createInstructorOperationsDeps } from "@/infrastructure/composition/instructor-operations-composition";
+import { createTenantDetailsDeps } from "@/infrastructure/composition/tenant-details-composition";
 import { loadOperationalContext } from "@/app/_lib/operational-context";
 import { CurrentSessionPanel } from "@/presentation/components/current-session-panel";
 import { SessionContextRefresh } from "@/presentation/components/session-context-refresh";
@@ -15,6 +17,41 @@ import {
   DashboardOverview,
   type DashboardFinanceSummary,
 } from "./dashboard-overview";
+
+// ── Greeting helpers ─────────────────────────────────────────────────────────
+
+function greetingForHour(hour: number): string {
+  if (hour < 12) return "Buenos días";
+  if (hour < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+function DashboardGreeting({
+  profileName,
+  academyName,
+  now,
+}: {
+  profileName: string | null;
+  academyName: string | null;
+  now: Date;
+}) {
+  const greeting = greetingForHour(now.getHours());
+  // Show only the first name to keep the greeting friendly and brief.
+  const firstName = profileName?.split(" ")[0] ?? null;
+
+  return (
+    <div className="mb-5 flex items-center justify-between gap-4 sm:mb-6">
+      <div>
+        <p className="text-lg font-bold text-foreground sm:text-xl">
+          {firstName ? `${greeting}, ${firstName} 👋` : `${greeting} 👋`}
+        </p>
+        {academyName ? (
+          <p className="mt-0.5 text-sm text-muted-foreground">{academyName}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 /** The finance block is optional: a failure here must never break the day view. */
 async function loadFinanceSummary(
@@ -69,24 +106,35 @@ export default async function DashboardPage({
 
   const { location } = await searchParams;
   const now = new Date();
-  const operations = await createInstructorOperationsDeps();
-  const [day, finance] = await Promise.all([
+  // Reuse a single auth instance — loadOperationalContext already created one
+  // internally; we create a second here only to fetch the profile. Keeping it
+  // in the same Promise.all as the heavier operations avoids a sequential roundtrip.
+  const [auth, tenantDetailsRepo, operations] = await Promise.all([
+    createAuthDeps(),
+    createTenantDetailsDeps(),
+    createInstructorOperationsDeps(),
+  ]);
+  const userId = await auth.auth.getCurrentUserId();
+  const [day, finance, profile, tenantDetails] = await Promise.all([
     getInstructorDay(
-      {
-        tenantId: membership.tenantId,
-        locationId: location,
-        now,
-      },
+      { tenantId: membership.tenantId, locationId: location, now },
       operations,
     ),
     membership.role === "assistant"
       ? Promise.resolve(undefined)
       : loadFinanceSummary(membership.tenantId, now),
+    userId ? auth.profiles.findByUserId(userId) : Promise.resolve(null),
+    tenantDetailsRepo.findByTenantId(membership.tenantId),
   ]);
 
   return (
     <div className="mx-auto max-w-7xl py-1">
       <OfflineSynchronization tenantId={membership.tenantId} />
+      <DashboardGreeting
+        profileName={profile?.fullName ?? null}
+        academyName={tenantDetails?.name ?? null}
+        now={now}
+      />
       <SessionContextRefresh
         boundaryTimes={[
           ...(day.currentSession

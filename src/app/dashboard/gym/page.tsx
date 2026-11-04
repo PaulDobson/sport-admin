@@ -16,7 +16,7 @@ export default async function GymPage() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Mi Gimnasio"
         description="Mantén al día la información de tu academia y su contacto principal. Estos datos pertenecen al gimnasio, no a tu perfil personal."

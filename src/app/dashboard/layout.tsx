@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { loadOperationalContext } from "@/app/_lib/operational-context";
 import { createAuthDeps } from "@/infrastructure/composition/auth-composition";
+import { createTenantDetailsDeps } from "@/infrastructure/composition/tenant-details-composition";
 import { AppShell, ProductMark } from "@/presentation/components/app-shell";
 import { OperationalRouteTopbar } from "@/presentation/components/operational-route-topbar";
 import {
@@ -41,11 +42,13 @@ export default async function DashboardLayout({
   const auth = await createAuthDeps();
   const userId = await auth.auth.getCurrentUserId();
   if (!userId) redirect("/log-in");
-  const [profile, tenants] = await Promise.all([
+  const membership = context.membership;
+  const tenantDetailsRepo = await createTenantDetailsDeps();
+  const [profile, tenants, tenantDetails] = await Promise.all([
     auth.profiles.findByUserId(userId),
     auth.tenants.findOperationalByUser(userId),
+    tenantDetailsRepo.findByTenantId(membership.tenantId),
   ]);
-  const membership = context.membership;
   const label = roleLabel(membership.role);
   const activeTenant = tenants.find(
     (tenant) => tenant.id === membership.tenantId,
@@ -65,7 +68,13 @@ export default async function DashboardLayout({
 
   return (
     <AppShell
-      sidebarHeader={<ProductMark context={label} />}
+      sidebarHeader={
+        <ProductMark
+          context={label}
+          logoUrl={tenantDetails?.logoUrl}
+          academyName={tenantDetails?.name ?? tenantName}
+        />
+      }
       navigation={<DesktopNavigation role={membership.role} />}
       mobileNavigation={
         <MobileNavigation
@@ -78,6 +87,7 @@ export default async function DashboardLayout({
           tenantName={tenantName}
           account={{
             profileName: profile?.fullName || "Tu cuenta",
+            avatarUrl: profile?.avatarUrl,
             currentTenantId: membership.tenantId,
             roleLabel: label,
             canManageGym: canManageTenantDetails(membership.role),

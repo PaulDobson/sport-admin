@@ -30,8 +30,10 @@ export function OperationalTopbar({
   section: string;
   title: string;
   tenantName: string;
+
   account: {
     profileName: string;
+    avatarUrl?: string | null;
     currentTenantId: string;
     tenants: TenantContextOption[];
     roleLabel: string;
@@ -58,13 +60,15 @@ export function OperationalTopbar({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {actions}
-        <div className="hidden shrink-0 border-l border-white/8 pl-4 text-right sm:block">
-          <p className="text-xs font-bold capitalize text-primary">
-            {dateFormatter.format(now)}
-          </p>
-          <p className="metric-number mt-0.5 text-sm font-semibold text-foreground">
-            {timeFormatter.format(now)} hrs
-          </p>
+        <div className="hidden shrink-0 items-center gap-3 border-l border-white/8 pl-4 sm:flex">
+          <div className="text-right">
+            <p className="text-xs font-bold capitalize text-primary">
+              {dateFormatter.format(now)}
+            </p>
+            <p className="metric-number mt-0.5 text-sm font-semibold text-foreground">
+              {timeFormatter.format(now)} hrs
+            </p>
+          </div>
         </div>
         <AccountContextMenu {...account} />
       </div>

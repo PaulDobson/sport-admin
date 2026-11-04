@@ -44,7 +44,12 @@ export interface NavigationDestination {
 
 export type ScheduleSection = "sessions" | "programming" | "schedules";
 
-export type TrainingSection = "cognitive" | "combinations" | "timers" | "clock";
+export type TrainingSection =
+  | "home"
+  | "cognitive"
+  | "combinations"
+  | "timers"
+  | "clock";
 
 export type GymSection = "info" | "disciplines" | "classes" | "locations";
 
@@ -72,13 +77,13 @@ const scheduleSections: ReadonlyArray<{
     href: "/dashboard/schedule",
     icon: CalendarDays,
   },
-  {
+  /*{
     id: "schedules",
     label: "Horarios",
     href: "/dashboard/schedule/schedules",
     icon: Repeat2,
     roles: ["owner", "admin", "instructor"],
-  },
+  },*/
   {
     id: "programming",
     label: "Programar",
@@ -115,6 +120,12 @@ const trainingSections: ReadonlyArray<{
   roles?: readonly TenantMembershipRole[];
 }> = [
   {
+    id: "home",
+    label: "Inicio",
+    href: "/dashboard/trainings",
+    icon: House,
+  },
+  {
     id: "cognitive",
     label: "Cognitivos",
     href: "/dashboard/trainings/cognitive",
@@ -149,6 +160,7 @@ export function trainingSectionsForRole(role: TenantMembershipRole) {
 export function activeTrainingSection(
   pathname: string,
 ): TrainingSection | null {
+  if (pathname === "/dashboard/trainings") return "home";
   if (pathname.startsWith("/dashboard/trainings/cognitive")) return "cognitive";
   if (pathname.startsWith("/dashboard/trainings/combinations"))
     return "combinations";

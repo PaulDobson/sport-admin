@@ -2,7 +2,7 @@
 
 export default function DashboardError({ reset }: { reset: () => void }) {
   return (
-    <main className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:pl-[var(--sidebar-width)]">
+    <main className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:pl-(--sidebar-width)">
       <section
         role="alert"
         className="mx-auto max-w-xl rounded-2xl border border-destructive bg-card p-6 shadow-2xl shadow-black/10"

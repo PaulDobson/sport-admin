@@ -117,18 +117,37 @@ export function AppShell({
   );
 }
 
-export function ProductMark({ context }: { context?: string }) {
+export function ProductMark({
+  context,
+  logoUrl,
+  academyName,
+}: {
+  context?: string;
+  /** Logo de la academia. Cuando se provee, reemplaza el placeholder "SA". */
+  logoUrl?: string | null;
+  /** Nombre de la academia para mostrar en el sidebar expandido y como alt text. */
+  academyName?: string | null;
+}) {
   return (
     <div className="flex min-w-0 items-center gap-2.5 group-data-[sidebar-collapsed=true]/sidebar:mx-auto">
       <span
-        aria-hidden="true"
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary font-bold text-primary-foreground"
+        aria-hidden={!logoUrl}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary font-bold text-primary-foreground"
       >
-        SA
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={academyName ?? "Logo de la academia"}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span aria-hidden="true">SA</span>
+        )}
       </span>
       <span className="min-w-0 group-data-[sidebar-collapsed=true]/sidebar:sr-only">
         <span className="block truncate text-sm font-bold tracking-tight">
-          Sport Admin
+          {academyName ?? "Sport Admin"}
         </span>
         {context ? (
           <span className="block truncate text-xs font-medium text-muted-foreground">

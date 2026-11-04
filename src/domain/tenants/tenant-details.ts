@@ -9,6 +9,7 @@ export interface TenantDetails {
   phone: string | null;
   city: string | null;
   region: string | null;
+  logoUrl: string | null;
 }
 
 export function canManageTenantDetails(role: TenantMembershipRole): boolean {
