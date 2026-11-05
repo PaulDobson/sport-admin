@@ -9,7 +9,7 @@ export default async function LocationsPage() {
   const locations = await deps.catalog.listActiveLocations(membership.tenantId);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl space-y-6">
       <LocationsWorkspace locations={locations} />
     </div>
   );

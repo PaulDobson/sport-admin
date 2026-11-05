@@ -92,6 +92,7 @@ export function OperationalRouteTopbar({
   tenantName: string;
   account: {
     profileName: string;
+    avatarUrl?: string | null;
     currentTenantId: string;
     tenants: TenantContextOption[];
     roleLabel: string;

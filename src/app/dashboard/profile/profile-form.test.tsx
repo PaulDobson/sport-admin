@@ -14,12 +14,16 @@ afterEach(cleanup);
 
 describe("ProfileForm", () => {
   it("renders persisted identity fields without fake preference controls", () => {
-    render(<ProfileForm fullName="Ana Silva" avatarUrl={null} />);
+    render(
+      <ProfileForm
+        fullName="Ana Silva"
+        avatarUrl={null}
+        email="ana@example.com"
+        phone={null}
+      />,
+    );
 
     expect(screen.getByDisplayValue("Ana Silva")).toBeTruthy();
-    expect(
-      screen.getByRole("textbox", { name: "URL del avatar" }),
-    ).toBeTruthy();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByText(/notificaciones/i)).toBeNull();
   });

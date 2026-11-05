@@ -26,7 +26,15 @@
  * Accessibility: focus management, aria-live, aria-modal, Escape to close.
  */
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent,
+} from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -139,9 +147,9 @@ export function SetupWizardTopbarButton({
         "relative hidden lg:inline-flex items-center gap-2 rounded-xl px-3 py-1.5",
         "text-xs font-bold transition-colors",
         // Border + background use the neon palette via CSS vars
-        "border border-[var(--neon)] bg-[var(--neon-dim)] text-[var(--neon)]",
+        "border border-(--neon) bg-(--neon-dim) text-(--neon)",
         "hover:bg-[#1aff5248]",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--neon)]",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--neon)",
         // Outer glow pulse on the whole button
         "animate-[neon-pulse_2s_ease-in-out_infinite]",
       ].join(" ")}
@@ -155,7 +163,7 @@ export function SetupWizardTopbarButton({
         {/* Expanding ping ring in neon green */}
         <span
           aria-hidden="true"
-          className="absolute inset-0 rounded-full bg-[var(--neon)] opacity-40 animate-ping"
+          className="absolute inset-0 rounded-full bg-(--neon) opacity-40 animate-ping"
           style={{ animationDuration: "1.8s" }}
         />
       </span>
@@ -165,7 +173,7 @@ export function SetupWizardTopbarButton({
       {/* Remaining steps badge */}
       <span
         aria-hidden="true"
-        className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--neon)] px-1 text-[10px] font-black text-black"
+        className="flex h-4 min-w-4 items-center justify-center rounded-full bg-(--neon) px-1 text-[10px] font-black text-black"
       >
         {remaining}
       </span>
@@ -178,13 +186,24 @@ export function SetupWizardTopbarButton({
 // keyframes syntax is not supported in all setups; a scoped style is safer).
 // ---------------------------------------------------------------------------
 
+function useIsMounted() {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("__noop__", cb);
+      return () => window.removeEventListener("__noop__", cb);
+    },
+    () => true,
+    () => false,
+  );
+}
+
 function WizardStyles() {
+  const mounted = useIsMounted();
+
+  if (!mounted) return null;
+
   return (
-    // suppressHydrationWarning prevents a false hydration mismatch that can
-    // occur when a browser extension (e.g. an ad-blocker or style injector)
-    // modifies <style> content before React hydrates.  The CSS itself is
-    // static, so suppressing the warning here is safe.
-    <style suppressHydrationWarning>{`
+    <style>{`
       @keyframes neon-blink {
         0%, 100% { opacity: 1;    transform: scale(1)    rotate(0deg);  filter: drop-shadow(0 0 3px #39ff6e); }
         35%       { opacity: 0.4; transform: scale(0.82) rotate(-10deg); filter: drop-shadow(0 0 0px #39ff6e); }
@@ -793,6 +812,14 @@ function WizardPanel({
     if (event.key === "Escape") onClose();
   };
 
+  const onStudentCreated = useCallback(
+    (student: AssignStudent) => {
+      setCreatedStudent(student);
+      markCompleted(3);
+    },
+    [setCreatedStudent, markCompleted],
+  );
+
   useEffect(() => {
     if (!open) return;
     modalRef.current
@@ -1006,12 +1033,7 @@ function WizardPanel({
               hidden={currentStep !== 3}
             >
               {currentStep === 3 && (
-                <Step3Content
-                  onStudentCreated={(student) => {
-                    setCreatedStudent(student);
-                    markCompleted(3);
-                  }}
-                />
+                <Step3Content onStudentCreated={onStudentCreated} />
               )}
             </div>
 
@@ -1133,7 +1155,9 @@ export function InstructorSetupWizard({
           : 1;
 
   // Attention layer: "modal" | "banner" | "none"
-  // Lazy initializer reads sessionStorage on the client; falls back to "none" during SSR.
+  // Start with "none" on the server. On the client, lazily resolve from
+  // sessionStorage so the state is correct before the first paint without
+  // needing a follow-up effect or a cascading render.
   const [layer, setLayer] = useState<"modal" | "banner" | "none">(() => {
     if (typeof window === "undefined") return "none";
     return sessionStorage.getItem(SESSION_KEY) === "1" ? "banner" : "modal";
@@ -1167,13 +1191,13 @@ export function InstructorSetupWizard({
     window.addEventListener(OPEN_WIZARD_EVENT, handleOpenEvent);
     return () => window.removeEventListener(OPEN_WIZARD_EVENT, handleOpenEvent);
   }, [allDone]);
-  const markCompleted = (step: number) => {
+  const markCompleted = useCallback((step: number) => {
     setCompleted((prev) => {
       const next = new Set(prev);
       next.add(step);
       return next;
     });
-  };
+  }, []);
 
   const openPanel = () => {
     // Mark modal as shown for the session
@@ -1190,6 +1214,11 @@ export function InstructorSetupWizard({
   const dismissBanner = () => {
     setLayer("none");
   };
+
+  const handleSetCreatedStudent = useCallback((student: AssignStudent) => {
+    setCreatedStudentId(student.id);
+    setCreatedStudent(student);
+  }, []);
 
   const dismissAll = () => {
     setLayer("none");
@@ -1235,10 +1264,7 @@ export function InstructorSetupWizard({
         setHasLocationNow={setHasLocationNow}
         createdStudentId={createdStudentId}
         createdStudent={createdStudent}
-        setCreatedStudent={(student) => {
-          setCreatedStudentId(student.id);
-          setCreatedStudent(student);
-        }}
+        setCreatedStudent={handleSetCreatedStudent}
         onDismissAll={dismissAll}
       />
     </>

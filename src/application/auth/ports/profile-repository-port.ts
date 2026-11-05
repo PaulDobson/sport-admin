@@ -4,6 +4,6 @@ export interface ProfileRepositoryPort {
   findByUserId(userId: string): Promise<UserProfile | null>;
   updateByUserId(
     userId: string,
-    input: { fullName: string; avatarUrl: string | null },
+    input: { fullName: string; avatarUrl: string | null; phone: string | null },
   ): Promise<UserProfile>;
 }

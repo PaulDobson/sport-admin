@@ -8,6 +8,16 @@ const profileSchema = z.object({
   avatarUrl: z
     .union([z.string().url().max(500), z.literal(""), z.null()])
     .transform((value) => (value === "" ? null : value)),
+  phone: z
+    .union([
+      z
+        .string()
+        .trim()
+        .regex(/^\+?[0-9 ()\-]{7,30}$/, "Teléfono inválido"),
+      z.literal(""),
+      z.null(),
+    ])
+    .transform((value) => (value === "" ? null : (value ?? null))),
 });
 
 export async function updateProfile(
@@ -18,5 +28,6 @@ export async function updateProfile(
   return deps.profiles.updateByUserId(parsed.userId, {
     fullName: parsed.fullName,
     avatarUrl: parsed.avatarUrl,
+    phone: parsed.phone,
   });
 }

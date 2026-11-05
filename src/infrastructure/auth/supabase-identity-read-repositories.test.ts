@@ -4,25 +4,38 @@ import { SupabaseProfileRepository } from "./supabase-profile-repository";
 import { SupabaseTenantRepository } from "@/infrastructure/tenants/supabase-tenant-repository";
 
 describe("Supabase identity read repositories", () => {
-  it("scopes a profile read to the requested user", async () => {
-    const maybeSingle = vi.fn().mockResolvedValue({
-      data: { id: "user-1", full_name: "Maya Torres", avatar_url: null },
+  it("scopes a profile read to the requesting user via get_my_profile RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        id: "user-1",
+        full_name: "Maya Torres",
+        avatar_url: null,
+        phone: null,
+        email: "maya@example.com",
+      },
       error: null,
     });
-    const eq = vi.fn(() => ({ maybeSingle }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
     const repository = new SupabaseProfileRepository({
-      from,
+      rpc,
     } as unknown as SupabaseClient);
 
     await expect(repository.findByUserId("user-1")).resolves.toEqual({
       userId: "user-1",
       fullName: "Maya Torres",
       avatarUrl: null,
+      phone: null,
+      email: "maya@example.com",
     });
-    expect(from).toHaveBeenCalledWith("profiles");
-    expect(eq).toHaveBeenCalledWith("id", "user-1");
+    expect(rpc).toHaveBeenCalledWith("get_my_profile");
+  });
+
+  it("returns null when RPC returns no data", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
+    const repository = new SupabaseProfileRepository({
+      rpc,
+    } as unknown as SupabaseClient);
+
+    await expect(repository.findByUserId("user-1")).resolves.toBeNull();
   });
 
   it("returns only active tenants linked to the user", async () => {
@@ -61,9 +74,14 @@ describe("Supabase identity read repositories", () => {
     expect(inFilter).toHaveBeenCalledWith("status", ["trial", "active"]);
   });
 
-  it("scopes profile updates to the requested user", async () => {
+  it("scopes profile updates to the requested user and persists phone", async () => {
     const maybeSingle = vi.fn().mockResolvedValue({
-      data: { id: "user-1", full_name: "Maya Updated", avatar_url: null },
+      data: {
+        id: "user-1",
+        full_name: "Maya Updated",
+        avatar_url: null,
+        phone: "+56912345678",
+      },
       error: null,
     });
     const select = vi.fn(() => ({ maybeSingle }));
@@ -78,12 +96,19 @@ describe("Supabase identity read repositories", () => {
       repository.updateByUserId("user-1", {
         fullName: "Maya Updated",
         avatarUrl: null,
+        phone: "+56912345678",
       }),
-    ).resolves.toMatchObject({ fullName: "Maya Updated" });
-    expect(update).toHaveBeenCalledWith({
-      full_name: "Maya Updated",
-      avatar_url: null,
+    ).resolves.toMatchObject({
+      fullName: "Maya Updated",
+      phone: "+56912345678",
     });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        full_name: "Maya Updated",
+        avatar_url: null,
+        phone: "+56912345678",
+      }),
+    );
     expect(eq).toHaveBeenCalledWith("id", "user-1");
   });
 });

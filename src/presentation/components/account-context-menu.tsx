@@ -35,6 +35,7 @@ export interface LocationContextOption {
  */
 export function AccountContextMenu({
   profileName,
+  avatarUrl,
   currentTenantId,
   tenants,
   roleLabel,
@@ -43,6 +44,8 @@ export function AccountContextMenu({
   currentLocationId = "",
 }: {
   profileName: string;
+  /** Avatar del instructor. Cuando es null/undefined se muestran las iniciales. */
+  avatarUrl?: string | null;
   currentTenantId: string;
   tenants: TenantContextOption[];
   roleLabel: string;
@@ -94,8 +97,17 @@ export function AccountContextMenu({
         onClick={() => setOpen((value) => !value)}
         className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface-raised px-2.5 py-1.5 text-left text-xs font-semibold text-foreground shadow-sm shadow-black/10 transition-colors hover:bg-surface-overlay focus:outline-none focus:ring-2 focus:ring-primary/30"
       >
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-          {initials}
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials
+          )}
         </span>
         <span className="hidden max-w-28 truncate sm:block">{profileName}</span>
         <ChevronDown
@@ -110,12 +122,26 @@ export function AccountContextMenu({
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/20"
         >
           {/* Identity header */}
-          <div className="border-b border-border/70 px-2 pb-3">
-            <p className="font-semibold">{profileName}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{roleLabel}</p>
-            <p className="mt-2 truncate text-xs font-semibold text-foreground">
-              {currentTenant?.name ?? "Organización activa"}
-            </p>
+          <div className="flex items-center gap-3 border-b border-border/70 px-2 pb-3">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-primary-foreground">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{profileName}</p>
+              <p className="text-xs text-muted-foreground">{roleLabel}</p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-foreground">
+                {currentTenant?.name ?? "Organización activa"}
+              </p>
+            </div>
           </div>
 
           {/* Organization switcher */}

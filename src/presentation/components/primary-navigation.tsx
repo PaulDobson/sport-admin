@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { Tooltip } from "@base-ui/react/tooltip";
-import { ChevronDown, MoreHorizontal, X } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Swords, X } from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
 import { useSidebarCollapsed } from "./app-shell";
 import {
@@ -234,10 +234,10 @@ export function DesktopNavigation({ role }: { role: TenantMembershipRole }) {
                   return (
                     <div key={destination.id}>
                       <div className="relative">
-                        {/* Finance and Gym use a toggle button as the parent row (no
-                            direct navigation — use the "Resumen"/"Información" subitem).
+                        {/* Finance, Gym and Trainings use a toggle button as the parent row (no
+                            direct navigation — use the "Resumen"/"Información"/"Inicio" subitem).
                             All other destinations keep the link + chevron pattern. */}
-                        {(isFinance || isGym) && !collapsed ? (
+                        {(isFinance || isGym || isTrainings) && !collapsed ? (
                           <button
                             type="button"
                             aria-expanded={submenuOpen}
@@ -458,6 +458,10 @@ function MobileMoreSheet({
     () => financeSectionsForRole(role),
     [role],
   );
+  const trainingsSubmenuItems = useMemo(
+    () => trainingSectionsForRole(role),
+    [role],
+  );
 
   const gymChildActive = useMemo(
     () => activeGymSection(pathname) !== null,
@@ -467,10 +471,16 @@ function MobileMoreSheet({
     () => activeFinanceSection(pathname) !== null,
     [pathname],
   );
+  const trainingsChildActive = useMemo(
+    () => activeTrainingSection(pathname) !== null,
+    [pathname],
+  );
 
   // Expanded state — auto-open the submenu when a child route is already active.
   const [gymExpanded, setGymExpanded] = useState(gymChildActive);
   const [financeExpanded, setFinanceExpanded] = useState(financeChildActive);
+  const [trainingsExpanded, setTrainingsExpanded] =
+    useState(trainingsChildActive);
 
   // Close on outside click
   useEffect(() => {
@@ -516,6 +526,73 @@ function MobileMoreSheet({
         </div>
         <nav aria-label="Opciones adicionales">
           <ul className="px-2 pb-2">
+            {/* Entrenamientos — always first in the sheet with its own submenu */}
+            <li>
+              <button
+                type="button"
+                aria-expanded={trainingsExpanded}
+                onClick={() => setTrainingsExpanded((v) => !v)}
+                className={`flex w-full min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                  trainingsChildActive
+                    ? "bg-navigation-active text-primary"
+                    : "text-foreground hover:bg-surface-raised"
+                }`}
+              >
+                <span
+                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${
+                    trainingsChildActive
+                      ? "bg-primary/12 text-primary"
+                      : "bg-surface-raised text-muted-foreground"
+                  }`}
+                >
+                  <Swords
+                    size={18}
+                    strokeWidth={trainingsChildActive ? 2.2 : 1.8}
+                    aria-hidden="true"
+                  />
+                </span>
+                <span className="flex-1 text-left">Entrenamientos</span>
+                <ChevronDown
+                  size={16}
+                  aria-hidden="true"
+                  className={`text-muted-foreground transition-transform duration-200 motion-reduce:transition-none ${
+                    trainingsExpanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {trainingsExpanded ? (
+                <ul className="ml-11 mt-0.5 space-y-0.5 border-l border-border pl-3 pb-1">
+                  {trainingsSubmenuItems.map((item) => {
+                    const itemActive =
+                      item.id === "home"
+                        ? pathname === item.href
+                        : pathname.startsWith(item.href);
+                    const ItemIcon = item.icon;
+                    return (
+                      <li key={item.id}>
+                        <Link
+                          href={item.href}
+                          onClick={onClose}
+                          aria-current={itemActive ? "page" : undefined}
+                          className={`flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                            itemActive
+                              ? "bg-primary/5 font-semibold text-primary"
+                              : "text-muted-foreground hover:bg-surface-raised hover:text-foreground"
+                          }`}
+                        >
+                          <ItemIcon
+                            size={16}
+                            strokeWidth={itemActive ? 2.2 : 1.8}
+                            aria-hidden="true"
+                          />
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </li>
             {destinations.map((destination) => {
               const active = isDestinationActive(destination, pathname);
               const Icon = destination.icon;
