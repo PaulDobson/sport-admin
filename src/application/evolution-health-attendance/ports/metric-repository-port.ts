@@ -3,6 +3,7 @@ import type {
   MetricEvaluation,
   MetricValidationRules,
   MetricValueType,
+  MetricEvaluationType,
 } from "@/domain/evolution-health-attendance/metric";
 
 export interface CreateMetricDefinitionInput {
@@ -34,10 +35,25 @@ export interface UpdateMetricEvaluationInput {
   notes?: string;
 }
 
+export interface UpdateMetricDefinitionInput {
+  tenantId: string;
+  definitionId: string;
+  name: string;
+  category: string;
+  evaluationType: "body_composition" | "strength" | "cardio" | "custom";
+  unit?: string;
+  validationRules: MetricValidationRules;
+  timeWindowSeconds?: number;
+}
+
 export interface MetricRepositoryPort {
   createDefinition(
     input: CreateMetricDefinitionInput,
   ): Promise<MetricDefinition>;
+  updateDefinition(
+    input: UpdateMetricDefinitionInput,
+  ): Promise<MetricDefinition>;
+  archiveDefinition(tenantId: string, definitionId: string): Promise<void>;
   findActiveDefinitions(
     tenantId: string,
     slugs: string[],

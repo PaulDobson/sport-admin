@@ -13,6 +13,8 @@ import { recordMetricEvaluation } from "@/application/evolution-health-attendanc
 import { updateMetricEvaluation } from "@/application/evolution-health-attendance/use-cases/update-metric-evaluation";
 import { deleteMetricEvaluation } from "@/application/evolution-health-attendance/use-cases/delete-metric-evaluation";
 import { createMetricDefinition } from "@/application/evolution-health-attendance/use-cases/create-metric-definition";
+import { updateMetricDefinition } from "@/application/evolution-health-attendance/use-cases/update-metric-definition";
+import { archiveMetricDefinition } from "@/application/evolution-health-attendance/use-cases/archive-metric-definition";
 import { ensureDefaultMetricDefinitions } from "@/application/evolution-health-attendance/use-cases/list-metric-definitions";
 import { createEvolutionHealthAttendanceDeps } from "@/infrastructure/composition/evolution-health-attendance-composition";
 import { formatActionError } from "@/app/_lib/format-error";
@@ -298,6 +300,71 @@ export async function updateEvaluationAction(
         values,
         notes: String(formData.get("notes") ?? "").trim() || undefined,
       },
+      deps,
+    );
+  } catch (error) {
+    return { error: formatActionError(error), saved: false };
+  }
+  revalidatePath(`/dashboard/students/${studentId}`);
+  return { error: null, saved: true };
+}
+
+export async function updateMetricDefinitionAction(
+  _previousState: StudentDetailFormState,
+  formData: FormData,
+): Promise<StudentDetailFormState> {
+  const actor = await getRequestMembership();
+  const studentId = String(formData.get("studentId") ?? "");
+  const definitionId = String(formData.get("definitionId") ?? "");
+  try {
+    const deps = await createEvolutionHealthAttendanceDeps();
+
+    const minRaw = String(formData.get("min") ?? "").trim();
+    const maxRaw = String(formData.get("max") ?? "").trim();
+    const timeWindowRaw = String(
+      formData.get("timeWindowSeconds") ?? "",
+    ).trim();
+
+    await updateMetricDefinition(
+      {
+        tenantId: actor.tenantId,
+        definitionId,
+        name: String(formData.get("name") ?? "").trim(),
+        category:
+          String(formData.get("category") ?? "").trim() || "Personalizado",
+        evaluationType: String(formData.get("evaluationType") ?? "custom") as
+          | "body_composition"
+          | "strength"
+          | "cardio"
+          | "custom",
+        unit: String(formData.get("unit") ?? "").trim() || undefined,
+        validationRules: {
+          min: minRaw !== "" ? Number(minRaw) : undefined,
+          max: maxRaw !== "" ? Number(maxRaw) : undefined,
+        },
+        timeWindowSeconds:
+          timeWindowRaw !== "" ? parseInt(timeWindowRaw, 10) : undefined,
+      },
+      deps,
+    );
+  } catch (error) {
+    return { error: formatActionError(error), saved: false };
+  }
+  revalidatePath(`/dashboard/students/${studentId}`);
+  return { error: null, saved: true };
+}
+
+export async function archiveMetricDefinitionAction(
+  _previousState: StudentDetailFormState,
+  formData: FormData,
+): Promise<StudentDetailFormState> {
+  const actor = await getRequestMembership();
+  const studentId = String(formData.get("studentId") ?? "");
+  const definitionId = String(formData.get("definitionId") ?? "");
+  try {
+    const deps = await createEvolutionHealthAttendanceDeps();
+    await archiveMetricDefinition(
+      { tenantId: actor.tenantId, definitionId },
       deps,
     );
   } catch (error) {
