@@ -12,6 +12,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Settings,
   Timer,
   Trash2,
   TrendingDown,
@@ -34,6 +35,8 @@ import {
   deleteEvaluationAction,
   createCustomMetricAction,
   seedDefaultMetricsAction,
+  updateMetricDefinitionAction,
+  archiveMetricDefinitionAction,
   type StudentDetailFormState,
 } from "./[studentId]/actions";
 
@@ -905,7 +908,402 @@ function CustomMetricForm({ studentId }: { studentId: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Empty state — no metrics seeded yet
+// Edit form for a single metric definition
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EVAL_TYPE_OPTIONS = [
+  { value: "body_composition", label: "Composición corporal" },
+  { value: "strength", label: "Fuerza" },
+  { value: "cardio", label: "Cardio / Velocidad" },
+  { value: "custom", label: "Personalizado" },
+] as const;
+
+function MetricDefinitionEditForm({
+  definition,
+  studentId,
+  onClose,
+}: {
+  definition: MetricDefinition;
+  studentId: string;
+  onClose: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    updateMetricDefinitionAction,
+    initialState,
+  );
+  const [withTime, setWithTime] = useState(
+    Boolean(definition.timeWindowSeconds),
+  );
+
+  useEffect(() => {
+    if (!state.saved) return;
+    const id = setTimeout(onClose, 700);
+    return () => clearTimeout(id);
+  }, [state.saved, onClose]);
+
+  return (
+    <StudentActionForm
+      action={formAction}
+      pending={pending}
+      feedback={state}
+      className="border-t border-white/6 px-4 pb-4 pt-3 space-y-4"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-foreground">Editar métrica</p>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cancelar edición"
+          className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-surface-raised hover:text-foreground"
+        >
+          <X aria-hidden className="h-4 w-4" />
+        </button>
+      </div>
+
+      <input type="hidden" name="studentId" value={studentId} />
+      <input type="hidden" name="definitionId" value={definition.id} />
+
+      {/* Name */}
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-muted-foreground">Nombre</span>
+        <StudentField
+          name="name"
+          required
+          defaultValue={definition.name}
+          placeholder="Ej: Flexiones, Peso corporal..."
+          className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+        />
+      </label>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Unit */}
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-muted-foreground">Unidad</span>
+          <StudentField
+            name="unit"
+            defaultValue={definition.unit ?? ""}
+            placeholder="Ej: kg, reps, seg..."
+            className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          />
+        </label>
+
+        {/* Category */}
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-muted-foreground">Categoría</span>
+          <StudentField
+            name="category"
+            required
+            defaultValue={definition.category}
+            placeholder="Ej: Fuerza, Resistencia..."
+            className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          />
+        </label>
+      </div>
+
+      {/* Evaluation type */}
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium text-muted-foreground">
+          Tipo de evaluación
+        </span>
+        <StudentSelect
+          name="evaluationType"
+          defaultValue={definition.evaluationType}
+          className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+        >
+          {EVAL_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </StudentSelect>
+      </label>
+
+      {/* Validation range */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-muted-foreground">
+            Mínimo <span className="text-muted-foreground/60">(opcional)</span>
+          </span>
+          <StudentField
+            type="number"
+            name="min"
+            step="0.1"
+            defaultValue={
+              definition.validationRules?.min !== undefined
+                ? String(definition.validationRules.min)
+                : ""
+            }
+            placeholder="Sin límite"
+            className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-muted-foreground">
+            Máximo <span className="text-muted-foreground/60">(opcional)</span>
+          </span>
+          <StudentField
+            type="number"
+            name="max"
+            step="0.1"
+            defaultValue={
+              definition.validationRules?.max !== undefined
+                ? String(definition.validationRules.max)
+                : ""
+            }
+            placeholder="Sin límite"
+            className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          />
+        </label>
+      </div>
+
+      {/* Time window toggle */}
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={withTime}
+          onChange={(e) => setWithTime(e.target.checked)}
+          className="h-4 w-4 rounded border-input accent-primary"
+        />
+        <span className="text-muted-foreground">
+          Es una prueba por tiempo (cantidad en X segundos)
+        </span>
+      </label>
+
+      {withTime ? (
+        <label className="flex flex-col gap-1.5 text-sm">
+          <span className="font-medium text-muted-foreground">
+            Ventana de tiempo (segundos)
+          </span>
+          <StudentField
+            type="number"
+            name="timeWindowSeconds"
+            min="1"
+            defaultValue={
+              definition.timeWindowSeconds
+                ? String(definition.timeWindowSeconds)
+                : ""
+            }
+            placeholder="Ej: 60"
+            required
+            className="h-10 w-48 rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          />
+        </label>
+      ) : null}
+
+      {state.error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {state.error}
+        </p>
+      ) : null}
+      {state.saved ? (
+        <p role="status" className="text-sm text-success">
+          Métrica actualizada.
+        </p>
+      ) : null}
+
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          variant="primary"
+          isLoading={pending}
+          className="min-h-10 flex-1 sm:flex-none"
+        >
+          {pending ? "Guardando..." : "Guardar cambios"}
+        </Button>
+        <Button
+          type="button"
+          variant="quiet"
+          onClick={onClose}
+          disabled={pending}
+          className="min-h-10"
+        >
+          Cancelar
+        </Button>
+      </div>
+    </StudentActionForm>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Single row in the manage-metrics list
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MetricDefinitionRow({
+  definition,
+  studentId,
+}: {
+  definition: MetricDefinition;
+  studentId: string;
+}) {
+  const cfg = CATEGORY_CONFIG[definition.evaluationType];
+  const Icon = cfg.icon;
+
+  const [archiveState, archiveFormAction, archivePending] = useActionState(
+    archiveMetricDefinitionAction,
+    initialState,
+  );
+  const [editing, setEditing] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+
+  return (
+    <li className="rounded-xl border border-white/6 bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <span
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ring-1 ${cfg.bg}`}
+        >
+          <Icon aria-hidden className={`h-4 w-4 ${cfg.accent}`} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {definition.name}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {definition.category}
+            {definition.unit ? ` · ${definition.unit}` : ""}
+            {definition.timeWindowSeconds
+              ? ` · ${definition.timeWindowSeconds}s`
+              : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {!editing ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(true);
+                setConfirmArchive(false);
+              }}
+              aria-label={`Editar ${definition.name}`}
+              className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            >
+              <Pencil aria-hidden className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+          {!editing ? (
+            <button
+              type="button"
+              onClick={() => setConfirmArchive((v) => !v)}
+              aria-label={`Archivar ${definition.name}`}
+              className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 aria-hidden className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Edit mode */}
+      {editing ? (
+        <MetricDefinitionEditForm
+          definition={definition}
+          studentId={studentId}
+          onClose={() => setEditing(false)}
+        />
+      ) : null}
+
+      {/* Archive confirmation */}
+      {confirmArchive && !editing ? (
+        <div className="border-t border-white/6 px-4 pb-4 pt-3 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            ¿Archivar{" "}
+            <span className="font-semibold text-foreground">
+              {definition.name}
+            </span>
+            ? La métrica dejará de aparecer en nuevas evaluaciones. Los datos
+            históricos se conservan.
+          </p>
+          {archiveState.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {archiveState.error}
+            </p>
+          ) : null}
+          <StudentActionForm
+            action={archiveFormAction}
+            pending={archivePending}
+            feedback={archiveState}
+            className="flex gap-2"
+          >
+            <input type="hidden" name="studentId" value={studentId} />
+            <input type="hidden" name="definitionId" value={definition.id} />
+            <Button
+              type="submit"
+              variant="danger"
+              isLoading={archivePending}
+              className="h-9 gap-1.5 px-3 text-xs"
+            >
+              <Trash2 aria-hidden className="h-3.5 w-3.5" />
+              {archivePending ? "Archivando..." : "Confirmar archivado"}
+            </Button>
+            <Button
+              type="button"
+              variant="quiet"
+              onClick={() => setConfirmArchive(false)}
+              disabled={archivePending}
+              className="h-9 px-3 text-xs"
+            >
+              Cancelar
+            </Button>
+          </StudentActionForm>
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manage metrics panel — lists all definitions with edit/archive actions
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ManageMetricsPanel({
+  studentId,
+  definitions,
+}: {
+  studentId: string;
+  definitions: MetricDefinition[];
+}) {
+  return (
+    <div className="space-y-6">
+      {(
+        [
+          "body_composition",
+          "strength",
+          "cardio",
+          "custom",
+        ] as MetricEvaluationType[]
+      ).map((type) => {
+        const defs = definitions.filter((d) => d.evaluationType === type);
+        if (defs.length === 0) return null;
+        const cfg = CATEGORY_CONFIG[type];
+        const TypeIcon = cfg.icon;
+        return (
+          <section key={type} aria-labelledby={`manage-cat-${type}`}>
+            <h4
+              id={`manage-cat-${type}`}
+              className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              <TypeIcon aria-hidden className={`h-3.5 w-3.5 ${cfg.accent}`} />
+              {cfg.label}
+            </h4>
+            <ul className="space-y-2">
+              {defs.map((def) => (
+                <MetricDefinitionRow
+                  key={def.id}
+                  definition={def}
+                  studentId={studentId}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+
+      {/* Add custom metric at the bottom */}
+      <CustomMetricForm studentId={studentId} />
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function EmptySeedState({ studentId }: { studentId: string }) {
@@ -1011,7 +1409,7 @@ function EvaluationHistoryList({
 // Root component
 // ─────────────────────────────────────────────────────────────────────────────
 
-type EvolutionView = "overview" | "history" | "new";
+type EvolutionView = "overview" | "history" | "new" | "manage";
 
 export function StudentEvolutionHistory({
   studentId,
@@ -1099,6 +1497,7 @@ export function StudentEvolutionHistory({
             { key: "overview", label: "Resumen", Icon: BarChart3 },
             { key: "history", label: "Historial", Icon: Activity },
             { key: "new", label: "Nueva evaluación", Icon: Plus },
+            { key: "manage", label: "Gestionar métricas", Icon: Settings },
           ] as { key: EvolutionView; label: string; Icon: typeof Activity }[]
         ).map(({ key, label, Icon }) => (
           <button
@@ -1191,6 +1590,11 @@ export function StudentEvolutionHistory({
           definitions={definitions}
           todayStr={todayStr}
         />
+      ) : null}
+
+      {/* Manage metric definitions */}
+      {activeView === "manage" ? (
+        <ManageMetricsPanel studentId={studentId} definitions={definitions} />
       ) : null}
     </div>
   );

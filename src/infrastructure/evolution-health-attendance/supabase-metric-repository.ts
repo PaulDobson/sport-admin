@@ -11,6 +11,7 @@ import type {
   CreateMetricDefinitionInput,
   CreateMetricEvaluationInput,
   UpdateMetricEvaluationInput,
+  UpdateMetricDefinitionInput,
   MetricRepositoryPort,
 } from "@/application/evolution-health-attendance/ports/metric-repository-port";
 
@@ -96,6 +97,40 @@ export class SupabaseMetricRepository implements MetricRepositoryPort {
     if (error || !data)
       throw error ?? new Error("Failed to create metric definition");
     return toDefinition(data as MetricDefinitionRow);
+  }
+
+  async updateDefinition(input: UpdateMetricDefinitionInput) {
+    const updatePayload: any = {
+      name: input.name,
+      category: input.category,
+      evaluation_type: input.evaluationType,
+      unit: input.unit ?? null,
+      validation_rules: input.validationRules,
+      time_window_seconds: input.timeWindowSeconds ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await this.client
+      .from("metric_definitions")
+      .update(updatePayload)
+      .eq("tenant_id", input.tenantId)
+      .eq("id", input.definitionId)
+      .select()
+      .single();
+    if (error || !data)
+      throw error ?? new Error("Failed to update metric definition");
+    return toDefinition(data as MetricDefinitionRow);
+  }
+
+  async archiveDefinition(tenantId: string, definitionId: string) {
+    const { error } = await this.client
+      .from("metric_definitions")
+      .update({
+        status: "archived",
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("tenant_id", tenantId)
+      .eq("id", definitionId);
+    if (error) throw error;
   }
 
   async findActiveDefinitions(tenantId: string, slugs: string[]) {

@@ -6,6 +6,7 @@ import type {
   CreateMetricDefinitionInput,
   CreateMetricEvaluationInput,
   UpdateMetricEvaluationInput,
+  UpdateMetricDefinitionInput,
   MetricRepositoryPort,
 } from "../ports/metric-repository-port";
 
@@ -88,5 +89,38 @@ export class FakeMetricRepository implements MetricRepositoryPort {
     };
     this.evaluations[idx] = updated;
     return updated;
+  }
+
+  async updateDefinition(input: UpdateMetricDefinitionInput) {
+    const idx = this.definitions.findIndex(
+      (d) => d.id === input.definitionId && d.tenantId === input.tenantId,
+    );
+    if (idx === -1) throw new Error("Metric definition not found");
+    const now = new Date();
+    const updated: MetricDefinition = {
+      ...this.definitions[idx],
+      name: input.name,
+      category: input.category,
+      evaluationType: input.evaluationType,
+      unit: input.unit,
+      validationRules: input.validationRules,
+      timeWindowSeconds: input.timeWindowSeconds,
+      updatedAt: now,
+    };
+    this.definitions[idx] = updated;
+    return updated;
+  }
+
+  async archiveDefinition(tenantId: string, definitionId: string) {
+    const idx = this.definitions.findIndex(
+      (d) => d.id === definitionId && d.tenantId === tenantId,
+    );
+    if (idx !== -1) {
+      this.definitions[idx] = {
+        ...this.definitions[idx],
+        status: "archived",
+        updatedAt: new Date(),
+      };
+    }
   }
 }
