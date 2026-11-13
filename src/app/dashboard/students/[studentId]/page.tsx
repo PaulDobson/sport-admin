@@ -46,6 +46,7 @@ import { ChangeMembershipSheet } from "../../finance/change-membership-sheet";
 import { StudentAttendanceHistory } from "../student-attendance-history";
 import { StudentEvolutionHistory } from "../student-evolution-history";
 import { StudentEvolutionCharts } from "../student-evolution-charts";
+import { EfcProfileSection } from "./efc-profile-section";
 
 const primaryActionClass =
   "inline-flex min-h-11 items-center justify-center rounded-lg border border-transparent bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90";
@@ -70,7 +71,8 @@ export default async function StudentDetailPage({
       search.section === "health" ||
       search.section === "privacy" ||
       search.section === "attendance" ||
-      search.section === "evolution")
+      search.section === "evolution" ||
+      search.section === "efc")
       ? search.section
       : "summary";
 
@@ -309,6 +311,7 @@ export default async function StudentDetailPage({
                     ["evolution", "Evolución"],
                     ["health", "Salud"],
                     ["privacy", "Privacidad"],
+                    ["efc", "EFC"],
                   ]
                 : []),
             ] as [string, string][]
@@ -701,6 +704,13 @@ export default async function StudentDetailPage({
               )}
             </Surface>
           </section>
+        ) : null}
+        {section === "efc" ? (
+          <EfcProfileSection
+            studentId={studentId}
+            tenantId={tenantId}
+            student={student}
+          />
         ) : null}
       </StudentWorkspace>
     </div>

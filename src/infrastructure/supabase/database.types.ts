@@ -635,6 +635,396 @@ export type Database = {
           },
         ];
       };
+      efc_1rm_records: {
+        Row: {
+          athlete_id: string;
+          created_at: string;
+          evaluation_date: string;
+          exercise: string;
+          id: string;
+          one_rm_average: number;
+          one_rm_brzycki: number;
+          one_rm_epley: number;
+          reps_performed: number;
+          rir: number;
+          tenant_id: string;
+          weight_kg: number;
+        };
+        Insert: {
+          athlete_id: string;
+          created_at?: string;
+          evaluation_date?: string;
+          exercise: string;
+          id?: string;
+          one_rm_average: number;
+          one_rm_brzycki: number;
+          one_rm_epley: number;
+          reps_performed: number;
+          rir?: number;
+          tenant_id: string;
+          weight_kg: number;
+        };
+        Update: {
+          athlete_id?: string;
+          created_at?: string;
+          evaluation_date?: string;
+          exercise?: string;
+          id?: string;
+          one_rm_average?: number;
+          one_rm_brzycki?: number;
+          one_rm_epley?: number;
+          reps_performed?: number;
+          rir?: number;
+          tenant_id?: string;
+          weight_kg?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_1rm_records_athlete_id_fkey";
+            columns: ["athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      efc_athlete_profile: {
+        Row: {
+          athlete_id: string;
+          created_at: string;
+          efc_period: string;
+          fc_rest: number | null;
+          id: string;
+          is_smoker: boolean;
+          tenant_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          athlete_id: string;
+          created_at?: string;
+          efc_period?: string;
+          fc_rest?: number | null;
+          id?: string;
+          is_smoker?: boolean;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          athlete_id?: string;
+          created_at?: string;
+          efc_period?: string;
+          fc_rest?: number | null;
+          id?: string;
+          is_smoker?: boolean;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_athlete_profile_tenant_id_athlete_id_fkey";
+            columns: ["tenant_id", "athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      efc_athlete_tests: {
+        Row: {
+          abs_1min: number | null;
+          athlete_id: string;
+          created_at: string;
+          endurance_meters: number | null;
+          evaluation_date: string;
+          id: string;
+          pull_ups: number | null;
+          push_ups_1min: number | null;
+          seat_and_reach_cm: number | null;
+          sprint_10x5_sec: number | null;
+          tenant_id: string;
+          waist_cm: number | null;
+        };
+        Insert: {
+          abs_1min?: number | null;
+          athlete_id: string;
+          created_at?: string;
+          endurance_meters?: number | null;
+          evaluation_date: string;
+          id?: string;
+          pull_ups?: number | null;
+          push_ups_1min?: number | null;
+          seat_and_reach_cm?: number | null;
+          sprint_10x5_sec?: number | null;
+          tenant_id: string;
+          waist_cm?: number | null;
+        };
+        Update: {
+          abs_1min?: number | null;
+          athlete_id?: string;
+          created_at?: string;
+          endurance_meters?: number | null;
+          evaluation_date?: string;
+          id?: string;
+          pull_ups?: number | null;
+          push_ups_1min?: number | null;
+          seat_and_reach_cm?: number | null;
+          sprint_10x5_sec?: number | null;
+          tenant_id?: string;
+          waist_cm?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_athlete_tests_athlete_id_fkey";
+            columns: ["athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      efc_macrocycles: {
+        Row: {
+          athlete_id: string;
+          c_percentage: number;
+          competition_date: string;
+          created_at: string;
+          e_percentage: number;
+          f_percentage: number;
+          hours_per_session: number;
+          id: string;
+          justification: string | null;
+          sessions_per_day: number;
+          start_date: string;
+          tenant_id: string;
+          training_days_per_week: number;
+          updated_at: string;
+        };
+        Insert: {
+          athlete_id: string;
+          c_percentage?: number;
+          competition_date: string;
+          created_at?: string;
+          e_percentage?: number;
+          f_percentage?: number;
+          hours_per_session: number;
+          id?: string;
+          justification?: string | null;
+          sessions_per_day?: number;
+          start_date: string;
+          tenant_id: string;
+          training_days_per_week: number;
+          updated_at?: string;
+        };
+        Update: {
+          athlete_id?: string;
+          c_percentage?: number;
+          competition_date?: string;
+          created_at?: string;
+          e_percentage?: number;
+          f_percentage?: number;
+          hours_per_session?: number;
+          id?: string;
+          justification?: string | null;
+          sessions_per_day?: number;
+          start_date?: string;
+          tenant_id?: string;
+          training_days_per_week?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_macrocycles_tenant_id_athlete_id_fkey";
+            columns: ["tenant_id", "athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["tenant_id", "id"];
+          },
+          {
+            foreignKeyName: "efc_macrocycles_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      efc_microcycles: {
+        Row: {
+          created_at: string;
+          id: string;
+          intensity_target: number;
+          macrocycle_id: string;
+          microcycle_type: string;
+          objective: string;
+          updated_at: string;
+          week_number: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          intensity_target?: number;
+          macrocycle_id: string;
+          microcycle_type: string;
+          objective?: string;
+          updated_at?: string;
+          week_number: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          intensity_target?: number;
+          macrocycle_id?: string;
+          microcycle_type?: string;
+          objective?: string;
+          updated_at?: string;
+          week_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_microcycles_macrocycle_id_fkey";
+            columns: ["macrocycle_id"];
+            isOneToOne: false;
+            referencedRelation: "efc_macrocycles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      efc_session_loads: {
+        Row: {
+          category: string;
+          created_at: string;
+          day_of_week: number;
+          id: string;
+          microcycle_id: string;
+          minutes: number;
+          notes: string | null;
+          subcategory: string;
+          tenant_id: string;
+        };
+        Insert: {
+          category: string;
+          created_at?: string;
+          day_of_week: number;
+          id?: string;
+          microcycle_id: string;
+          minutes?: number;
+          notes?: string | null;
+          subcategory: string;
+          tenant_id: string;
+        };
+        Update: {
+          category?: string;
+          created_at?: string;
+          day_of_week?: number;
+          id?: string;
+          microcycle_id?: string;
+          minutes?: number;
+          notes?: string | null;
+          subcategory?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_session_loads_microcycle_id_fkey";
+            columns: ["microcycle_id"];
+            isOneToOne: false;
+            referencedRelation: "efc_microcycles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      efc_session_srpe: {
+        Row: {
+          athlete_id: string;
+          created_at: string;
+          day_of_week: number;
+          duration_minutes: number;
+          id: string;
+          microcycle_id: string;
+          rpe: number;
+          srpe: number;
+          tenant_id: string;
+        };
+        Insert: {
+          athlete_id: string;
+          created_at?: string;
+          day_of_week: number;
+          duration_minutes: number;
+          id?: string;
+          microcycle_id: string;
+          rpe: number;
+          srpe?: number;
+          tenant_id: string;
+        };
+        Update: {
+          athlete_id?: string;
+          created_at?: string;
+          day_of_week?: number;
+          duration_minutes?: number;
+          id?: string;
+          microcycle_id?: string;
+          rpe?: number;
+          srpe?: number;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_session_srpe_microcycle_id_fkey";
+            columns: ["microcycle_id"];
+            isOneToOne: false;
+            referencedRelation: "efc_microcycles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "efc_session_srpe_tenant_id_athlete_id_fkey";
+            columns: ["tenant_id", "athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["tenant_id", "id"];
+          },
+        ];
+      };
+      efc_weight_control: {
+        Row: {
+          athlete_id: string;
+          category_limit_kg: number;
+          category_name: string;
+          created_at: string;
+          id: string;
+          record_date: string;
+          tenant_id: string;
+          weight_kg: number;
+        };
+        Insert: {
+          athlete_id: string;
+          category_limit_kg: number;
+          category_name: string;
+          created_at?: string;
+          id?: string;
+          record_date?: string;
+          tenant_id: string;
+          weight_kg: number;
+        };
+        Update: {
+          athlete_id?: string;
+          category_limit_kg?: number;
+          category_name?: string;
+          created_at?: string;
+          id?: string;
+          record_date?: string;
+          tenant_id?: string;
+          weight_kg?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "efc_weight_control_athlete_id_fkey";
+            columns: ["athlete_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       health_conditions: {
         Row: {
           created_at: string;
@@ -1347,18 +1737,21 @@ export type Database = {
           created_at: string;
           full_name: string;
           id: string;
+          phone: string | null;
         };
         Insert: {
           avatar_url?: string | null;
           created_at?: string;
           full_name?: string;
           id: string;
+          phone?: string | null;
         };
         Update: {
           avatar_url?: string | null;
           created_at?: string;
           full_name?: string;
           id?: string;
+          phone?: string | null;
         };
         Relationships: [];
       };
@@ -3449,6 +3842,7 @@ export type Database = {
           city: string | null;
           contact_email: string | null;
           contact_name: string | null;
+          logo_url: string | null;
           phone: string | null;
           region: string | null;
           tenant_id: string;
@@ -3458,6 +3852,7 @@ export type Database = {
           city?: string | null;
           contact_email?: string | null;
           contact_name?: string | null;
+          logo_url?: string | null;
           phone?: string | null;
           region?: string | null;
           tenant_id: string;
@@ -3467,6 +3862,7 @@ export type Database = {
           city?: string | null;
           contact_email?: string | null;
           contact_name?: string | null;
+          logo_url?: string | null;
           phone?: string | null;
           region?: string | null;
           tenant_id?: string;
@@ -3731,6 +4127,10 @@ export type Database = {
         Args: { target_instructor_membership: string; target_tenant: string };
         Returns: boolean;
       };
+      can_manage_metric_definitions: {
+        Args: { target_tenant: string };
+        Returns: boolean;
+      };
       can_manage_session_enrollments: {
         Args: { target_session: string; target_tenant: string };
         Returns: boolean;
@@ -3940,6 +4340,14 @@ export type Database = {
         }[];
       };
       current_tenant_ids: { Args: never; Returns: string[] };
+      end_saas_trial: {
+        Args: {
+          change_reason: string;
+          operation_id: string;
+          target_tenant: string;
+        };
+        Returns: Json;
+      };
       enqueue_saas_payment_receipt: {
         Args: {
           receipt_method: string;
@@ -4026,6 +4434,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      get_my_profile: { Args: never; Returns: Json };
       get_my_saas_billing: {
         Args: { page_number?: number; target_tenant: string };
         Returns: Json;
@@ -4154,6 +4563,7 @@ export type Database = {
           city: string;
           contact_email: string;
           contact_name: string;
+          logo_url: string;
           name: string;
           phone: string;
           region: string;
@@ -4293,6 +4703,7 @@ export type Database = {
           contact_name: string;
           created_at: string;
           id: string;
+          logo_url: string;
           name: string;
           phone: string;
           region: string;
@@ -4730,6 +5141,7 @@ export type Database = {
           target_city: string;
           target_contact_email: string;
           target_contact_name: string;
+          target_logo_url?: string;
           target_name: string;
           target_phone: string;
           target_region: string;

@@ -55,3 +55,21 @@ export async function confirmSaasAssignment(
     parseWithSchema(confirmationSchema, input),
   );
 }
+
+const endTrialSchema = z.object({
+  tenantId: z.uuid({ error: "Selecciona un tenant válido." }),
+  operationId: z.uuid({ error: "El identificador de operación no es válido." }),
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Ingresa un motivo de al menos 3 caracteres.")
+    .max(500, "El motivo admite hasta 500 caracteres."),
+});
+
+export async function endSaasTrial(
+  input: unknown,
+  repository: SubscriptionManagementPort,
+) {
+  await assertAdmin(repository);
+  return repository.endTrial(parseWithSchema(endTrialSchema, input));
+}

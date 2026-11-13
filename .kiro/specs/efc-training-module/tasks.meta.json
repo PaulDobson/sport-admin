@@ -1,0 +1,535 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Write migration file for `efc_macrocycles` and `efc_microcycles` tables": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364977647
+      },
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364991954
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366504654
+      }
+    ],
+    "1.2 Write migration file for `efc_session_loads`, `efc_session_srpe`, and `efc_athlete_profile` tables": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364977751
+      },
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364996989
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366509598
+      }
+    ],
+    "1.3 Write migration file for `efc_athlete_tests`, `efc_1rm_records`, and `efc_weight_control` tables": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364977863
+      },
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794365303649
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366514104
+      }
+    ],
+    "2.1 Create domain types file `src/domain/efc-training/macrocycle.ts`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364977983
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366519699
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367107054
+      }
+    ],
+    "2.2 Create domain types files for athlete entities": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978071
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366524528
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367111842
+      }
+    ],
+    "2.3 Implement formula functions F-01 to F-06 in `src/domain/efc-training/efc-formulas.ts`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978150
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367117337
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369722882
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369727668
+      }
+    ],
+    "2.5 Implement physiological formula functions F-07 to F-12 in `efc-formulas.ts`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978231
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367122466
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369732437
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369737370
+      }
+    ],
+    "2.7 Implement sRPE, weekly load, and ACWR functions F-13 to F-15 in `efc-formulas.ts`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978309
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367127390
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369742251
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369747016
+      }
+    ],
+    "2.9 Implement 1RM and weight control formula functions F-16 to F-18 in `efc-formulas.ts`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978388
+      },
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794367132460
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369751811
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369757493
+      }
+    ],
+    "3.1 Create repository port interfaces in `src/application/efc-training/ports/`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978499
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370065447
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370469962
+      }
+    ],
+    "3.2 Create remaining repository port interfaces in `src/application/efc-training/ports/`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978589
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370070098
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370474747
+      }
+    ],
+    "3.3 Implement macrocycle and microcycle use cases in `src/application/efc-training/use-cases/`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978668
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370479877
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370597388
+      }
+    ],
+    "3.4 Implement athlete profile, physical tests, and load visualization use cases": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978746
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370484522
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370904684
+      }
+    ],
+    "3.5 Implement 1RM, weight control, and export use cases": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978824
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370489222
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370909874
+      }
+    ],
+    "4.1 Implement Supabase repositories for macrocycles and microcycles": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978902
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370915187
+      },
+      {
+        "executionId": "9089bbc0-4570-43eb-a6b7-09fc17442ede",
+        "chatSessionId": "sess_e982ac52-b6d0-4ee5-8d54-2fb9873ce50f",
+        "timestamp": 1794371587913
+      }
+    ],
+    "4.2 Implement Supabase repositories for athlete profile, tests, 1RM, weight control, and sRPE": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364978978
+      },
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370919806
+      },
+      {
+        "executionId": "9089bbc0-4570-43eb-a6b7-09fc17442ede",
+        "chatSessionId": "sess_e982ac52-b6d0-4ee5-8d54-2fb9873ce50f",
+        "timestamp": 1794371588097
+      }
+    ],
+    "4.3 Create the EFC composition factory": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979088
+      }
+    ],
+    "5.1 Add EFC training card to `src/app/dashboard/trainings/page.tsx`": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979178
+      }
+    ],
+    "5.2 Create EFC module route layout and entry point": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979254
+      }
+    ],
+    "6.1 Implement athlete selector for EFC Dashboard": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979329
+      }
+    ],
+    "6.2 Implement EFC Dashboard Server Component data fetching": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979405
+      }
+    ],
+    "6.3 Implement `EfcDashboardClient` interactive component": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979481
+      }
+    ],
+    "7.1 Implement EFC Profile Server Component and add \"efc\" section tab": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979562
+      }
+    ],
+    "7.2 Implement `EfcProfileForm` and computed biometrics display": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979637
+      }
+    ],
+    "7.3 Implement physical tests form and history table": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979714
+      }
+    ],
+    "7.4 Implement evolution charts for physical tests": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979808
+      }
+    ],
+    "8.1 Implement Macrocycle Planner Server Component and Server Action": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979888
+      }
+    ],
+    "8.2 Implement `MacrocycleForm` with real-time recalculation": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364979966
+      }
+    ],
+    "8.3 Implement macrocycle visual timeline": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980044
+      }
+    ],
+    "9.1 Implement Microcycle Builder Server Component and Server Action": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980117
+      }
+    ],
+    "9.2 Implement `MicrocycleBuilder` load grid": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980194
+      }
+    ],
+    "9.3 Implement post-session sRPE section and Monotonía Foster display": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980277
+      }
+    ],
+    "10.1 Implement 1RM Calculator page and Server Action": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980358
+      }
+    ],
+    "10.2 Implement `OneRmCalculator` client component": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980438
+      }
+    ],
+    "10.3 Implement 1RM percentage table and EFC recommendations block": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980525
+      }
+    ],
+    "11.1 Implement Load Visualizations Server Component data preparation": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980668
+      }
+    ],
+    "11.2 Implement the four Recharts chart components": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980745
+      }
+    ],
+    "12.1 Implement EFC Library Server Component with section navigation": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980823
+      }
+    ],
+    "12.2 Add required disclaimers and content to EFC Library": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980902
+      }
+    ],
+    "13.1 Implement Weight Cut Tracker Server Component and Server Action": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364980978
+      }
+    ],
+    "13.2 Implement `WeightControlTracker` client component": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981055
+      }
+    ],
+    "14.1 Implement PDF export for macrocycles": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981131
+      }
+    ],
+    "14.2 Implement Excel export for athlete data": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981212
+      }
+    ],
+    "14.3 Implement Excel import for athlete data": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981293
+      }
+    ],
+    "15. Checkpoint — domain and infrastructure tests pass": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981372
+      }
+    ],
+    "16.1 Apply responsive layout and keyboard navigation to all EFC components": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981456
+      }
+    ],
+    "17. Final checkpoint — all tests pass and module is wired end-to-end": [
+      {
+        "executionId": "8dc489a7-431b-47eb-a5ff-4f5604b50375",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794364981531
+      }
+    ],
+    "1. Database migrations — create all EFC tables with constraints and RLS": [
+      {
+        "executionId": "3fdb7fa8-5114-4d1f-87a7-bfac31b76632",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794366514222
+      }
+    ],
+    "2. Domain layer — pure calculation functions and TypeScript types": [
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794369757591
+      }
+    ],
+    "3. Application layer — ports and use cases": [
+      {
+        "executionId": "03bf6567-d81d-438d-9287-b65987f00506",
+        "chatSessionId": "sess_bb724f7d-9098-4397-bbb1-2b09a0ca4d50",
+        "timestamp": 1794370910028
+      }
+    ]
+  }
+}

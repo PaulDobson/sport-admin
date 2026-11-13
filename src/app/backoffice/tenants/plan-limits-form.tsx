@@ -57,19 +57,28 @@ export function PlanLimitsForm({
       </div>
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
         Plan
-        <select
-          required
-          name="planId"
-          defaultValue={entitlements.planId}
-          className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
-        >
-          {plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name} · {plan.maxStudents} alumnos · {plan.maxUsers}{" "}
-              usuarios
-            </option>
-          ))}
-        </select>
+        {plans.length === 0 ? (
+          <p className="flex h-11 items-center text-sm font-normal text-muted-foreground">
+            No hay planes activos disponibles.
+          </p>
+        ) : (
+          <select
+            required
+            name="planId"
+            defaultValue={entitlements.planId}
+            className="h-11 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground"
+          >
+            {!plans.some((p) => p.id === entitlements.planId) && (
+              <option value="">Selecciona un plan</option>
+            )}
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name} · {plan.maxStudents} alumnos · {plan.maxUsers}{" "}
+                usuarios
+              </option>
+            ))}
+          </select>
+        )}
       </label>
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
         Vigente desde

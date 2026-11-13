@@ -11,6 +11,7 @@ import { quotePlanChange } from "@/domain/saas-administration/plan-change";
 import type {
   AssignmentConfirmation,
   AssignmentRequest,
+  EndTrialInput,
 } from "@/domain/saas-administration/subscription-management";
 import {
   includedVat,
@@ -40,6 +41,8 @@ const managementSchema = z.object({
   business_date: date,
   active_students: z.number().int().nonnegative(),
   active_users: z.number().int().nonnegative(),
+  max_students: z.number().int().positive().nullable(),
+  max_users: z.number().int().positive().nullable(),
   scheduled_change: z
     .object({
       id: z.uuid(),
@@ -218,6 +221,12 @@ const cancelledSchema = z.object({
   scheduled_change_id: z.uuid(),
   status: z.literal("cancelled"),
 });
+const endTrialResultSchema = z.object({
+  tenant_id: z.uuid(),
+  subscription_id: z.uuid(),
+  previous_period_end: date,
+  new_period_end: date,
+});
 
 function parseContract<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
@@ -250,6 +259,10 @@ function throwRpcError(error: { code: string; message: string }): never {
     throw new BusinessRuleViolationError(
       "No se puede confirmar el plan. Revisa fechas, prueba, precio CLP y límites frente al uso actual. Si hay un cambio pendiente, cancélalo antes de solicitar otro; los períodos vencidos o las programaciones antiguas de límites requieren conciliación.",
     );
+  if (error.code === "22P02")
+    throw new BusinessRuleViolationError(
+      "Uno de los identificadores enviados no es válido. Recarga la página e inténtalo de nuevo.",
+    );
   throw error;
 }
 function args(input: AssignmentRequest) {
@@ -258,7 +271,7 @@ function args(input: AssignmentRequest) {
     target_version: input.planVersionId,
     starts_on: input.startsOn,
     use_trial: input.useTrial,
-    due_on: input.dueOn ?? "",
+    due_on: input.dueOn ?? undefined,
   };
 }
 
@@ -290,6 +303,8 @@ export class SupabaseSubscriptionManagement
       businessDate: r.business_date,
       activeStudents: r.active_students,
       activeUsers: r.active_users,
+      maxStudents: r.max_students,
+      maxUsers: r.max_users,
       scheduledChange: r.scheduled_change
         ? {
             id: r.scheduled_change.id,
@@ -375,6 +390,7 @@ export class SupabaseSubscriptionManagement
       "confirm_saas_subscription_assignment",
       {
         ...args(input),
+        due_on: input.dueOn ?? "",
         expected_fingerprint: input.fingerprint,
         operation_id: input.operationId,
         change_reason: input.reason,
@@ -530,5 +546,27 @@ export class SupabaseSubscriptionManagement
         "La cancelación corresponde a otro cambio.",
       );
     }
+  }
+
+  async endTrial(input: EndTrialInput) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.client.rpc as any)("end_saas_trial", {
+      target_tenant: input.tenantId,
+      operation_id: input.operationId,
+      change_reason: input.reason,
+    });
+    if (error) throwRpcError(error);
+    const r = parseContract(endTrialResultSchema, data);
+    if (r.tenant_id !== input.tenantId) {
+      throw new BusinessRuleViolationError(
+        "La respuesta corresponde a otro tenant.",
+      );
+    }
+    return {
+      tenantId: r.tenant_id,
+      subscriptionId: r.subscription_id,
+      previousPeriodEnd: r.previous_period_end,
+      newPeriodEnd: r.new_period_end,
+    };
   }
 }
