@@ -10,9 +10,29 @@ import {
   ArrowRight,
   Zap,
   Clock,
+  TrendingUp,
+  Dumbbell,
+  Calendar,
 } from "lucide-react";
 
 const tools = [
+  {
+    href: "/dashboard/trainings/efc",
+    image: "/img/img_5.jpg",
+    accent: "from-amber-500/40 via-amber-500/15 border-amber-500/30",
+    iconBg: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    arrowColor: "text-amber-400",
+    overlayFrom: "from-amber-900/60",
+    label: "Planificación EFC",
+    tagline: "Estructura · Función · Cognición",
+    description:
+      "Planifica macrociclos y microciclos con el método EFC, calcula distribuciones de carga, controla el 1RM y monitorea el ACWR de tus deportistas de taekwondo.",
+    features: [
+      { icon: Calendar, text: "Macrociclos EFC" },
+      { icon: Dumbbell, text: "Calculadora 1RM" },
+      { icon: TrendingUp, text: "ACWR y carga" },
+    ],
+  },
   {
     href: "/dashboard/trainings/cognitive",
     image: "/img/img_1.jpg",

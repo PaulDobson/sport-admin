@@ -15,6 +15,7 @@ import {
   Layers,
   Timer,
   Swords,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 import type { TenantMembershipRole } from "@/domain/tenants/tenant-membership";
@@ -49,7 +50,8 @@ export type TrainingSection =
   | "cognitive"
   | "combinations"
   | "timers"
-  | "clock";
+  | "clock"
+  | "efc";
 
 export type GymSection = "info" | "disciplines" | "classes" | "locations";
 
@@ -149,6 +151,12 @@ const trainingSections: ReadonlyArray<{
     href: "/dashboard/trainings/clock",
     icon: Clock,
   },
+  {
+    id: "efc",
+    label: "Planificación EFC",
+    href: "/dashboard/trainings/efc",
+    icon: TrendingUp,
+  },
 ];
 
 export function trainingSectionsForRole(role: TenantMembershipRole) {
@@ -166,6 +174,7 @@ export function activeTrainingSection(
     return "combinations";
   if (pathname.startsWith("/dashboard/trainings/timers")) return "timers";
   if (pathname.startsWith("/dashboard/trainings/clock")) return "clock";
+  if (pathname.startsWith("/dashboard/trainings/efc")) return "efc";
   return null;
 }
 

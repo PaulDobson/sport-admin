@@ -118,6 +118,11 @@ function throwRpcError(error: { code: string; message: string }): never {
       "No se pudo guardar el plan. Revisa sus datos y comprueba que siga activo.",
     );
   }
+  if (error.code === "22P02") {
+    throw new BusinessRuleViolationError(
+      "Uno de los identificadores enviados no es válido. Recarga la página e inténtalo de nuevo.",
+    );
+  }
   throw error;
 }
 
@@ -232,8 +237,8 @@ export class SupabasePlanCatalog
 
   async archive(input: ArchiveSaasPlanInput) {
     const { data, error } = await this.client.rpc("archive_saas_plan", {
-      target_plan: input.planId ?? undefined,
-      expected_version: input.expectedVersionId ?? undefined,
+      target_plan: input.planId ?? null,
+      expected_version: input.expectedVersionId ?? null,
       operation_id: input.operationId,
       change_reason: input.reason,
     });

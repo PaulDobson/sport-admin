@@ -50,6 +50,19 @@ export interface AssignmentResult {
   periodEndExclusive: string;
 }
 
+export interface EndTrialInput {
+  tenantId: string;
+  operationId: string;
+  reason: string;
+}
+
+export interface EndTrialResult {
+  tenantId: string;
+  subscriptionId: string;
+  previousPeriodEnd: string;
+  newPeriodEnd: string;
+}
+
 export interface SubscriptionManagement {
   tenantId: string;
   tenantName: string;
@@ -57,6 +70,8 @@ export interface SubscriptionManagement {
   businessDate: string;
   activeStudents: number;
   activeUsers: number;
+  maxStudents: number | null;
+  maxUsers: number | null;
   scheduledChange: {
     id: string;
     planName: string;
